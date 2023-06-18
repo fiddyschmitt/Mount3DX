@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+	<AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NWebDav.Server.AspNetCore\NWebDav.Server.AspNetCore.csproj" />
+    <ProjectReference Include="..\NWebDav.Server\NWebDav.Server.csproj" />
+  </ItemGroup>
+
+</Project>

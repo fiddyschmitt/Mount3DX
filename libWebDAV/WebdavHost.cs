@@ -1,0 +1,51 @@
+﻿using Microsoft.AspNetCore.Hosting;
+
+using NWebDav.Server.Logging;
+
+using Microsoft.Extensions.Hosting;
+using NWebDav.Server;
+using NWebDav.Sample.Kestrel;
+using LogLevel = NWebDav.Server.Logging.LogLevel;
+using LoggerFactory = NWebDav.Server.Logging.LoggerFactory;
+
+namespace libWebDAV
+{
+    public class WebdavHost
+    {
+        IHost? runningHost;
+
+        public WebdavHost(string hostUrls)
+        {
+            HostUrls = hostUrls;
+        }
+
+        public string HostUrls { get; }
+
+        public void Start()
+        {
+            var args = new[] { "--urls", HostUrls };
+
+            // Use debug output for logging
+            var adapter = new DebugOutputAdapter();
+            adapter.LogLevels.Add(LogLevel.Debug);
+            adapter.LogLevels.Add(LogLevel.Info);
+            LoggerFactory.Factory = adapter;
+
+            runningHost = Host
+                        .CreateDefaultBuilder(args)
+                        //.UseUrls("http://*:11000")
+                        .ConfigureWebHostDefaults(webBuilder =>
+                        {
+                            webBuilder.UseStartup<Startup>();
+                        })
+                        .Build();
+
+            runningHost.Run();
+        }
+
+        public void Stop()
+        {
+            runningHost?.StopAsync();
+        }
+    }
+}
