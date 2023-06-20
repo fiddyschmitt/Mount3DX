@@ -62,7 +62,7 @@
             grp3dx.Controls.Add(txt3dxCookieString);
             grp3dx.Location = new Point(12, 12);
             grp3dx.Name = "grp3dx";
-            grp3dx.Size = new Size(542, 129);
+            grp3dx.Size = new Size(654, 129);
             grp3dx.TabIndex = 1;
             grp3dx.TabStop = false;
             grp3dx.Text = "3DX settings";
@@ -120,7 +120,7 @@
             txt3dxServerUrl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             txt3dxServerUrl.Location = new Point(101, 26);
             txt3dxServerUrl.Name = "txt3dxServerUrl";
-            txt3dxServerUrl.Size = new Size(435, 23);
+            txt3dxServerUrl.Size = new Size(547, 23);
             txt3dxServerUrl.TabIndex = 0;
             // 
             // label2
@@ -146,7 +146,7 @@
             txt3dxCookieString.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             txt3dxCookieString.Location = new Point(101, 55);
             txt3dxCookieString.Name = "txt3dxCookieString";
-            txt3dxCookieString.Size = new Size(435, 23);
+            txt3dxCookieString.Size = new Size(547, 23);
             txt3dxCookieString.TabIndex = 1;
             // 
             // grpVfs
@@ -156,7 +156,7 @@
             grpVfs.Controls.Add(label7);
             grpVfs.Location = new Point(12, 157);
             grpVfs.Name = "grpVfs";
-            grpVfs.Size = new Size(542, 98);
+            grpVfs.Size = new Size(654, 98);
             grpVfs.TabIndex = 2;
             grpVfs.TabStop = false;
             grpVfs.Text = "Virtual File System";
@@ -166,7 +166,7 @@
             txtMapToDriveLetter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             txtMapToDriveLetter.Location = new Point(129, 25);
             txtMapToDriveLetter.Name = "txtMapToDriveLetter";
-            txtMapToDriveLetter.Size = new Size(135, 23);
+            txtMapToDriveLetter.Size = new Size(247, 23);
             txtMapToDriveLetter.TabIndex = 5;
             // 
             // label7
@@ -191,20 +191,20 @@
             // 
             // lblRunningStatus
             // 
+            lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
-            lblRunningStatus.BackColor = Color.Lime;
+            lblRunningStatus.BackColor = SystemColors.Control;
             lblRunningStatus.Location = new Point(93, 265);
             lblRunningStatus.Name = "lblRunningStatus";
-            lblRunningStatus.Size = new Size(52, 15);
+            lblRunningStatus.Size = new Size(97, 15);
             lblRunningStatus.TabIndex = 3;
-            lblRunningStatus.Text = "Running";
-            lblRunningStatus.Visible = false;
+            lblRunningStatus.Text = "lblRunningStatus";
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(566, 297);
+            ClientSize = new Size(678, 297);
             Controls.Add(lblRunningStatus);
             Controls.Add(btnStart);
             Controls.Add(grpVfs);

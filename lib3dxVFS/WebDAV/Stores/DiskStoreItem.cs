@@ -3,14 +3,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-
+using NWebDav.Server;
 using NWebDav.Server.Helpers;
 using NWebDav.Server.Http;
 using NWebDav.Server.Locking;
 using NWebDav.Server.Logging;
 using NWebDav.Server.Props;
+using NWebDav.Server.Stores;
 
-namespace NWebDav.Server.Stores
+namespace libVFS.WebDAV.Stores
 {
     [DebuggerDisplay("{_fileInfo.FullPath}")]
     public sealed class DiskStoreItem : IDiskStoreItem

@@ -20,12 +20,14 @@ namespace Mount3DX
         public string CookiesString = "SERVERID=abc; JSESSIONID=12345";
         public bool KeepAlive = true;
         public int KeepAliveIntervalMinutes = 5;
+        public int QueryThreads = 8;
+        public int RefreshIntervalMinutes = 30;
     }
 
     public class VfsSettings
     {
-        public string WebDavServerUrl = "https://localhost:11000";
-        public string MapToDriveLetter = libVFS.Utility.GetAvailableDriveLetter();
+        public string WebDavServerUrl = "http://localhost:11000";
+        public string MapToDriveLetter = libVFS.FileUtility.GetAvailableDriveLetter();
     }
 
 }

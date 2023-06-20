@@ -5,8 +5,6 @@ VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mount3DX", "Mount3DX\Mount3DX.csproj", "{A4C0CD76-16DE-4F3C-BE9A-CC93705D0C5B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "libVFS", "libVFS\libVFS.csproj", "{36FB11C8-32D9-47AA-A467-5788B65648DA}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "libCommon", "libCommon\libCommon.csproj", "{77BBFB28-EA86-46FF-B203-F4FE0453C0CB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "lib3dx", "lib3dx\lib3dx.csproj", "{4DCE307F-1097-4821-B585-4CA78A3773B1}"
@@ -17,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NWebDav.Server", "NWebDav.S
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NWebDav.Server.AspNetCore", "NWebDav.Server.AspNetCore\NWebDav.Server.AspNetCore.csproj", "{203FCC29-671F-4ED3-8526-9EA47E38B3E1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NWebDav.Server.HttpListener", "NWebDav.Server.HttpListener\NWebDav.Server.HttpListener.csproj", "{15153EF8-ADFC-4000-97F6-C77F0D82E0C9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NWebDav.Server.HttpListener", "NWebDav.Server.HttpListener\NWebDav.Server.HttpListener.csproj", "{15153EF8-ADFC-4000-97F6-C77F0D82E0C9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "lib3dxVFS", "lib3dxVFS\lib3dxVFS.csproj", "{FFD00315-6C59-4ED1-8B02-BBB9B55338B6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +29,6 @@ Global
 		{A4C0CD76-16DE-4F3C-BE9A-CC93705D0C5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4C0CD76-16DE-4F3C-BE9A-CC93705D0C5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4C0CD76-16DE-4F3C-BE9A-CC93705D0C5B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{36FB11C8-32D9-47AA-A467-5788B65648DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{36FB11C8-32D9-47AA-A467-5788B65648DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{36FB11C8-32D9-47AA-A467-5788B65648DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{36FB11C8-32D9-47AA-A467-5788B65648DA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{77BBFB28-EA86-46FF-B203-F4FE0453C0CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{77BBFB28-EA86-46FF-B203-F4FE0453C0CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77BBFB28-EA86-46FF-B203-F4FE0453C0CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -57,6 +53,10 @@ Global
 		{15153EF8-ADFC-4000-97F6-C77F0D82E0C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15153EF8-ADFC-4000-97F6-C77F0D82E0C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15153EF8-ADFC-4000-97F6-C77F0D82E0C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFD00315-6C59-4ED1-8B02-BBB9B55338B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFD00315-6C59-4ED1-8B02-BBB9B55338B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFD00315-6C59-4ED1-8B02-BBB9B55338B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFD00315-6C59-4ED1-8B02-BBB9B55338B6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

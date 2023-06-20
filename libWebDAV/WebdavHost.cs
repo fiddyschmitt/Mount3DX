@@ -7,6 +7,7 @@ using NWebDav.Server;
 using NWebDav.Sample.Kestrel;
 using LogLevel = NWebDav.Server.Logging.LogLevel;
 using LoggerFactory = NWebDav.Server.Logging.LoggerFactory;
+using NWebDav.Server.Stores;
 
 namespace libWebDAV
 {
@@ -14,9 +15,10 @@ namespace libWebDAV
     {
         IHost? runningHost;
 
-        public WebdavHost(string hostUrls)
+        public WebdavHost(string hostUrls, IStore store)
         {
             HostUrls = hostUrls;
+            Startup.Store = store;
         }
 
         public string HostUrls { get; }

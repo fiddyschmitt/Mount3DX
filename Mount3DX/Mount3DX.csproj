@@ -9,9 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\lib3dx\lib3dx.csproj" />
+    <ProjectReference Include="..\lib3dxVFS\lib3dxVFS.csproj" />
     <ProjectReference Include="..\libCommon\libCommon.csproj" />
-    <ProjectReference Include="..\libVFS\libVFS.csproj" />
     <ProjectReference Include="..\libWebDAV\libWebDAV.csproj" />
   </ItemGroup>
 

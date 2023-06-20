@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\lib3dx\lib3dx.csproj" />
     <ProjectReference Include="..\libCommon\libCommon.csproj" />
+    <ProjectReference Include="..\NWebDav.Server\NWebDav.Server.csproj" />
   </ItemGroup>
 
 </Project>

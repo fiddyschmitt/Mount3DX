@@ -1,10 +1,11 @@
-﻿using lib3dx;
-using libVFS;
+﻿using libVFS.WebDAV.Stores;
 using libWebDAV;
+using NWebDav.Server.Stores;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,33 +15,71 @@ namespace Mount3DX
     {
         private Settings settings;
 
-        _3dxServer? _3dxServer;
+        _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
+
+        public event EventHandler<ProgressEventArgs>? Progress;
 
         public Session(Settings settings)
         {
             this.settings = settings;
         }
 
-        public (bool StartedSuccessfully, string Message) Start()
+        public bool Start()
         {
-            /*
-            var _3dxServer = new _3dxServer(
+            Progress?.Invoke(this, new ProgressEventArgs()
+            {
+                Nature = ProgressEventArgs.EnumNature.Neutral,
+                Message = "Connecting to 3dx"
+            });
+
+            var _3dxStore = new _3dxStore(
                 settings._3dx.ServerUrl,
                 settings._3dx.CookiesString,
                 settings._3dx.KeepAlive,
-                settings._3dx.KeepAliveIntervalMinutes);
+                settings._3dx.KeepAliveIntervalMinutes,
+                settings._3dx.QueryThreads);
 
-            var pingSuccessful = _3dxServer.Ping();
+            /*
+            var pingSuccessful = _3dxStore.Ping();
 
             if (!pingSuccessful)
             {
-                _3dxServer.Close();
-                return (false, "The 3DX server could not be contacted. Please check the URL and Cookies.");
+                Stop();
+
+                Progress?.Invoke(this, new ProgressEventArgs()
+                {
+                    Nature = ProgressEventArgs.EnumNature.Bad,
+                    Message = "The 3DX server could not be contacted. Please check the URL and Cookies."
+                });
+
+                return false;
             }
             */
 
-            webdavHost = new WebdavHost(settings.Vfs.WebDavServerUrl);
+            Progress?.Invoke(this, new ProgressEventArgs()
+            {
+                Nature = ProgressEventArgs.EnumNature.Neutral,
+                Message = "Initiating WebDAV server"
+            });
+
+            try
+            {
+                //var store = new libVFS.WebDAV.Stores.DiskStore(@"C:\", false);
+                webdavHost = new WebdavHost(settings.Vfs.WebDavServerUrl, _3dxStore);
+            }
+            catch (Exception ex)
+            {
+                Stop();
+
+                Progress?.Invoke(this, new ProgressEventArgs()
+                {
+                    Nature = ProgressEventArgs.EnumNature.Bad,
+                    Message = $"Error while initialising WebDAV server: {ex.Message}"
+                });
+
+                return false;
+            }
 
             Task.Factory.StartNew(() =>
             {
@@ -48,18 +87,43 @@ namespace Mount3DX
             });
 
             var computedUNC = @"\\localhost@SSL@11000\DavWWWRoot";
+            computedUNC = @"\\localhost@11000\DavWWWRoot";
 
-            NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);
-            Process.Start("explorer.exe", settings.Vfs.MapToDriveLetter);
+            //NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);
+
+            //Process.Start("explorer.exe", settings.Vfs.MapToDriveLetter);
+            Process.Start("explorer.exe", computedUNC);
 
 
-            return (true, string.Empty);
+            return true;
         }
 
         public void Stop()
         {
-            webdavHost?.Stop();
-            _3dxServer?.Close();
+            try
+            {
+                webdavHost?.Stop();
+            }
+            catch { }
+
+            try
+            {
+                _3dxStore?.Close();
+            }
+            catch { }
+        }
+
+        public class ProgressEventArgs : EventArgs
+        {
+            public EnumNature Nature { get; init; }
+            public string Message { get; init; }
+
+            public enum EnumNature
+            {
+                Good,
+                Neutral,
+                Bad
+            }
         }
     }
 }

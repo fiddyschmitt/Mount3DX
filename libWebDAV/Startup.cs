@@ -2,14 +2,16 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Logging;
 using NWebDav.Server;
-using NWebDav.Server.Stores;
 using NWebDav.Server.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
+using NWebDav.Server.Stores;
 
 namespace NWebDav.Sample.Kestrel
 {
     public class Startup
     {
+        public static IStore Store;
+
         public void ConfigureServices(IServiceCollection services)
         {
             // TODO: Migrate this logging with NWebDav logging - still up to date?
@@ -27,9 +29,7 @@ namespace NWebDav.Sample.Kestrel
             var requestHandlerFactory = new RequestHandlerFactory();
 
             // Create WebDAV dispatcher
-            var homeFolder = Environment.GetEnvironmentVariable("HOME") ?? Environment.GetEnvironmentVariable("USERPROFILE");
-            homeFolder = @"R:\";
-            var webDavDispatcher = new WebDavDispatcher(new DiskStore(homeFolder), requestHandlerFactory);
+            var webDavDispatcher = new WebDavDispatcher(Store, requestHandlerFactory);
 
             app.Run(async context =>
             {

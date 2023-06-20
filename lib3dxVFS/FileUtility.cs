@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace libVFS
 {
-    public static class Utility
+    public static class FileUtility
     {
         public static string GetAvailableDriveLetter(bool alphabetical = false)
         {
@@ -16,15 +16,13 @@ namespace libVFS
             if (!alphabetical) candidates = candidates.Reverse();
 
             var availableLetter = candidates
-                                    .Select(i => $"{(char)i}")
+                                    .Select(i => @$"{(char)i}:\")
                                     .FirstOrDefault(candidate => !existingLetters.Any(existing => candidate.Equals(existing, StringComparison.CurrentCultureIgnoreCase)));
 
             if (availableLetter == null)
             {
                 throw new Exception($"Could not find an available drive letter.");
             }
-
-            availableLetter += @":\";
 
             return availableLetter;
         }

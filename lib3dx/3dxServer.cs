@@ -1,4 +1,9 @@
 ﻿using libCommon;
+using libCommon.Utilities;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Web;
 
@@ -9,10 +14,10 @@ namespace lib3dx
         CancellationTokenSource CancellationTokenSource = new();
         Task? PingTask;
 
-        public _3dxServer(string serverUrl, string cookiesString, bool keepAlive, int keepAliveIntervalMinutes)
+        public _3dxServer(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes)
         {
             ServerUrl = serverUrl;
-            CookiesString = cookiesString;
+            Cookies = cookies;
             KeepAlive = keepAlive;
             KeepAliveInterval = TimeSpan.FromMinutes(keepAliveIntervalMinutes);
 
@@ -22,7 +27,8 @@ namespace lib3dx
                 {
                     while (!CancellationTokenSource.IsCancellationRequested)
                     {
-                        Task.Delay(KeepAliveInterval, CancellationTokenSource.Token);
+                        Ping();
+                        Task.Delay(KeepAliveInterval, CancellationTokenSource.Token).Wait();
                     }
                 });
             }
@@ -30,18 +36,26 @@ namespace lib3dx
 
         public bool Ping()
         {
-            var pingUrl = Path.Combine(ServerUrl, "res/v1/etc");
+            var pingUrl = ServerUrl.UrlCombine(@"resources/v1/modeler/documents/ABC123AABEC11256");
 
             var success = false;
 
             try
             {
-                var pingResponse = Utility.DownloadString(pingUrl);
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", Cookies);
+                var request = new HttpRequestMessage(HttpMethod.Get, pingUrl);
 
-                if (pingResponse.Contains("blah"))
+                try
                 {
-                    success = true;
+                    var response = httpClient.Send(request);
+                    var responseStr = response.Content.ReadAsStringAsync().Result;
+                    if (responseStr.Contains("Object Does Not Exist"))
+                    {
+                        success = true;
+                    }
                 }
+                catch { }
             }
             catch
             { }
@@ -56,8 +70,9 @@ namespace lib3dx
         }
 
         public string ServerUrl { get; }
-        public string CookiesString { get; }
+        public string Cookies { get; }
         public bool KeepAlive { get; }
+        public int QueryThreads { get; }
         public TimeSpan KeepAliveInterval { get; }
     }
 }

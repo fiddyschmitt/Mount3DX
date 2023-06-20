@@ -1,4 +1,5 @@
 using libCommon;
+using libVFS.WebDAV.Stores;
 using System.Data;
 using System.Text;
 
@@ -19,6 +20,12 @@ namespace Mount3DX
             Text = $"{PROGRAM_NAME} {PROGRAM_VERSION}";
 
             LoadSettings();
+
+            //todo: The Windows 10 WebDAV client sometimes restricts access to files larger than 50MB.
+            //This can be changed in: HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WebClient\Parameters\FileSizeLimitInBytes = 4294967295
+            //After which, the 'WebClient' service needs to be restarted.
+
+            lblRunningStatus.Text = string.Empty;
         }
 
         readonly string settingsFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
@@ -70,9 +77,12 @@ namespace Mount3DX
 
         private void btnStart_Click(object sender, EventArgs e)
         {
+            lblRunningStatus.BackColor = Control.DefaultBackColor;
+            lblRunningStatus.ForeColor = Color.Black;
+            lblRunningStatus.Text = "";
+
             grp3dx.Enabled = false;
             grpVfs.Enabled = false;
-            lblRunningStatus.Visible = false;
 
             if (btnStart.Text.Equals("Start"))
             {
@@ -81,17 +91,41 @@ namespace Mount3DX
 
                 session = new Session(settings);
 
-                var startResult = session.Start();
+                session.Progress += (sender, args) =>
+                {
+                    switch (args.Nature)
+                    {
+                        case Session.ProgressEventArgs.EnumNature.Good:
+                            lblRunningStatus.BackColor = Color.LimeGreen;
+                            lblRunningStatus.ForeColor = Color.Black;
+                            break;
 
-                if (startResult.StartedSuccessfully)
+                        case Session.ProgressEventArgs.EnumNature.Neutral:
+                            lblRunningStatus.BackColor = Control.DefaultBackColor;
+                            lblRunningStatus.ForeColor = Color.Black;
+                            break;
+
+                        case Session.ProgressEventArgs.EnumNature.Bad:
+                            lblRunningStatus.BackColor = Color.Red;
+                            lblRunningStatus.ForeColor = Color.White;
+                            break;
+                    }
+
+                    lblRunningStatus.Text = args.Message;
+                };
+
+                var started = session.Start();
+
+                if (started)
                 {
                     btnStart.Text = "Stop";
-                    lblRunningStatus.Visible = true;
+
+                    lblRunningStatus.BackColor = Color.LimeGreen;
+                    lblRunningStatus.ForeColor = Color.Black;
+                    lblRunningStatus.Text = "Running";
                 }
                 else
                 {
-                    MessageBox.Show(startResult.Message, "Could not start", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
                     grp3dx.Enabled = true;
                     grpVfs.Enabled = true;
                 }
