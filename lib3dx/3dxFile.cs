@@ -13,7 +13,7 @@ namespace lib3dx
 {
     public class _3dxFile : _3dxItem
     {
-        string DocumentObjectId;
+        readonly string DocumentObjectId;
         public string FileRevision;
         public ulong Size;
 

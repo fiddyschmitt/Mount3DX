@@ -16,8 +16,8 @@ namespace lib3dx
 {
     public class _3dxServer
     {
-        CancellationTokenSource CancellationTokenSource = new();
-        Task? PingTask;
+        readonly CancellationTokenSource CancellationTokenSource = new();
+        readonly Task? PingTask;
 
         public _3dxServer(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes)
         {
@@ -126,8 +126,6 @@ namespace lib3dx
             return result;
         }
 
-        public static List<string> itemTypes = new List<string>();
-
         //Note - if a document is in a folder, this method doesn't return all the revisions of that document. Only the revisions that the user attached
         public List<_3dxItem> GetItemsInFolder(_3dxFolder folder, string securityContext)
         {
@@ -153,7 +151,6 @@ namespace lib3dx
                             .Select(item =>
                             {
                                 var itemType = item["type"].ToString();
-                                itemTypes.Add(itemType);
 
                                 _3dxItem? newItem = null;
                                 if (itemType.Equals("Document"))
@@ -257,7 +254,7 @@ namespace lib3dx
                                                 .ToList();
 
                                 Interlocked.Increment(ref pagesRetrieved);
-                                Interlocked.Add(ref documentsDiscovered, documents.Count());
+                                Interlocked.Add(ref documentsDiscovered, documents.Count);
 
                                 progress?.Invoke(this, new ProgressEventArgs()
                                 {
@@ -272,7 +269,7 @@ namespace lib3dx
             return result;
         }
 
-        public _3dxDocument JTokenToDocument(JToken o, _3dxFolder parent)
+        public static _3dxDocument? JTokenToDocument(JToken o, _3dxFolder parent)
         {
             if (o["dataelements"]?["title"] == null)
             {

@@ -215,6 +215,7 @@ namespace Mount3DX
                     }, settings._3dx.QueryThreads, new CancellationToken());
             recurseTask.Wait();
 
+            /*
             var itemTypes = _3dxServer
                                 .itemTypes
                                 .GroupBy(
@@ -228,6 +229,7 @@ namespace Mount3DX
                                 .OrderByDescending(grp => grp.Count)
                                 .Select(grp => $"{grp.ItemType},{grp.Count}")
                                 .ToString(Environment.NewLine);
+            */
         }
     }
 }

@@ -98,7 +98,7 @@ namespace libVFS.WebDAV.Stores
                                                    FullPath = key,
                                                    Documents = grp.ToList()
                                                })
-                                           .Where(grp => grp.Documents.Count() > 1)
+                                           .Where(grp => grp.Documents.Count > 1)
                                            .ToList();
 
             duplicateDocuments
@@ -129,9 +129,9 @@ namespace libVFS.WebDAV.Stores
                                                                 FullPath = key,
                                                                 Files = grp.ToList()
                                                             })
-                                                        .Where(grp => grp.Files.Count() > 1)
+                                                        .Where(grp => grp.Files.Count > 1)
                                 })
-                                .Where(document => document.DuplicateGroups.Count() > 0)
+                                .Where(document => document.DuplicateGroups.Any())
                                 .ToList();
 
             documentsWithDuplicateFiles
@@ -333,7 +333,7 @@ namespace libVFS.WebDAV.Stores
 
         public Task<IStoreCollection> GetCollectionAsync(Uri uri, IHttpContext httpContext)
         {
-            var requestedPath = UriHelper.GetDecodedPath(uri).Substring(1).Replace('/', Path.DirectorySeparatorChar);
+            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
 
             var collection = pathToCollectionMapping[requestedPath];
 
@@ -342,7 +342,7 @@ namespace libVFS.WebDAV.Stores
 
         public Task<IStoreItem> GetItemAsync(Uri uri, IHttpContext httpContext)
         {
-            var requestedPath = UriHelper.GetDecodedPath(uri).Substring(1).Replace('/', Path.DirectorySeparatorChar);
+            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
 
             if (pathToCollectionMapping.ContainsKey(requestedPath))
             {

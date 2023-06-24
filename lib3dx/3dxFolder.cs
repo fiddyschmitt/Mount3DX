@@ -46,7 +46,7 @@ namespace lib3dx
             recurseTask.Wait();
         }
 
-        public List<_3dxFolder> GetSubFolders(_3dxFolder folder, string serverUrl, string cookies)
+        public static List<_3dxFolder> GetSubFolders(_3dxFolder folder, string serverUrl, string cookies)
         {
             var objectUrl = serverUrl.UrlCombine(@$"common/emxUIStructureFancyTreeGetData.jsp?objectId={folder.ObjectId}&commandName=TMCProjectStructure&reinit=");
 
@@ -74,7 +74,7 @@ namespace lib3dx
                             .Select(o => new
                             {
                                 o.ObjectId,
-                                Title = o.Title.Substring(0, o.Title.LastIndexOf("(")),
+                                Title = o.Title[..o.Title.LastIndexOf("(")],
                             })
                             .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.Now, DateTime.Now, DateTime.Now))
                             .ToList();
