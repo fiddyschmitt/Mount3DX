@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace lib3dx
 {
-    public class _3dxDocument : _3dxItem
+    public class _3dxDocument : _3dxFolder
     {
+        public List<_3dxFile> Files = new List<_3dxFile>();
+        public string DocumentType;
     }
 }

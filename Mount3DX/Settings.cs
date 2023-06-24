@@ -27,7 +27,7 @@ namespace Mount3DX
     public class VfsSettings
     {
         public string WebDavServerUrl = "http://localhost:11000";
-        public string MapToDriveLetter = libVFS.FileUtility.GetAvailableDriveLetter();
+        public string MapToDriveLetter = libCommon.Utilities.FileUtility.GetAvailableDriveLetter();
     }
 
 }

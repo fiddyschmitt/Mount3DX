@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace libVFS
+namespace libCommon.Utilities
 {
     public static class FileUtility
     {
@@ -25,6 +25,11 @@ namespace libVFS
             }
 
             return availableLetter;
+        }
+
+        public static string ReplaceInvalidChars(string filename)
+        {
+            return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
         }
     }
 }

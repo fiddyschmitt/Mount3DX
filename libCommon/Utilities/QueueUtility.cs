@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,9 +33,11 @@ namespace libCommon.Utilities
 
                         Interlocked.Decrement(ref activeThreadsNumber);
                         if (activeThreadsNumber == 0) //all tasks finished
-                            return;
+                            break;
                     }
-                }, ct);
+
+                    Debug.WriteLine($"Thread finished. Active threads: {activeThreadsNumber}");
+                }, ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             }
 
             return Task.WhenAll(tasks);

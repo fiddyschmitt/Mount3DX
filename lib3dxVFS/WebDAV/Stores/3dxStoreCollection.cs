@@ -19,10 +19,12 @@ namespace lib3dxVFS.WebDAV.Stores
     {
         private static readonly XElement s_xDavCollection = new XElement(WebDavNamespaces.DavNs + "collection");
 
-        public _3dxStoreCollection(ILockingManager lockingManager, _3DXFolder folderInfo)
+        public _3dxStoreCollection(ILockingManager lockingManager, _3dxFolder folderInfo, string serverUrl, string cookies)
         {
             this.LockingManager = lockingManager;
             FolderInfo = folderInfo;
+            ServerUrl = serverUrl;
+            Cookies = cookies;
         }
 
         public bool IsWritable => false;
@@ -31,14 +33,16 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public InfiniteDepthMode InfiniteDepthMode => InfiniteDepthMode.Rejected;
 
-        public string Name => FolderInfo.Title;
+        public string Name => FolderInfo.Name;
 
         public string UniqueKey => FolderInfo.ObjectId;
         public IPropertyManager PropertyManager => DefaultPropertyManager;
 
         public ILockingManager LockingManager { get; }
 
-        public _3DXFolder FolderInfo { get; }
+        public _3dxFolder FolderInfo { get; }
+        public string ServerUrl { get; }
+        public string Cookies { get; }
 
         public Task<StoreItemResult> CopyAsync(IStoreCollection destination, string name, bool overwrite, IHttpContext httpContext)
         {
@@ -71,13 +75,18 @@ namespace lib3dxVFS.WebDAV.Stores
             {
                 // Add all directories
                 foreach (var subDirectory in FolderInfo.Subfolders)
-                    yield return new _3dxStoreCollection(LockingManager, subDirectory);
+                {
+                    yield return new _3dxStoreCollection(LockingManager, subDirectory, ServerUrl, Cookies);
+                }
 
                 // Add all files
-                /*
-                foreach (var document in FolderInfo.Documents)
-                    yield return new _3dxItem(LockingManager, document, IsWritable);
-                */
+                if (FolderInfo is _3dxDocument doc)
+                {
+                    foreach (var file in doc.Files)
+                    {
+                        yield return new _3dxStoreItem(LockingManager, file, IsWritable, ServerUrl, Cookies);
+                    }
+                }
             }
 
             return Task.FromResult(GetItemsInternal());
@@ -113,7 +122,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavDisplayName<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Title
+                Getter = (context, collection) => collection.FolderInfo.Name
             },
             new DavGetLastModified<_3dxStoreCollection>
             {
@@ -132,7 +141,7 @@ namespace lib3dxVFS.WebDAV.Stores
             // Hopmann/Lippert collection properties
             new DavExtCollectionChildCount<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Documents.Count() + collection.FolderInfo.Subfolders.Count()
+                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count()
             },
             new DavExtCollectionIsFolder<_3dxStoreCollection>
             {
@@ -156,7 +165,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavExtCollectionObjectCount<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Documents.Count()
+                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count()
             },
             new DavExtCollectionReserved<_3dxStoreCollection>
             {
@@ -164,7 +173,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavExtCollectionVisibleCount<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Documents.Count() + collection.FolderInfo.Subfolders.Count()
+                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count()
             },
 
             // Win32 extensions

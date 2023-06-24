@@ -1,4 +1,5 @@
-﻿using libVFS.WebDAV.Stores;
+﻿using libCommon.Events;
+using libVFS.WebDAV.Stores;
 using libWebDAV;
 using NWebDav.Server.Stores;
 using System;
@@ -19,13 +20,14 @@ namespace Mount3DX
         WebdavHost? webdavHost;
 
         public event EventHandler<ProgressEventArgs>? Progress;
+        public event EventHandler<FinishedEventArgs>? Finished;
 
         public Session(Settings settings)
         {
             this.settings = settings;
         }
 
-        public bool Start()
+        public void Start()
         {
             Progress?.Invoke(this, new ProgressEventArgs()
             {
@@ -72,13 +74,13 @@ namespace Mount3DX
             {
                 Stop();
 
-                Progress?.Invoke(this, new ProgressEventArgs()
+                Finished?.Invoke(this, new FinishedEventArgs()
                 {
-                    Nature = ProgressEventArgs.EnumNature.Bad,
+                    Success = false,
                     Message = $"Error while initialising WebDAV server: {ex.Message}"
                 });
 
-                return false;
+                return;
             }
 
             Task.Factory.StartNew(() =>
@@ -94,8 +96,10 @@ namespace Mount3DX
             //Process.Start("explorer.exe", settings.Vfs.MapToDriveLetter);
             Process.Start("explorer.exe", computedUNC);
 
-
-            return true;
+            Finished?.Invoke(this, new FinishedEventArgs()
+            {
+                Success = true,
+            });
         }
 
         public void Stop()
@@ -111,19 +115,6 @@ namespace Mount3DX
                 _3dxStore?.Close();
             }
             catch { }
-        }
-
-        public class ProgressEventArgs : EventArgs
-        {
-            public EnumNature Nature { get; init; }
-            public string Message { get; init; }
-
-            public enum EnumNature
-            {
-                Good,
-                Neutral,
-                Bad
-            }
         }
     }
 }
