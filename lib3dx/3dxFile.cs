@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,15 +13,16 @@ namespace lib3dx
 {
     public class _3dxFile : _3dxItem
     {
-        public _3dxFile(string fileRevision, string documentObjectId)
-        {
-            FileRevision = fileRevision;
-            DocumentObjectId = documentObjectId;
-        }
-
-        public string FileRevision;
         string DocumentObjectId;
+        public string FileRevision;
         public ulong Size;
+
+        public _3dxFile(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc, string documentObjectId, string fileRevision, ulong size) : base(objectId, name, parent, creationTimeUtc, lastWriteTimeUtc, lastAccessTimeUtc)
+        {
+            DocumentObjectId = documentObjectId;
+            FileRevision = fileRevision;
+            Size = size;
+        }
 
         public MemoryStream Download(string serverUrl, string cookies)
         {
@@ -32,10 +35,10 @@ namespace lib3dx
                 Method = HttpMethod.Get
             };
 
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", cookies);
+            var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
 
-            var downloadTokenJson = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var downloadTokenJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var downloadToken = JObject.Parse(downloadTokenJson)?["csrf"]?["value"].ToString();
 
 
@@ -48,10 +51,10 @@ namespace lib3dx
             };
             request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
 
-            client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", cookies);
+            httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
 
-            var downloadLocationQueryJson = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var datalements = JObject.Parse(downloadLocationQueryJson)["data"].First()["dataelements"];
 
             MemoryStream result;
@@ -64,8 +67,9 @@ namespace lib3dx
                 var downloadUrl = datalements["ticketURL"].ToString();
 
                 //download the file
-                client = new HttpClient();
-                var response = client.GetAsync(downloadUrl).Result;
+                httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
+
+                var response = httpClient.GetAsync(downloadUrl).Result;
                 result = new MemoryStream();
                 response.Content.CopyTo(result, null, CancellationToken.None);
             }

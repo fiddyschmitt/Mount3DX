@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -16,13 +18,16 @@ namespace lib3dx
 {
     public class _3dxFolder : _3dxItem
     {
+        public List<_3dxFolder> Subfolders = new();
+
+        public _3dxFolder(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc) : base(objectId, name, parent, creationTimeUtc, lastWriteTimeUtc, lastAccessTimeUtc)
+        {
+        }
 
         public override string ToString()
         {
             return $"{Name}";
         }
-
-        public List<_3dxFolder> Subfolders = new();
 
         public void PopulateSubfoldersRecursively(string serverUrl, string cookies, int queryThreads)
         {
@@ -53,10 +58,11 @@ namespace lib3dx
 
             request.Headers.Add("Accept-Language", "en-US,en;q=0.5");   //required for some reason
 
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", cookies);
+            var httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
 
-            var jsonString = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+
+            var jsonString = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 
             var result = JArray
                             .Parse(jsonString)
@@ -70,11 +76,7 @@ namespace lib3dx
                                 o.ObjectId,
                                 Title = o.Title.Substring(0, o.Title.LastIndexOf("(")),
                             })
-                            .Select(o => new _3dxFolder()
-                            {
-                                ObjectId = o.ObjectId,
-                                Name = o.Title,
-                            })
+                            .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.Now, DateTime.Now, DateTime.Now))
                             .ToList();
 
             return result;

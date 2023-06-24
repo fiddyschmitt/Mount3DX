@@ -40,7 +40,8 @@ namespace Mount3DX
                 settings._3dx.CookiesString,
                 settings._3dx.KeepAlive,
                 settings._3dx.KeepAliveIntervalMinutes,
-                settings._3dx.QueryThreads);
+                settings._3dx.QueryThreads,
+                Progress);
 
             /*
             var pingSuccessful = _3dxStore.Ping();

@@ -12,71 +12,94 @@ using System.IO;
 using lib3dxVFS.WebDAV.Stores;
 using libCommon;
 using System.Xml.Linq;
+using libCommon.Utilities;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using libVFS.VFS.Folders;
+using libCommon.Events;
 
 namespace libVFS.WebDAV.Stores
 {
     public class _3dxStore : IStore
     {
-        _3dxServer _3dxServer;
+        readonly _3dxServer _3dxServer;
 
-        ILockingManager LockingManager = new InMemoryLockingManager();
+        readonly ILockingManager LockingManager = new InMemoryLockingManager();
 
-        _3dxFolder? rootFolderInfo;
-        Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new();
-        Dictionary<string, _3dxStoreItem> pathToItemMapping = new();
+        readonly _3dxFolder? rootFolder;
+        readonly Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new();
+        readonly Dictionary<string, _3dxStoreItem> pathToItemMapping = new();
 
-        public _3dxStore(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes, int queryThreads)
+        public _3dxStore(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
             _3dxServer = new _3dxServer(serverUrl, cookies, keepAlive, keepAliveIntervalMinutes);
 
-            /*
-            rootFolderInfo = new _3DXFolder()
+            progress?.Invoke(this, new ProgressEventArgs()
             {
-                ObjectId = "46256.17925.4852.48657",
-                Title = "K Workspace WHITE",
-                FullPath = ""
+                Message = $"Querying 3DX for documents",
+                Nature = ProgressEventArgs.EnumNature.Neutral
+            });
+
+            var allDocuments = _3dxServer
+                                    .GetAllDocuments(serverUrl, cookies, queryThreads, progress)
+                                    .ToList();
+
+            rootFolder = new _3dxFolder(
+                                "root",
+                                "",
+                                null,
+                                DateTime.Now,
+                                DateTime.Now,
+                                DateTime.Now)
+            {
+                Subfolders = allDocuments
+                                .Cast<_3dxFolder>()
+                                .ToList()
             };
+
+            //create folders for each document name, containing subfolders for revisions
+            /*
+            rootFolder.Subfolders = allDocuments
+                                        .GroupBy(
+                                            doc => doc.OriginalName,
+                                            doc => doc,
+                                            (documentName, grp) =>
+                                            {
+                                                var docFolder = new _3dxFolder()
+                                                {
+                                                    Name = documentName,
+                                                    ObjectId = Guid.NewGuid().ToString(),
+                                                    Parent = rootFolder,
+                                                    Subfolders = grp
+                                                                    .Cast<_3dxFolder>()
+                                                                    .ToList(),
+                                                    Revision = ""
+                                                };
+
+                                                docFolder
+                                                    .Subfolders
+                                                    .ForEach(folder => folder.Parent = docFolder);
+
+                                                return docFolder;
+                                            })
+                                        .ToList();
             */
 
-            /*
-            rootFolderInfo = new _3DXFolder()
-            {
-                ObjectId = "46256.17925.55089.11812",
-                Name = "04. Production(77)",
-                FullPath = ""
-            };
-
-            rootFolderInfo.PopulateSubfoldersRecursively(serverUrl, cookies, queryThreads);
-
-            allCollections = new[] { rootFolderInfo }
-                                .Recurse(folder => folder.Subfolders)
-                                .Select(folder => new _3dxStoreCollection(LockingManager, folder))
-                                .ToList();
-            */
-
-            rootFolderInfo = new _3dxFolder()
-            {
-                Name = "",
-                Subfolders = _3dxServer
-                                    .GetAllDocuments(serverUrl, cookies, queryThreads)
-                                    .Cast<_3dxFolder>()
-                                    .ToList()
-            };
 
             //some documents have identical names. Give each an index number
-            var duplicateDocuments = new[] { rootFolderInfo }
-                                .Recurse(folder => folder.Subfolders)
-                                .OfType<_3dxDocument>()
-                                .GroupBy(
-                                    folder => folder.FullPath.ToLower(),
-                                    folder => folder,
-                                    (key, grp) => new
-                                    {
-                                        FullPath = key,
-                                        Documents = grp.ToList()
-                                    })
-                                .Where(grp => grp.Documents.Count() > 1)
-                                .ToList();
+            var duplicateDocuments = new[] { rootFolder }
+                                           .Recurse(folder => folder.Subfolders)
+                                           .OfType<_3dxDocument>()
+                                           .GroupBy(
+                                               folder => folder.FullPath.ToLower(),
+                                               folder => folder,
+                                               (key, grp) => new
+                                               {
+                                                   FullPath = key,
+                                                   Documents = grp.ToList()
+                                               })
+                                           .Where(grp => grp.Documents.Count() > 1)
+                                           .ToList();
 
             duplicateDocuments
                 .ForEach(grp =>
@@ -90,7 +113,7 @@ namespace libVFS.WebDAV.Stores
                 });
 
             //some files have identical names. Make them unique by adding the rev number
-            var documentsWithDuplicateFiles = new[] { rootFolderInfo }
+            var documentsWithDuplicateFiles = new[] { rootFolder }
                                 .Recurse(folder => folder.Subfolders)
                                 .OfType<_3dxDocument>()
                                 .Select(document => new
@@ -125,20 +148,188 @@ namespace libVFS.WebDAV.Stores
                     }
                 });
 
-
-
-            pathToCollectionMapping = new[] { rootFolderInfo }
+            pathToCollectionMapping = new[] { rootFolder }
                                         .Recurse(folder => folder.Subfolders)
                                         .Select(folder => new _3dxStoreCollection(LockingManager, folder, serverUrl, cookies))
                                         .ToDictionary(folder => folder.FullPath, folder => folder);
 
-            pathToItemMapping = new[] { rootFolderInfo }
+            pathToItemMapping = new[] { rootFolder }
+                                        .Recurse(folder => folder.Subfolders)
+                                        .OfType<_3dxDocument>()
+                                        .SelectMany(document => document.Files)
+                                        .Select(file => new _3dxStoreItem(LockingManager, file, false, serverUrl, cookies))
+                                        .ToDictionary(folder => folder.FullPath, folder => folder);
+
+            progress?.Invoke(this, new ProgressEventArgs()
+            {
+                Message = $"Found {allDocuments:N0} documents",
+                Nature = ProgressEventArgs.EnumNature.Neutral
+            });
+        }
+
+        //Whilst the following approach is good in the sense that it uses a proper API call to get folder contents, it doesn't return all revision of a document. It returns the revisions the user added to that folder.
+        /*
+        public _3dxStore(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes, int queryThreads)
+        {
+            rootFolder = new _3dxFolder()
+            {
+                Name = "",
+                Subfolders = _3dxServer.GetRootFolders()
+            };
+
+            var securityContext = _3dxServer.GetSecurityContext();
+
+            var folderQueue = new ConcurrentQueue<_3dxFolder>();
+            rootFolder.Subfolders.ForEach(folder => folderQueue.Enqueue(folder));
+
+            int totalFolders = 0;
+            int totalDocs = 0;
+            int totalFiles = 0;
+
+            var recurseTask = QueueUtility
+                    .Process(folderQueue, folder =>
+                    {
+                        //folder.Name = folder.Name + " " + folder.ObjectId;
+
+                        if (folder is _3dxDocument) return new List<_3dxFolder>();
+
+                        //if (totalFolders >= 100) return new List<_3dxFolder>();
+
+                        var itemsInFolder = _3dxServer.GetItemsInFolder(folder, securityContext);
+
+                        var documents = itemsInFolder
+                                            .OfType<_3dxDocument>()
+                                            .ToList();
+
+                        var subfolders = itemsInFolder
+                                            .Except(documents)
+                                            .OfType<_3dxFolder>()
+                                            .ToList();
+
+                        var files = documents
+                                        .Sum(doc => doc.Files.Count);
+
+                        folder.Subfolders = itemsInFolder
+                                                .OfType<_3dxFolder>()
+                                                .ToList();
+
+                        Interlocked.Add(ref totalFolders, folder.Subfolders.Count);
+                        Interlocked.Add(ref totalDocs, documents.Count);
+                        Interlocked.Add(ref totalFiles, files);
+
+                        //Debug.WriteLine($"{folder.FullPath}\tSubfolders: {folder.Subfolders.Count:N0}\tDocs: {documents.Count:N0}");
+                        Debug.WriteLine($"Total folders: {totalFolders:N0}\tTotal docs: {totalDocs:N0}\tTotal files: {totalFiles:N0}");
+
+                        return folder.Subfolders;
+
+                    }, queryThreads, new CancellationToken());
+            recurseTask.Wait();
+
+            //temporarily use flat hierarchy
+            //rootFolder.Subfolders = rootFolder
+            //                                .Subfolders
+            //                                .Recurse(folder => folder.Subfolders)
+            //                                .OfType<_3dxDocument>()
+            //                                .Select(doc =>
+            //                                {
+            //                                    doc.Parent = rootFolder;
+            //                                    return doc;
+            //                                })
+            //                                .Cast<_3dxFolder>()
+            //                                .ToList();
+
+            var docsWithMultipleVersion = rootFolder
+                                            .Subfolders
+                                            .Recurse(folder => folder.Subfolders)
+                                            .OfType<_3dxDocument>()
+                                            .GroupBy(doc => doc.OriginalName, doc => doc, (k, g) => new { Name = k, Docs = g.ToList() })
+                                            .Select(grp => new
+                                            {
+                                                Doc = grp.Name,
+                                                DistinctRevisions = grp
+                                                                    .Docs
+                                                                    .GroupBy(doc => doc.Revision, doc => doc, (k, g) => new { Revision = k, Docs = g.ToList() })
+                                                                    .ToList()
+                                            })
+                                            .Where(grp => grp.DistinctRevisions.Count() > 1)
+                                            .ToList();
+
+
+            //some documents have identical names. Give each an index number
+            var duplicateDocuments = new[] { rootFolder }
+                                        .Recurse(folder => folder.Subfolders)
+                                        .OfType<_3dxDocument>()
+                                        .GroupBy(
+                                            folder => folder.FullPath.ToLower(),
+                                            folder => folder,
+                                            (key, grp) => new
+                                            {
+                                                FullPath = key,
+                                                Documents = grp.ToList()
+                                            })
+                                        .Where(grp => grp.Documents.Count() > 1)
+                                        .ToList();
+
+            duplicateDocuments
+                .ForEach(grp =>
+                {
+                    var i = 1;
+                    foreach (var document in grp.Documents)
+                    {
+                        document.Name += $" ({i}) ({document.DocumentType})";
+                        i++;
+                    }
+                });
+
+            //some files have identical names. Make them unique by adding the rev number
+            var documentsWithDuplicateFiles = new[] { rootFolder }
+                                .Recurse(folder => folder.Subfolders)
+                                .OfType<_3dxDocument>()
+                                .Select(document => new
+                                {
+                                    Document = document,
+                                    DuplicateGroups = document
+                                                        .Files
+                                                        .GroupBy(
+                                                            file => file.FullPath.ToLower(),
+                                                            file => file,
+                                                            (key, grp) => new
+                                                            {
+                                                                FullPath = key,
+                                                                Files = grp.ToList()
+                                                            })
+                                                        .Where(grp => grp.Files.Count() > 1)
+                                })
+                                .Where(document => document.DuplicateGroups.Count() > 0)
+                                .ToList();
+
+            documentsWithDuplicateFiles
+                .ForEach(doc =>
+                {
+                    foreach (var duplicateGroup in doc.DuplicateGroups)
+                    {
+                        var i = 1;
+                        foreach (var file in duplicateGroup.Files)
+                        {
+                            file.Name = $"{Path.GetFileNameWithoutExtension(file.Name)} ({i}){Path.GetExtension(file.Name)}";
+                            i++;
+                        }
+                    }
+                });
+
+            pathToCollectionMapping = new[] { rootFolder }
+                                        .Recurse(folder => folder.Subfolders)
+                                        .Select(folder => new _3dxStoreCollection(LockingManager, folder, serverUrl, cookies))
+                                        .ToDictionary(folder => folder.FullPath, folder => folder);
+
+            pathToItemMapping = new[] { rootFolder }
                                         .Recurse(folder => folder.Subfolders)
                                         .OfType<_3dxDocument>()
                                         .SelectMany(document => document.Files)
                                         .Select(file => new _3dxStoreItem(LockingManager, file, false, serverUrl, cookies))
                                         .ToDictionary(folder => folder.FullPath, folder => folder);
         }
+        */
 
         public Task<IStoreCollection> GetCollectionAsync(Uri uri, IHttpContext httpContext)
         {

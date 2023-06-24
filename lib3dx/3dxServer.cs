@@ -1,10 +1,13 @@
 ﻿using libCommon;
+using libCommon.Events;
 using libCommon.Utilities;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Web;
 using WebUtility = libCommon.Utilities.WebUtility;
@@ -44,7 +47,7 @@ namespace lib3dx
 
             try
             {
-                using var httpClient = new HttpClient();
+                var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", Cookies);
                 var request = new HttpRequestMessage(HttpMethod.Get, pingUrl);
 
@@ -107,15 +110,14 @@ namespace lib3dx
                             .Parse(rootFolderJsonStr)["folders"]
                             .Select(folder =>
                             {
-                                var newFolder = new _3dxFolder()
-                                {
-                                    Name = folder["name"].ToString(),
-                                    ObjectId = folder["id"].ToString(),
-
-                                    CreationTimeUtc = DateTime.Parse(folder["created"].ToString()).ToUniversalTime(),
-                                    LastWriteTimeUtc = DateTime.Parse(folder["modified"].ToString()).ToUniversalTime(),
-                                    LastAccessTimeUtc = DateTime.Parse(folder["modified"].ToString()).ToUniversalTime(),
-                                };
+                                var newFolder = new _3dxFolder(
+                                        folder["id"].ToString(),
+                                        folder["name"].ToString(),
+                                        null,
+                                        DateTime.Parse(folder["created"].ToString()),
+                                        DateTime.Parse(folder["modified"].ToString()),
+                                        DateTime.Parse(folder["modified"].ToString())
+                                        );
 
                                 return newFolder;
                             })
@@ -124,6 +126,9 @@ namespace lib3dx
             return result;
         }
 
+        public static List<string> itemTypes = new List<string>();
+
+        //Note - if a document is in a folder, this method doesn't return all the revisions of that document. Only the revisions that the user attached
         public List<_3dxItem> GetItemsInFolder(_3dxFolder folder, string securityContext)
         {
             var getContentUrl = ServerUrl.UrlCombine($"resources/v1/FolderManagement/Folder/{folder.ObjectId}/getContent?tenant=OnPremise&xrequestedwith=xmlhttprequest");
@@ -136,17 +141,19 @@ namespace lib3dx
             };
             request.Headers.Add("SecurityContext", securityContext);
 
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", Cookies);
+            var httpClient = WebUtility.NewHttpClientWithCompression();
+
+            httpClient.DefaultRequestHeaders.Add("Cookie", Cookies);
 
             var documentsToRetrieve = new List<string>();
 
-            var rootFolderJsonStr = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var rootFolderJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["content"]
                             .Select(item =>
                             {
                                 var itemType = item["type"].ToString();
+                                itemTypes.Add(itemType);
 
                                 _3dxItem? newItem = null;
                                 if (itemType.Equals("Document"))
@@ -157,7 +164,13 @@ namespace lib3dx
 
                                 if (itemType.Equals("Workspace Vault"))
                                 {
-                                    newItem = new _3dxFolder();
+                                    newItem = new _3dxFolder(
+                                                    item["id"].ToString(),
+                                                    item["name"].ToString(),
+                                                    folder,
+                                                    DateTime.Parse(item["created"].ToString()),
+                                                    DateTime.Parse(item["modified"].ToString()),
+                                                    DateTime.Parse(item["modified"].ToString()));
                                 }
 
                                 if (newItem == null)
@@ -166,13 +179,6 @@ namespace lib3dx
                                     return null;
                                 }
 
-                                newItem.Name = item["name"].ToString();
-                                newItem.ObjectId = item["id"].ToString();
-                                newItem.Parent = folder;
-
-                                newItem.CreationTimeUtc = DateTime.Parse(item["created"].ToString()).ToUniversalTime();
-                                newItem.LastWriteTimeUtc = DateTime.Parse(item["modified"].ToString()).ToUniversalTime();
-                                newItem.LastAccessTimeUtc = DateTime.Parse(item["modified"].ToString()).ToUniversalTime();
 
                                 return newItem;
                             })
@@ -187,7 +193,7 @@ namespace lib3dx
             return result;
         }
 
-        public List<_3dxDocument> GetDocuments(List<string> documentIds, _3dxItem? parent)
+        public List<_3dxDocument> GetDocuments(List<string> documentIds, _3dxFolder? parent)
         {
             var getDocumentDetails = ServerUrl.UrlCombine($"resources/v1/modeler/documents/ids");
 
@@ -200,87 +206,18 @@ namespace lib3dx
                 Content = new StringContent($"$ids={idsCombined}", Encoding.UTF8, "application/x-www-form-urlencoded"),
             };
 
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", Cookies);
+            var httpClient = WebUtility.NewHttpClientWithCompression();
 
-            var documentDetailsJsonStr = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            httpClient.DefaultRequestHeaders.Add("Cookie", Cookies);
+
+            var documentDetailsJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 
             var documents = JObject.Parse(documentDetailsJsonStr)["data"]
                                                 .Select(o =>
                                                 {
-                                                    if (o["dataelements"]?["title"] == null)
-                                                    {
-                                                        return null;
-                                                    }
-
-                                                    var documentObjectId = o["id"].ToString();
-                                                    var name = o["dataelements"]?["name"]?.ToString();
-                                                    var revision = o["dataelements"]?["revision"]?.ToString();
-                                                    var title = o["dataelements"]?["title"]?.ToString();
-                                                    var documentType = o["dataelements"]?["typeNLS"]?.ToString();
-
-                                                    var created = DateTime.Parse(o["dataelements"]?["originated"]?.ToString());
-                                                    var modified = DateTime.Parse(o["dataelements"]?["modified"]?.ToString());
-                                                    var accessed = modified;
-
-                                                    var derivedName = $"{name} Rev {revision}";
-                                                    if (name.Equals(title, StringComparison.CurrentCultureIgnoreCase))
-                                                    {
-                                                        var description = o["dataelements"]?["description"]?.ToString();
-                                                        if (!string.IsNullOrEmpty(description))
-                                                        {
-                                                            //derivedName += $" ({description})";
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        derivedName += $" ({title})";
-                                                    }
-
-                                                    derivedName = FileUtility.ReplaceInvalidChars(derivedName);
-
-                                                    var newDocument = new _3dxDocument()
-                                                    {
-                                                        ObjectId = documentObjectId,
-                                                        Name = derivedName,
-                                                        DocumentType = documentType,
-                                                        CreationTimeUtc = created.ToUniversalTime(),
-                                                        LastWriteTimeUtc = modified.ToUniversalTime(),
-                                                        LastAccessTimeUtc = accessed.ToUniversalTime(),
-                                                    };
-
-                                                    var files = o["relateddata"]?["files"].Select(file =>
-                                                    {
-                                                        var name = file["dataelements"]?["title"].ToString();
-                                                        var fileRevision = file["dataelements"]?["revision"].ToString();
-
-                                                        var created = DateTime.Parse(o["dataelements"]?["originated"].ToString());
-                                                        var modified = DateTime.Parse(o["dataelements"]?["modified"].ToString());
-                                                        var accessed = modified;
-                                                        var size = 0UL;
-                                                        if (file["dataelements"]["fileSize"] != null)
-                                                        {
-                                                            size = ulong.Parse(file["dataelements"]?["fileSize"].ToString());
-                                                        }
-
-                                                        return new _3dxFile(fileRevision, documentObjectId)
-                                                        {
-                                                            ObjectId = file["id"].ToString(),
-                                                            Name = name,
-                                                            Parent = newDocument,
-
-                                                            CreationTimeUtc = created.ToUniversalTime(),
-                                                            LastWriteTimeUtc = modified.ToUniversalTime(),
-                                                            LastAccessTimeUtc = accessed.ToUniversalTime(),
-                                                            Size = size
-                                                        };
-                                                    })
-                                                    .ToList();
-
-
-                                                    newDocument.Files = files;
-
-                                                    return newDocument;
+                                                    var newDoc = JTokenToDocument(o, parent);
+                                                    newDoc.Parent = parent;
+                                                    return newDoc;
                                                 })
                                                 .Where(doc => doc != null)
                                                 .ToList();
@@ -289,9 +226,9 @@ namespace lib3dx
         }
 
 
-        public List<_3dxDocument> GetAllDocuments(string serverUrl, string cookies, int queryThreads)
+        public List<_3dxDocument> GetAllDocuments(string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
-            var firstPage = GetDocumentPage(serverUrl, cookies, 1, 10).Result;
+            var firstPage = GetDocumentPage(serverUrl, cookies, 1, 1).Result;
 
             var totalDocsStr = firstPage.Split(new string[] { "\\\"nhits\\\":", ",\\\"facets\\\"" }, StringSplitOptions.None)[1];
             var totalDocs = int.Parse(totalDocsStr);
@@ -300,11 +237,11 @@ namespace lib3dx
             var totalPages = (int)(totalDocs / (double)pageSize);
             var pages = Enumerable
                 .Range(1, totalPages + 1)
-                //.Take(1)
+                .Take(1)
                 .ToList();
 
-            Int32 pagesRetrieved = 0;
-            Int32 documentsDiscovered = 0;
+            int pagesRetrieved = 0;
+            int documentsDiscovered = 0;
 
             var result = pages
                             .AsParallel()
@@ -314,88 +251,19 @@ namespace lib3dx
                             {
                                 var pageJson = GetDocumentPage(serverUrl, cookies, page, pageSize).Result;
 
-                                Interlocked.Increment(ref pagesRetrieved);
-                                Console.WriteLine($"Retrieved {pagesRetrieved:N0}/{totalPages:N0} pages. Page number {page}");
-
                                 var documents = JObject.Parse(pageJson)["data"]
-                                                .Select(o =>
-                                                {
-                                                    if (o["dataelements"]?["title"] == null)
-                                                    {
-                                                        return null;
-                                                    }
-
-                                                    var documentObjectId = o["id"].ToString();
-                                                    var name = o["dataelements"]?["name"]?.ToString();
-                                                    var revision = o["dataelements"]?["revision"]?.ToString();
-                                                    var title = o["dataelements"]?["title"]?.ToString();
-                                                    var documentType = o["dataelements"]?["typeNLS"]?.ToString();
-
-                                                    var created = DateTime.Parse(o["dataelements"]?["originated"]?.ToString());
-                                                    var modified = DateTime.Parse(o["dataelements"]?["modified"]?.ToString());
-                                                    var accessed = modified;
-
-                                                    var derivedName = $"{name} Rev {revision}";
-                                                    if (name.Equals(title, StringComparison.CurrentCultureIgnoreCase))
-                                                    {
-                                                        var description = o["dataelements"]?["description"]?.ToString();
-                                                        if (!string.IsNullOrEmpty(description))
-                                                        {
-                                                            //derivedName += $" ({description})";
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        derivedName += $" ({title})";
-                                                    }
-
-                                                    derivedName = FileUtility.ReplaceInvalidChars(derivedName);
-
-                                                    var newDocument = new _3dxDocument()
-                                                    {
-                                                        ObjectId = documentObjectId,
-                                                        Name = derivedName,
-                                                        DocumentType = documentType,
-                                                        CreationTimeUtc = created.ToUniversalTime(),
-                                                        LastWriteTimeUtc = modified.ToUniversalTime(),
-                                                        LastAccessTimeUtc = accessed.ToUniversalTime(),
-                                                    };
-
-                                                    var files = o["relateddata"]?["files"].Select(file =>
-                                                    {
-                                                        var name = file["dataelements"]?["title"].ToString();
-                                                        var fileRevision = file["dataelements"]?["revision"].ToString();
-
-                                                        var created = DateTime.Parse(o["dataelements"]?["originated"].ToString());
-                                                        var modified = DateTime.Parse(o["dataelements"]?["modified"].ToString());
-                                                        var accessed = modified;
-                                                        var size = 0UL;
-                                                        if (file["dataelements"]["fileSize"] != null)
-                                                        {
-                                                            size = ulong.Parse(file["dataelements"]?["fileSize"].ToString());
-                                                        }
-
-                                                        return new _3dxFile(fileRevision, documentObjectId)
-                                                        {
-                                                            ObjectId = file["id"].ToString(),
-                                                            Name = name,
-                                                            Parent = newDocument,
-
-                                                            CreationTimeUtc = created.ToUniversalTime(),
-                                                            LastWriteTimeUtc = modified.ToUniversalTime(),
-                                                            LastAccessTimeUtc = accessed.ToUniversalTime(),
-                                                            Size = size
-                                                        };
-                                                    })
-                                                    .ToList();
-
-
-                                                    newDocument.Files = files;
-
-                                                    return newDocument;
-                                                })
+                                                .Select(o => JTokenToDocument(o, null))
                                                 .Where(doc => doc != null)
                                                 .ToList();
+
+                                Interlocked.Increment(ref pagesRetrieved);
+                                Interlocked.Add(ref documentsDiscovered, documents.Count());
+
+                                progress?.Invoke(this, new ProgressEventArgs()
+                                {
+                                    Message = $"Retrieved {pagesRetrieved:N0}/{totalPages:N0} pages. {documentsDiscovered:N0} documents discovered.",
+                                    Nature = ProgressEventArgs.EnumNature.Neutral
+                                });
 
                                 return documents;
                             })
@@ -404,9 +272,82 @@ namespace lib3dx
             return result;
         }
 
+        public _3dxDocument JTokenToDocument(JToken o, _3dxFolder parent)
+        {
+            if (o["dataelements"]?["title"] == null)
+            {
+                return null;
+            }
+
+            var documentObjectId = o["id"].ToString();
+            var name = o["dataelements"]?["name"]?.ToString();
+            var revision = o["dataelements"]?["revision"]?.ToString();
+            var title = o["dataelements"]?["title"]?.ToString();
+            var documentType = o["dataelements"]?["typeNLS"]?.ToString();
+            var description = o["dataelements"]?["description"]?.ToString();
+            var originalName = o["dataelements"]?["name"]?.ToString();
+
+            var created = DateTime.Parse(o["dataelements"]?["originated"]?.ToString());
+            var modified = DateTime.Parse(o["dataelements"]?["modified"]?.ToString());
+            var accessed = modified;
+
+            var derivedName = $"{name} Rev {revision}";
+            if (!name.Equals(title, StringComparison.CurrentCultureIgnoreCase))
+            {
+                derivedName += $" ({title})";
+            }
+
+            derivedName = FileUtility.ReplaceInvalidChars(derivedName);
+
+            var newDocument = new _3dxDocument(
+                                    documentObjectId,
+                                    derivedName,
+                                    parent,
+                                    created,
+                                    modified,
+                                    accessed,
+                                    originalName,
+                                    revision,
+                                    documentType
+                                    );
+
+            var files = o["relateddata"]?["files"].Select(file =>
+            {
+                var fileObjectId = file["id"].ToString();
+                var name = file["dataelements"]?["title"].ToString();
+                var fileRevision = file["dataelements"]?["revision"].ToString();
+
+                var created = DateTime.Parse(o["dataelements"]?["originated"].ToString());
+                var modified = DateTime.Parse(o["dataelements"]?["modified"].ToString());
+                var accessed = modified;
+                var size = 0UL;
+                if (file["dataelements"]["fileSize"] != null)
+                {
+                    size = ulong.Parse(file["dataelements"]?["fileSize"].ToString());
+                }
+
+                return new _3dxFile(
+                            fileObjectId,
+                            name,
+                            newDocument,
+                            created,
+                            modified,
+                            accessed,
+                            documentObjectId,
+                            fileRevision,
+                            size);
+            })
+            .ToList();
+
+
+            newDocument.Files = files;
+
+            return newDocument;
+        }
+
         public static async Task<string> GetDocumentPage(string serverUrl, string cookies, int pageNumber, int pageSize)
         {
-            using var httpClient = new HttpClient();
+            var httpClient = WebUtility.NewHttpClientWithCompression();
 
             //httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Connection", "keep-alive");
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookies);
