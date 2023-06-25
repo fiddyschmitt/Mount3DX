@@ -17,7 +17,7 @@ namespace lib3dxVFS.WebDAV.Stores
 {
     public class _3dxStoreCollection : IDiskStoreCollection
     {
-        private static readonly XElement s_xDavCollection = new XElement(WebDavNamespaces.DavNs + "collection");
+        private static readonly XElement s_xDavCollection = new(WebDavNamespaces.DavNs + "collection");
 
         public _3dxStoreCollection(ILockingManager lockingManager, _3dxFolder folderInfo, string serverUrl, string cookies)
         {
@@ -141,7 +141,7 @@ namespace lib3dxVFS.WebDAV.Stores
             // Hopmann/Lippert collection properties
             new DavExtCollectionChildCount<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count()
+                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
             },
             new DavExtCollectionIsFolder<_3dxStoreCollection>
             {
@@ -165,7 +165,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavExtCollectionObjectCount<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count()
+                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
             },
             new DavExtCollectionReserved<_3dxStoreCollection>
             {
@@ -173,7 +173,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavExtCollectionVisibleCount<_3dxStoreCollection>
             {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count()
+                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
             },
 
             // Win32 extensions

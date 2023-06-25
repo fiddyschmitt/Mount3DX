@@ -34,6 +34,6 @@ namespace NWebDav.Server.Logging
         /// parameter that is only evaluated if the log level is enabled. This
         /// reduces excessive string formatting for disabled log levels.
         /// </remarks>
-        void Log(LogLevel logLevel, Func<string> messageFunc, Exception? exception = null);
+        void Log(LogLevel logLevel, Func<string> messageFunc, Exception exception = null);
     }
 }

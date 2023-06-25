@@ -85,81 +85,79 @@ namespace NWebDav.Server.Handlers
             }
 
             // Stream the actual entry
-            using (var stream = await entry.GetReadableStreamAsync(httpContext).ConfigureAwait(false))
+            using var stream = await entry.GetReadableStreamAsync(httpContext).ConfigureAwait(false);
+            if (stream != null && stream != Stream.Null)
             {
-                if (stream != null && stream != Stream.Null)
-                {
-                    // Set the response
-                    response.SetStatus(DavStatusCode.Ok);
+                // Set the response
+                response.SetStatus(DavStatusCode.Ok);
 
-                    // Set the expected content length
-                    try
+                // Set the expected content length
+                try
+                {
+                    // We can only specify the Content-Length header if the
+                    // length is known (this is typically true for seekable streams)
+                    if (stream.CanSeek)
                     {
-                        // We can only specify the Content-Length header if the
-                        // length is known (this is typically true for seekable streams)
-                        if (stream.CanSeek)
+                        // Add a header that we accept ranges (bytes only)
+                        response.SetHeaderValue("Accept-Ranges", "bytes");
+
+                        // Determine the total length
+                        var length = stream.Length;
+
+                        // Check if an 'If-Range' was specified
+                        if (range?.If != null && propertyManager != null)
                         {
-                            // Add a header that we accept ranges (bytes only)
-                            response.SetHeaderValue("Accept-Ranges", "bytes");
-
-                            // Determine the total length
-                            var length = stream.Length;
-
-                            // Check if an 'If-Range' was specified
-                            if (range?.If != null && propertyManager != null)
-                            {
-                                var lastModifiedText = (string)await propertyManager.GetPropertyAsync(httpContext, entry, DavGetLastModified<IStoreItem>.PropertyName, true).ConfigureAwait(false);
-                                var lastModified = DateTime.Parse(lastModifiedText, CultureInfo.InvariantCulture);
-                                if (lastModified != range.If)
-                                    range = null;
-                            }
-
-                            // Check if a range was specified
-                            if (range != null)
-                            {
-                                var start = range.Start ?? 0;
-                                var end = Math.Min(range.End ?? long.MaxValue, length-1);
-                                length = end - start + 1;
-
-                                // Write the range
-                                response.SetHeaderValue("Content-Range", $"bytes {start}-{end} / {stream.Length}");
-
-                                // Set status to partial result if not all data can be sent
-                                if (length < stream.Length)
-                                    response.SetStatus(DavStatusCode.PartialContent);
-                            }
-
-                            // Set the header, so the client knows how much data is required
-                            response.SetHeaderValue("Content-Length", $"{length}");
+                            var lastModifiedText = (string)await propertyManager.GetPropertyAsync(httpContext, entry, DavGetLastModified<IStoreItem>.PropertyName, true).ConfigureAwait(false);
+                            var lastModified = DateTime.Parse(lastModifiedText, CultureInfo.InvariantCulture);
+                            if (lastModified != range.If)
+                                range = null;
                         }
-                    }
-                    catch (NotSupportedException)
-                    {
-                        // If the content length is not supported, then we just skip it
-                    }
 
-                    // Do not return the actual item data if ETag matches
-                    if (etag != null && request.GetHeaderValue("If-None-Match") == etag)
-                    {
-                        response.SetHeaderValue("Content-Length", "0");
-                        response.SetStatus(DavStatusCode.NotModified);
-                        return true;
-                    }
+                        // Check if a range was specified
+                        if (range != null)
+                        {
+                            var start = range.Start ?? 0;
+                            var end = Math.Min(range.End ?? long.MaxValue, length - 1);
+                            length = end - start + 1;
 
-                    // HEAD method doesn't require the actual item data
-                    if (!head)
-                        await CopyToAsync(stream, response.Stream, range?.Start ?? 0, range?.End).ConfigureAwait(false);
+                            // Write the range
+                            response.SetHeaderValue("Content-Range", $"bytes {start}-{end} / {stream.Length}");
+
+                            // Set status to partial result if not all data can be sent
+                            if (length < stream.Length)
+                                response.SetStatus(DavStatusCode.PartialContent);
+                        }
+
+                        // Set the header, so the client knows how much data is required
+                        response.SetHeaderValue("Content-Length", $"{length}");
+                    }
                 }
-                else
+                catch (NotSupportedException)
                 {
-                    // Set the response
-                    response.SetStatus(DavStatusCode.NoContent);
+                    // If the content length is not supported, then we just skip it
                 }
+
+                // Do not return the actual item data if ETag matches
+                if (etag != null && request.GetHeaderValue("If-None-Match") == etag)
+                {
+                    response.SetHeaderValue("Content-Length", "0");
+                    response.SetStatus(DavStatusCode.NotModified);
+                    return true;
+                }
+
+                // HEAD method doesn't require the actual item data
+                if (!head)
+                    await CopyToAsync(stream, response.Stream, range?.Start ?? 0, range?.End).ConfigureAwait(false);
+            }
+            else
+            {
+                // Set the response
+                response.SetStatus(DavStatusCode.NoContent);
             }
             return true;
         }
 
-        private async Task CopyToAsync(Stream src, Stream dest, long start, long? end)
+        private static async Task CopyToAsync(Stream src, Stream dest, long start, long? end)
         {
             // Skip to the first offset
             if (start > 0)
@@ -167,7 +165,7 @@ namespace NWebDav.Server.Handlers
                 // We prefer seeking instead of draining data
                 if (!src.CanSeek)
                     throw new IOException("Cannot use range, because the source stream isn't seekable");
-                
+
                 src.Seek(start, SeekOrigin.Begin);
             }
 
@@ -182,14 +180,14 @@ namespace NWebDav.Server.Handlers
             {
                 // Read the requested bytes into memory
                 var requestedBytes = (int)Math.Min(bytesToRead, buffer.Length);
-                var bytesRead = await src.ReadAsync(buffer, 0, requestedBytes).ConfigureAwait(false);
+                var bytesRead = await src.ReadAsync(buffer.AsMemory(0, requestedBytes)).ConfigureAwait(false);
 
                 // We're done, if we cannot read any data anymore
                 if (bytesRead == 0)
                     return;
-                
+
                 // Write the data to the destination stream
-                await dest.WriteAsync(buffer, 0, bytesRead).ConfigureAwait(false);
+                await dest.WriteAsync(buffer.AsMemory(0, bytesRead)).ConfigureAwait(false);
 
                 // Decrement the number of bytes left to read
                 bytesToRead -= bytesRead;

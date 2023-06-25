@@ -51,12 +51,12 @@ namespace NWebDav.Server.Helpers
     /// <summary>
     /// Helper methods for <see cref="IHttpRequest"/> objects.
     /// </summary>
-    public static class RequestHelper
+    public static partial class RequestHelper
     {
 #if DEBUG
-        private static readonly NWebDav.Server.Logging.ILogger s_log = NWebDav.Server.Logging.LoggerFactory.CreateLogger(typeof(ResponseHelper));
+        private static readonly Logging.ILogger s_log = Logging.LoggerFactory.CreateLogger(typeof(ResponseHelper));
 #endif
-        private static readonly Regex s_rangeRegex = new Regex("bytes\\=(?<start>[0-9]*)-(?<end>[0-9]*)");
+        private static readonly Regex s_rangeRegex = rangeRegex();
 
         /// <summary>
         /// Split an URI into a collection and name part.
@@ -70,7 +70,7 @@ namespace NWebDav.Server.Helpers
             // Strip a trailing slash
             var trimmedUri = uri.AbsoluteUri;
             if (trimmedUri.EndsWith("/"))
-                trimmedUri = trimmedUri.Substring(0, trimmedUri.Length - 1);
+                trimmedUri = trimmedUri[..^1];
 
             // Determine the offset of the name
             var slashOffset = trimmedUri.LastIndexOf('/');
@@ -80,8 +80,8 @@ namespace NWebDav.Server.Helpers
             // Separate name from path
             return new SplitUri
             {
-                CollectionUri = new Uri(trimmedUri.Substring(0, slashOffset)),
-                Name = Uri.UnescapeDataString(trimmedUri.Substring(slashOffset + 1))
+                CollectionUri = new Uri(trimmedUri[..slashOffset]),
+                Name = Uri.UnescapeDataString(trimmedUri[(slashOffset + 1)..])
             };
         }
 
@@ -171,14 +171,14 @@ namespace NWebDav.Server.Helpers
                 return null;
 
             // Return each item
-            int ParseTimeout(string t)
+            static int ParseTimeout(string t)
             {
                 // Check for 'infinite'
                 if (t == "Infinite")
                     return -1;
 
                 // Parse the number of seconds
-                if (!t.StartsWith("Second-") || !int.TryParse(t.Substring(7), out var timeout))
+                if (!t.StartsWith("Second-") || !int.TryParse(t.AsSpan(7), out var timeout))
                     return 0;
                 return timeout;
             }
@@ -206,7 +206,7 @@ namespace NWebDav.Server.Helpers
                 return null;
 
             // Create an Uri of the intermediate part
-            return new Uri(lockTokenHeader.Substring(1, lockTokenHeader.Length - 2), UriKind.Absolute);
+            return new Uri(lockTokenHeader[1..^1], UriKind.Absolute);
         }
 
         /// <summary>
@@ -228,7 +228,7 @@ namespace NWebDav.Server.Helpers
                 return null;
 
             // Create an Uri of the intermediate part
-            return new Uri(lockTokenHeader.Substring(2, lockTokenHeader.Length - 4), UriKind.Absolute);
+            return new Uri(lockTokenHeader[2..^2], UriKind.Absolute);
         }
 
         /// <summary>
@@ -255,8 +255,8 @@ namespace NWebDav.Server.Helpers
             var endText = match.Groups["end"].Value;
             var range = new Range
             {
-                Start = !string.IsNullOrEmpty(startText) ? (long?)long.Parse(startText) : null,
-                End = !string.IsNullOrEmpty(endText) ? (long?)long.Parse(endText ) : null
+                Start = !string.IsNullOrEmpty(startText) ? long.Parse(startText) : null,
+                End = !string.IsNullOrEmpty(endText) ? long.Parse(endText ) : null
             };
 
             // Check if we also have an If-Range
@@ -324,36 +324,37 @@ namespace NWebDav.Server.Helpers
 #endif
 #if DEBUG
             // Dump the XML document to the logging
-            if (xDocument.Root != null && s_log.IsLogEnabled(NWebDav.Server.Logging.LogLevel.Debug))
+            if (xDocument.Root != null && s_log.IsLogEnabled(Logging.LogLevel.Debug))
             {
                 // Format the XML document as an in-memory text representation
-                using (var ms = new MemoryStream())
+                using var ms = new MemoryStream();
+                using (var xmlWriter = System.Xml.XmlWriter.Create(ms, new System.Xml.XmlWriterSettings
                 {
-                    using (var xmlWriter = System.Xml.XmlWriter.Create(ms, new System.Xml.XmlWriterSettings
-                    {
-                        OmitXmlDeclaration = false,
-                        Indent = true,
-                        Encoding = System.Text.Encoding.UTF8,
-                    }))
-                    {
-                        // Write the XML document to the stream
-                        xDocument.WriteTo(xmlWriter);
-                    }
-
-                    // Flush
-                    ms.Flush();
-
-                    // Reset stream and write the stream to the result
-                    ms.Seek(0, SeekOrigin.Begin);
-
-                    // Log the XML text to the logging
-                    var reader = new StreamReader(ms);
-                    s_log.Log(NWebDav.Server.Logging.LogLevel.Debug, () => reader.ReadToEnd());
+                    OmitXmlDeclaration = false,
+                    Indent = true,
+                    Encoding = System.Text.Encoding.UTF8,
+                }))
+                {
+                    // Write the XML document to the stream
+                    xDocument.WriteTo(xmlWriter);
                 }
+
+                // Flush
+                ms.Flush();
+
+                // Reset stream and write the stream to the result
+                ms.Seek(0, SeekOrigin.Begin);
+
+                // Log the XML text to the logging
+                var reader = new StreamReader(ms);
+                s_log.Log(Logging.LogLevel.Debug, () => reader.ReadToEnd());
             }
 #endif
             // Return the XML document
             return xDocument;
         }
+
+        [GeneratedRegex("bytes\\=(?<start>[0-9]*)-(?<end>[0-9]*)")]
+        private static partial Regex rangeRegex();
     }
 }

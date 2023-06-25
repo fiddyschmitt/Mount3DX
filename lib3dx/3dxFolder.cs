@@ -68,8 +68,8 @@ namespace lib3dx
                             .Parse(jsonString)
                             .Select(o => new
                             {
-                                ObjectId = o["objectId"].ToString(),
-                                Title = o["title"].ToString()
+                                ObjectId = o["objectId"]?.ToString() ?? throw new Exception("objectId could not be retrieved"),
+                                Title = o["title"]?.ToString() ?? throw new Exception("title could not be retrieved")
                             })
                             .Select(o => new
                             {

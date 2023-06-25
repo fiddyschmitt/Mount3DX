@@ -140,10 +140,8 @@ namespace NWebDav.Server.Stores
             try
             {
                 // Copy the information to the destination stream
-                using (var outputStream = _fileInfo.OpenWrite())
-                {
-                    await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
-                }
+                using var outputStream = _fileInfo.OpenWrite();
+                await inputStream.CopyToAsync(outputStream).ConfigureAwait(false);
                 return DavStatusCode.Ok;
             }
             catch (IOException ioException) when (ioException.IsDiskFull())
@@ -188,12 +186,10 @@ namespace NWebDav.Server.Stores
                     // Check if the item could be created
                     if (result.Item != null)
                     {
-                        using (var sourceStream = await GetReadableStreamAsync(httpContext).ConfigureAwait(false))
-                        {
-                            var copyResult = await result.Item.UploadFromStreamAsync(httpContext, sourceStream).ConfigureAwait(false);
-                            if (copyResult != DavStatusCode.Ok)
-                                return new StoreItemResult(copyResult, result.Item);
-                        }
+                        using var sourceStream = await GetReadableStreamAsync(httpContext).ConfigureAwait(false);
+                        var copyResult = await result.Item.UploadFromStreamAsync(httpContext, sourceStream).ConfigureAwait(false);
+                        if (copyResult != DavStatusCode.Ok)
+                            return new StoreItemResult(copyResult, result.Item);
                     }
 
                     // Return result
@@ -214,7 +210,7 @@ namespace NWebDav.Server.Stores
 
         public override bool Equals(object obj)
         {
-            if (!(obj is DiskStoreItem storeItem))
+            if (obj is not DiskStoreItem storeItem)
                 return false;
             return storeItem._fileInfo.FullName.Equals(_fileInfo.FullName, StringComparison.CurrentCultureIgnoreCase);
         }
@@ -226,11 +222,9 @@ namespace NWebDav.Server.Stores
 
         private string CalculateEtag()
         {
-            using (var stream = File.OpenRead(_fileInfo.FullName))
-            {
-                var hash = SHA256.Create().ComputeHash(stream);
-                return BitConverter.ToString(hash).Replace("-", string.Empty);
-            }
+            using var stream = File.OpenRead(_fileInfo.FullName);
+            var hash = SHA256.Create().ComputeHash(stream);
+            return BitConverter.ToString(hash).Replace("-", string.Empty);
         }
     }
 }

@@ -39,7 +39,7 @@ namespace lib3dx
             httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
 
             var downloadTokenJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-            var downloadToken = JObject.Parse(downloadTokenJson)?["csrf"]?["value"].ToString();
+            var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
 
 
             //get the download url
@@ -55,7 +55,7 @@ namespace lib3dx
             httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
 
             var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-            var datalements = JObject.Parse(downloadLocationQueryJson)["data"].First()["dataelements"];
+            var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
 
             MemoryStream result;
             if (datalements == null)
@@ -64,7 +64,12 @@ namespace lib3dx
             }
             else
             {
-                var downloadUrl = datalements["ticketURL"].ToString();
+                var downloadUrl = datalements["ticketURL"]?.ToString();
+
+                if (downloadToken == null)
+                {
+                    throw new Exception($"Could not get Download URL for file with id {DocumentObjectId}. {FullPath}");
+                }
 
                 //download the file
                 httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();

@@ -8,7 +8,7 @@ namespace NWebDav.Server.Helpers
         {
             var uriText = baseUri.OriginalString;
             if (uriText.EndsWith("/"))
-                uriText = uriText.Substring(0, uriText.Length - 1);
+                uriText = uriText[..^1];
             return new Uri($"{uriText}/{path}", UriKind.Absolute);
         }
 

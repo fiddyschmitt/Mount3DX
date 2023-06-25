@@ -5,20 +5,28 @@ using NWebDav.Server;
 using NWebDav.Server.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
 using NWebDav.Server.Stores;
+using Microsoft.AspNetCore.ResponseCompression;
 
-namespace NWebDav.Sample.Kestrel
+namespace libWebDAV
 {
     public class Startup
     {
-        public static IStore Store;
+#pragma warning disable CA2211 // Non-constant fields should not be visible
+        public static IStore? Store;
+#pragma warning restore CA2211 // Non-constant fields should not be visible
 
         public void ConfigureServices(IServiceCollection services)
         {
-            // TODO: Migrate this logging with NWebDav logging - still up to date?
             services.AddLogging((logging) =>
             {
-                logging.AddDebug();
-                logging.AddConsole();
+                //logging.AddDebug();
+                //logging.AddConsole();
+            });
+
+            services.AddResponseCompression(options =>
+            {
+                options.Providers.Add<GzipCompressionProvider>();
+                options.Providers.Add<BrotliCompressionProvider>();
             });
         }
 
@@ -27,6 +35,8 @@ namespace NWebDav.Sample.Kestrel
         {
             // Create the request handler factory
             var requestHandlerFactory = new RequestHandlerFactory();
+
+            app.UseResponseCompression();
 
             // Create WebDAV dispatcher
             var webDavDispatcher = new WebDavDispatcher(Store, requestHandlerFactory);

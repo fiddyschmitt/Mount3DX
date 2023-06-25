@@ -14,9 +14,9 @@ namespace Mount3DX
 {
     public class Session
     {
-        private Settings settings;
+        private readonly Settings settings;
 
-        _3dxStore? _3dxStore;
+        readonly _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
 
         public event EventHandler<ProgressEventArgs>? Progress;

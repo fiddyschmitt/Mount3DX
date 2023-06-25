@@ -80,9 +80,9 @@ namespace lib3dx
             var securityContextJsonStr = WebUtility.HttpGet(securityContextUrl, Cookies);
             var securityContextJson = JObject.Parse(securityContextJsonStr);
 
-            var role = securityContextJson["preferredcredentials"]?["role"]?["name"].ToString();
-            var org = securityContextJson["preferredcredentials"]?["organization"]?["name"].ToString();
-            var collabspace = securityContextJson["preferredcredentials"]?["collabspace"]?["name"].ToString();
+            var role = securityContextJson["preferredcredentials"]?["role"]?["name"]?.ToString();
+            var org = securityContextJson["preferredcredentials"]?["organization"]?["name"]?.ToString();
+            var collabspace = securityContextJson["preferredcredentials"]?["collabspace"]?["name"]?.ToString();
 
             var result = $"{role}.{org}.{collabspace}";
             return result;
@@ -108,20 +108,23 @@ namespace lib3dx
             var rootFolderJsonStr = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["folders"]
-                            .Select(folder =>
+                            ?.Select(folder =>
                             {
+                                var id = folder["id"]?.ToString();
+
+
                                 var newFolder = new _3dxFolder(
-                                        folder["id"].ToString(),
-                                        folder["name"].ToString(),
+                                        folder["id"]?.ToString() ?? throw new Exception("id could not be retrieved"),
+                                        folder["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                         null,
-                                        DateTime.Parse(folder["created"].ToString()),
-                                        DateTime.Parse(folder["modified"].ToString()),
-                                        DateTime.Parse(folder["modified"].ToString())
+                                        DateTime.Parse(folder["created"]?.ToString() ?? throw new Exception("created could not be retrieved")),
+                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved")),
+                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"))
                                         );
 
                                 return newFolder;
                             })
-                            .ToList();
+                            ?.ToList() ?? new List<_3dxFolder>();
 
             return result;
         }
@@ -148,49 +151,43 @@ namespace lib3dx
             var rootFolderJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["content"]
-                            .Select(item =>
+                            ?.Select(item =>
                             {
-                                var itemType = item["type"].ToString();
+                                var id = item["id"]?.ToString() ?? throw new Exception("id could not be retrieved");
+                                var itemType = item["type"]?.ToString() ?? throw new Exception("type could not be retrieved");
 
                                 _3dxItem? newItem = null;
                                 if (itemType.Equals("Document"))
                                 {
-                                    documentsToRetrieve.Add(item["id"].ToString());
+                                    documentsToRetrieve.Add(id);
                                     return null;
                                 }
 
                                 if (itemType.Equals("Workspace Vault"))
                                 {
                                     newItem = new _3dxFolder(
-                                                    item["id"].ToString(),
-                                                    item["name"].ToString(),
+                                                    id,
+                                                    item["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                                     folder,
-                                                    DateTime.Parse(item["created"].ToString()),
-                                                    DateTime.Parse(item["modified"].ToString()),
-                                                    DateTime.Parse(item["modified"].ToString()));
+                                                    DateTime.Parse(item["created"]?.ToString() ?? throw new Exception("created could not be retrieved")),
+                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved")),
+                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved")));
                                 }
-
-                                if (newItem == null)
-                                {
-                                    //Debugger.Break();
-                                    return null;
-                                }
-
 
                                 return newItem;
                             })
                             .Where(item => item != null)
-                            .ToList();
+                            .ToList() ?? new List<_3dxItem?>();
 
             //get all documents, because they are effectively folders
             var documentDetails = GetDocuments(documentsToRetrieve, folder);
 
             result.AddRange(documentDetails);
 
-            return result;
+            return result!;
         }
 
-        public List<_3dxDocument> GetDocuments(List<string> documentIds, _3dxFolder? parent)
+        public List<_3dxDocument> GetDocuments(List<string> documentIds, _3dxFolder parent)
         {
             var getDocumentDetails = ServerUrl.UrlCombine($"resources/v1/modeler/documents/ids");
 
@@ -209,21 +206,17 @@ namespace lib3dx
 
             var documentDetailsJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 
-            var documents = JObject.Parse(documentDetailsJsonStr)["data"]
-                                                .Select(o =>
-                                                {
-                                                    var newDoc = JTokenToDocument(o, parent);
-                                                    newDoc.Parent = parent;
-                                                    return newDoc;
-                                                })
-                                                .Where(doc => doc != null)
-                                                .ToList();
+            var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
+
+            var documents = dataField
+                                .Select(o => JTokenToDocument(o, parent))
+                                .ToList();
 
             return documents;
         }
 
 
-        public List<_3dxDocument> GetAllDocuments(string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
             var firstPage = GetDocumentPage(serverUrl, cookies, 1, 1).Result;
 
@@ -234,7 +227,7 @@ namespace lib3dx
             var totalPages = (int)(totalDocs / (double)pageSize);
             var pages = Enumerable
                 .Range(1, totalPages + 1)
-                .Take(1)
+                //.Take(143)
                 .ToList();
 
             int pagesRetrieved = 0;
@@ -248,9 +241,10 @@ namespace lib3dx
                             {
                                 var pageJson = GetDocumentPage(serverUrl, cookies, page, pageSize).Result;
 
-                                var documents = JObject.Parse(pageJson)["data"]
-                                                .Select(o => JTokenToDocument(o, null))
-                                                .Where(doc => doc != null)
+                                var dataField = JObject.Parse(pageJson)["data"] ?? throw new Exception("data could not retrieved");
+
+                                var documents = dataField
+                                                .Select(o => JTokenToDocument(o, parent))
                                                 .ToList();
 
                                 Interlocked.Increment(ref pagesRetrieved);
@@ -264,28 +258,31 @@ namespace lib3dx
 
                                 return documents;
                             })
+                            .Where(doc => doc != null)
                             .ToList();
 
-            return result;
+            return result!;
         }
 
         public static _3dxDocument? JTokenToDocument(JToken o, _3dxFolder parent)
         {
-            if (o["dataelements"]?["title"] == null)
+            var title = o["dataelements"]?["title"]?.ToString();
+
+            if (title == null)
             {
                 return null;
             }
 
-            var documentObjectId = o["id"].ToString();
-            var name = o["dataelements"]?["name"]?.ToString();
-            var revision = o["dataelements"]?["revision"]?.ToString();
-            var title = o["dataelements"]?["title"]?.ToString();
-            var documentType = o["dataelements"]?["typeNLS"]?.ToString();
-            var description = o["dataelements"]?["description"]?.ToString();
-            var originalName = o["dataelements"]?["name"]?.ToString();
+            var documentObjectId = o["id"]?.ToString() ?? throw new Exception("documentObjectId could not be retrieved");
+            var name = o["dataelements"]?["name"]?.ToString() ?? throw new Exception("name could not be retrieved");
+            var revision = o["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
-            var created = DateTime.Parse(o["dataelements"]?["originated"]?.ToString());
-            var modified = DateTime.Parse(o["dataelements"]?["modified"]?.ToString());
+            var documentType = o["dataelements"]?["typeNLS"]?.ToString() ?? throw new Exception("typeNLS could not be retrieved");
+            var description = o["dataelements"]?["description"]?.ToString();
+            var originalName = o["dataelements"]?["name"]?.ToString() ?? throw new Exception("name could not be retrieved");
+
+            _ = DateTime.TryParse(o["dataelements"]?["originated"]?.ToString(), out DateTime created);
+            _ = DateTime.TryParse(o["dataelements"]?["modified"]?.ToString(), out DateTime modified);
             var accessed = modified;
 
             var derivedName = $"{name} Rev {revision}";
@@ -308,19 +305,21 @@ namespace lib3dx
                                     documentType
                                     );
 
-            var files = o["relateddata"]?["files"].Select(file =>
+            var files = o["relateddata"]?["files"]?.Select(file =>
             {
-                var fileObjectId = file["id"].ToString();
-                var name = file["dataelements"]?["title"].ToString();
-                var fileRevision = file["dataelements"]?["revision"].ToString();
+                var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved"); ;
+                var name = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
+                var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
-                var created = DateTime.Parse(o["dataelements"]?["originated"].ToString());
-                var modified = DateTime.Parse(o["dataelements"]?["modified"].ToString());
+                _ = DateTime.TryParse(o["dataelements"]?["originated"]?.ToString(), out DateTime created);
+                _ = DateTime.TryParse(o["dataelements"]?["modified"]?.ToString(), out DateTime modified);
                 var accessed = modified;
                 var size = 0UL;
-                if (file["dataelements"]["fileSize"] != null)
+
+                var fileSizeStr = file["dataelements"]?["fileSize"]?.ToString();
+                if (!string.IsNullOrEmpty(fileSizeStr))
                 {
-                    size = ulong.Parse(file["dataelements"]?["fileSize"].ToString());
+                    size = ulong.Parse(fileSizeStr);
                 }
 
                 return new _3dxFile(
@@ -334,7 +333,7 @@ namespace lib3dx
                             fileRevision,
                             size);
             })
-            .ToList();
+            .ToList() ?? new List<_3dxFile>();
 
 
             newDocument.Files = files;
@@ -344,16 +343,24 @@ namespace lib3dx
 
         public static async Task<string> GetDocumentPage(string serverUrl, string cookies, int pageNumber, int pageSize)
         {
-            var httpClient = WebUtility.NewHttpClientWithCompression();
+            try
+            {
+                var httpClient = WebUtility.NewHttpClientWithCompression();
 
-            //httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Connection", "keep-alive");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookies);
+                //httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Connection", "keep-alive");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookies);
 
-            var url = serverUrl.UrlCombine($"resources/v1/modeler/controldocuments/myctrldocs/alldocuments?pageNumber={pageNumber}&pageSize={pageSize}&tenant=OnPremise&xrequestedwith=xmlhttprequest");
+                var url = serverUrl.UrlCombine($"resources/v1/modeler/controldocuments/myctrldocs/alldocuments?pageNumber={pageNumber}&pageSize={pageSize}&tenant=OnPremise&xrequestedwith=xmlhttprequest");
 
-            using var response = await httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
+                using var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
         }
 
         public string ServerUrl { get; }

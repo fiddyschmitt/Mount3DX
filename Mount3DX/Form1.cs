@@ -162,7 +162,9 @@ namespace Mount3DX
             }
         }
 
+#pragma warning disable IDE0051 // Remove unused private members
         private void Scratch()
+#pragma warning restore IDE0051 // Remove unused private members
         {
             var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.CookiesString, false, 5);
 

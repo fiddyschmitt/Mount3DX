@@ -120,7 +120,9 @@ namespace lib3dxVFS.WebDAV.Stores
             return result;
         }
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         public async Task<DavStatusCode> UploadFromStreamAsync(IHttpContext httpContext, Stream inputStream) => DavStatusCode.NotImplemented;
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
         public IPropertyManager PropertyManager => DefaultPropertyManager;
         public ILockingManager LockingManager { get; }
@@ -158,19 +160,17 @@ namespace lib3dxVFS.WebDAV.Stores
                     // Check if the item could be created
                     if (result.Item != null)
                     {
-                        using (var sourceStream = await GetReadableStreamAsync(httpContext).ConfigureAwait(false))
-                        {
-                            var copyResult = await result.Item.UploadFromStreamAsync(httpContext, sourceStream).ConfigureAwait(false);
-                            if (copyResult != DavStatusCode.Ok)
-                                return new StoreItemResult(copyResult, result.Item);
-                        }
+                        using var sourceStream = await GetReadableStreamAsync(httpContext).ConfigureAwait(false);
+                        var copyResult = await result.Item.UploadFromStreamAsync(httpContext, sourceStream).ConfigureAwait(false);
+                        if (copyResult != DavStatusCode.Ok)
+                            return new StoreItemResult(copyResult, result.Item);
                     }
 
                     // Return result
                     return new StoreItemResult(result.Result, result.Item);
                 }
             }
-            catch (Exception exc)
+            catch
             {
                 //s_log.Log(LogLevel.Error, () => "Unexpected exception while copying data.", exc);
                 return new StoreItemResult(DavStatusCode.InternalServerError);
@@ -182,9 +182,9 @@ namespace lib3dxVFS.WebDAV.Stores
             return _fileInfo.FullPath.GetHashCode();
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
-            if (!(obj is _3dxStoreItem storeItem))
+            if (obj is not _3dxStoreItem storeItem)
                 return false;
             return storeItem._fileInfo.FullPath.Equals(_fileInfo.FullPath, StringComparison.CurrentCultureIgnoreCase);
         }
@@ -196,11 +196,9 @@ namespace lib3dxVFS.WebDAV.Stores
 
         private string CalculateEtag()
         {
-            using (var stream = File.OpenRead(_fileInfo.FullPath))
-            {
-                var hash = SHA256.Create().ComputeHash(stream);
-                return BitConverter.ToString(hash).Replace("-", string.Empty);
-            }
+            using var stream = File.OpenRead(_fileInfo.FullPath);
+            var hash = SHA256.Create().ComputeHash(stream);
+            return BitConverter.ToString(hash).Replace("-", string.Empty);
         }
     }
 }

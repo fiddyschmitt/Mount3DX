@@ -17,6 +17,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using libVFS.VFS.Folders;
 using libCommon.Events;
+using System.Web;
 
 namespace libVFS.WebDAV.Stores
 {
@@ -40,22 +41,27 @@ namespace libVFS.WebDAV.Stores
                 Nature = ProgressEventArgs.EnumNature.Neutral
             });
 
-            var allDocuments = _3dxServer
-                                    .GetAllDocuments(serverUrl, cookies, queryThreads, progress)
-                                    .ToList();
-
             rootFolder = new _3dxFolder(
                                 "root",
                                 "",
                                 null,
                                 DateTime.Now,
                                 DateTime.Now,
-                                DateTime.Now)
-            {
-                Subfolders = allDocuments
-                                .Cast<_3dxFolder>()
-                                .ToList()
-            };
+                                DateTime.Now);
+
+            //var take = 14392;
+            var allDocuments = _3dxServer
+                                    .GetAllDocuments(rootFolder, serverUrl, cookies, queryThreads, progress);
+                                    //.Take(take)
+                                    //.ToList();
+
+            //var abc = allDocuments.SerializeToJson();
+            //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
+
+            rootFolder.Subfolders = allDocuments
+                                        .Cast<_3dxFolder>()
+                                        .ToList();
+
 
             //create folders for each document name, containing subfolders for revisions
             /*
@@ -85,6 +91,44 @@ namespace libVFS.WebDAV.Stores
                                         .ToList();
             */
 
+            //Windows has a limit of 260 character paths. When Url Encoding is taken into account, this is much smaller.
+            //Let's truncate names here so they don't cause errors for Windows.
+            //This didn't help the affected file...
+            /*
+            new[] { rootFolder }
+                    .Recurse(folder => folder.Subfolders)
+                    .SelectMany(folder =>
+                    {
+                        var items = new List<_3dxItem>()
+                        {
+                            folder
+                        };
+
+                        if (folder is _3dxDocument doc)
+                        {
+                            var files = doc.Files.Cast<_3dxItem>();
+                            items.AddRange(files);
+                        }
+
+                        return items;
+                    })
+                    .ToList()
+                    .ForEach(item =>
+                    {
+                        if (HttpUtility.UrlEncode(item.FullPath).Length >= 200)
+                        {
+                            if (item is _3dxFile file)
+                            {
+                                //file.Name = file.Name.TruncateFilename(100);
+                            }
+                            else
+                            {
+                                item.Name = item.Name.Truncate(100);
+                            }
+                        }
+                    });
+            */
+
 
             //some documents have identical names. Give each an index number
             var duplicateDocuments = new[] { rootFolder }
@@ -103,14 +147,14 @@ namespace libVFS.WebDAV.Stores
 
             duplicateDocuments
                 .ForEach(grp =>
-                {
-                    var i = 1;
-                    foreach (var document in grp.Documents)
                     {
-                        document.Name += $" ({i}) ({document.DocumentType})";
-                        i++;
-                    }
-                });
+                        var i = 1;
+                        foreach (var document in grp.Documents)
+                        {
+                            document.Name += $" ({i}) ({document.DocumentType})";
+                            i++;
+                        }
+                    });
 
             //some files have identical names. Make them unique by adding the rev number
             var documentsWithDuplicateFiles = new[] { rootFolder }
@@ -340,7 +384,7 @@ namespace libVFS.WebDAV.Stores
             return Task.FromResult<IStoreCollection>(collection);
         }
 
-        public Task<IStoreItem> GetItemAsync(Uri uri, IHttpContext httpContext)
+        public Task<IStoreItem?> GetItemAsync(Uri uri, IHttpContext httpContext)
         {
             var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
 
@@ -348,17 +392,17 @@ namespace libVFS.WebDAV.Stores
             {
                 var collection = pathToCollectionMapping[requestedPath];
 
-                return Task.FromResult<IStoreItem>(collection);
+                return Task.FromResult<IStoreItem?>(collection);
             }
 
             if (pathToItemMapping.ContainsKey(requestedPath))
             {
                 var item = pathToItemMapping[requestedPath];
-                return Task.FromResult<IStoreItem>(item);
+                return Task.FromResult<IStoreItem?>(item);
             }
 
             // The item doesn't exist
-            return Task.FromResult<IStoreItem>(null);
+            return Task.FromResult<IStoreItem?>(null);
         }
 
         public void Close()
