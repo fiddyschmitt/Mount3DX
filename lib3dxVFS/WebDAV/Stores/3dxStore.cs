@@ -49,11 +49,8 @@ namespace libVFS.WebDAV.Stores
                                 DateTime.Now,
                                 DateTime.Now);
 
-            //var take = 14392;
             var allDocuments = _3dxServer
                                     .GetAllDocuments(rootFolder, serverUrl, cookies, queryThreads, progress);
-                                    //.Take(take)
-                                    //.ToList();
 
             //var abc = allDocuments.SerializeToJson();
             //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);

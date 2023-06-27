@@ -38,6 +38,10 @@ namespace libWebDAV
 
             app.UseResponseCompression();
 
+            //Works, making folders available at http://localhost:11000/3DX
+            //But the server also serves the same content at http://localhost:11000
+            //.app.UsePathBase("/3DX");
+
             // Create WebDAV dispatcher
             var webDavDispatcher = new WebDavDispatcher(Store, requestHandlerFactory);
 

@@ -58,7 +58,7 @@ namespace Mount3DX
             chkKeepAlive.Checked = settings._3dx.KeepAlive;
             txtKeepAliveIntervalMinutes.Value = settings._3dx.KeepAliveIntervalMinutes;
 
-            txtMapToDriveLetter.Text = settings.Vfs.MapToDriveLetter;
+            //txtMapToDriveLetter.Text = settings.Vfs.MapToDriveLetter;
         }
 
         private void SaveSettings()
@@ -70,11 +70,11 @@ namespace Mount3DX
                 settings._3dx.KeepAlive = chkKeepAlive.Checked;
                 settings._3dx.KeepAliveIntervalMinutes = (int)txtKeepAliveIntervalMinutes.Value;
 
-                settings.Vfs.MapToDriveLetter = txtMapToDriveLetter.Text;
+                //ings.Vfs.MapToDriveLetter = txtMapToDriveLetter.Text;
 
                 var settingsJson = settings.SerializeToJson();
 
-                var existingSettingsFileContent = File.ReadAllText(settingsJson);
+                var existingSettingsFileContent = File.ReadAllText(settingsFilename);
                 if (!string.IsNullOrEmpty(settingsJson) && !settingsJson.Equals(existingSettingsFileContent))
                 {
                     File.WriteAllText(settingsFilename, settingsJson);
@@ -140,6 +140,8 @@ namespace Mount3DX
                         lblRunningStatus.BackColor = Color.LimeGreen;
                         lblRunningStatus.ForeColor = Color.Black;
                         lblRunningStatus.Text = "Running";
+
+                        btnOpenVirtualDrive.Visible = true;
                     }
                     else
                     {
@@ -159,6 +161,7 @@ namespace Mount3DX
 
                 grp3dx.Enabled = true;
                 grpVfs.Enabled = true;
+                btnOpenVirtualDrive.Visible = false;
             }
         }
 
@@ -232,6 +235,14 @@ namespace Mount3DX
                                 .Select(grp => $"{grp.ItemType},{grp.Count}")
                                 .ToString(Environment.NewLine);
             */
+        }
+
+        private void btnOpenVirtualDrive_Click(object sender, EventArgs e)
+        {
+            if (session != null)
+            {
+                Process.Start("explorer.exe", session.ComputedUNC);
+            }
         }
     }
 }

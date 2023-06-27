@@ -18,6 +18,7 @@ namespace Mount3DX
 
         readonly _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
+        public string ComputedUNC { get; protected set; }
 
         public event EventHandler<ProgressEventArgs>? Progress;
         public event EventHandler<FinishedEventArgs>? Finished;
@@ -25,6 +26,7 @@ namespace Mount3DX
         public Session(Settings settings)
         {
             this.settings = settings;
+            ComputedUNC = settings.Vfs.GetComputedUNC();
         }
 
         public void Start()
@@ -89,13 +91,10 @@ namespace Mount3DX
                 webdavHost.Start();
             });
 
-            var computedUNC = @"\\localhost@SSL@11000\DavWWWRoot";
-            computedUNC = @"\\localhost@11000\DavWWWRoot";
-
             //NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);
 
             //Process.Start("explorer.exe", settings.Vfs.MapToDriveLetter);
-            Process.Start("explorer.exe", computedUNC);
+            Process.Start("explorer.exe", ComputedUNC);
 
             Finished?.Invoke(this, new FinishedEventArgs()
             {

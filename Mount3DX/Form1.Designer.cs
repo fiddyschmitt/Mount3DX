@@ -39,13 +39,11 @@
             label1 = new Label();
             txt3dxCookieString = new TextBox();
             grpVfs = new GroupBox();
-            txtMapToDriveLetter = new TextBox();
-            label7 = new Label();
             btnStart = new Button();
             lblRunningStatus = new Label();
+            btnOpenVirtualDrive = new Button();
             grp3dx.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)txtKeepAliveIntervalMinutes).BeginInit();
-            grpVfs.SuspendLayout();
             SuspendLayout();
             // 
             // grp3dx
@@ -152,31 +150,12 @@
             // grpVfs
             // 
             grpVfs.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            grpVfs.Controls.Add(txtMapToDriveLetter);
-            grpVfs.Controls.Add(label7);
             grpVfs.Location = new Point(12, 157);
             grpVfs.Name = "grpVfs";
             grpVfs.Size = new Size(654, 98);
             grpVfs.TabIndex = 2;
             grpVfs.TabStop = false;
             grpVfs.Text = "Virtual File System";
-            // 
-            // txtMapToDriveLetter
-            // 
-            txtMapToDriveLetter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            txtMapToDriveLetter.Location = new Point(129, 25);
-            txtMapToDriveLetter.Name = "txtMapToDriveLetter";
-            txtMapToDriveLetter.Size = new Size(247, 23);
-            txtMapToDriveLetter.TabIndex = 5;
-            // 
-            // label7
-            // 
-            label7.AutoSize = true;
-            label7.Location = new Point(16, 28);
-            label7.Name = "label7";
-            label7.Size = new Size(107, 15);
-            label7.TabIndex = 4;
-            label7.Text = "Map to drive letter:";
             // 
             // btnStart
             // 
@@ -200,11 +179,23 @@
             lblRunningStatus.TabIndex = 3;
             lblRunningStatus.Text = "lblRunningStatus";
             // 
+            // btnOpenVirtualDrive
+            // 
+            btnOpenVirtualDrive.Location = new Point(246, 261);
+            btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
+            btnOpenVirtualDrive.Size = new Size(205, 23);
+            btnOpenVirtualDrive.TabIndex = 4;
+            btnOpenVirtualDrive.Text = "Open virtual drive";
+            btnOpenVirtualDrive.UseVisualStyleBackColor = true;
+            btnOpenVirtualDrive.Visible = false;
+            btnOpenVirtualDrive.Click += btnOpenVirtualDrive_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(678, 297);
+            Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
             Controls.Add(btnStart);
             Controls.Add(grpVfs);
@@ -216,8 +207,6 @@
             grp3dx.ResumeLayout(false);
             grp3dx.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)txtKeepAliveIntervalMinutes).EndInit();
-            grpVfs.ResumeLayout(false);
-            grpVfs.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -235,9 +224,8 @@
         private Label label5;
         private Label label4;
         private GroupBox grpVfs;
-        private TextBox txtMapToDriveLetter;
-        private Label label7;
         private Button btnStart;
         private Label lblRunningStatus;
+        private Button btnOpenVirtualDrive;
     }
 }
