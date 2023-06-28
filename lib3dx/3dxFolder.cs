@@ -34,16 +34,15 @@ namespace lib3dx
             var folderQueue = new ConcurrentQueue<_3dxFolder>();
             folderQueue.Enqueue(this);
 
-            var recurseTask = QueueUtility
-                    .Process(folderQueue, folder =>
+            QueueUtility
+                    .Recurse2(folderQueue, folder =>
                     {
                         folder.Subfolders = GetSubFolders(folder, serverUrl, cookies);
 
                         folder.Subfolders.ForEach(subfolder => subfolder.Parent = folder);
 
                         return folder.Subfolders;
-                    }, queryThreads, new CancellationToken());
-            recurseTask.Wait();
+                    }, queryThreads, CancellationToken.None);
         }
 
         public static List<_3dxFolder> GetSubFolders(_3dxFolder folder, string serverUrl, string cookies)

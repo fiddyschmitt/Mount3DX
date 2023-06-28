@@ -69,6 +69,19 @@ namespace NWebDav.Server.Handlers
             var propertyList = new List<XName>();
             var propertyMode = await GetRequestedPropertiesAsync(request, propertyList).ConfigureAwait(false);
 
+            if (cachedResponses.ContainsKey((request.Url, propertyMode)))
+            {
+                
+
+                var cachedDoc = cachedResponses[(request.Url, propertyMode)];
+
+                var str1 = request.Url + " " + cachedDoc.ToString().Length;
+
+                // Stream the document
+                await response.SendResponseAsync(DavStatusCode.MultiStatus, cachedDoc).ConfigureAwait(false);
+                return true;
+            }
+
             // Generate the list of items from which we need to obtain the properties
             var entries = new List<PropertyEntry>();
 
@@ -168,12 +181,19 @@ namespace NWebDav.Server.Handlers
                 xMultiStatus.Add(xResponse);
             }
 
+            var str = request.Url + " " + xDocument.ToString().Length;
+            //cachedResponses.Add((request.Url, propertyMode), xDocument);
+
             // Stream the document
             await response.SendResponseAsync(DavStatusCode.MultiStatus, xDocument).ConfigureAwait(false);
+
+            
 
             // Finished writing
             return true;
         }
+
+        new Dictionary<(Uri Uri, PropertyMode PropertyMode), XDocument> cachedResponses = new();
 
         private async Task AddPropertyAsync(IHttpContext httpContext, XElement xResponse, XElement xPropStatValues, IPropertyManager propertyManager, IStoreItem item, XName propertyName, IList<XName> addedProperties)
         {

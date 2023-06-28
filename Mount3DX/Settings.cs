@@ -17,7 +17,7 @@ namespace Mount3DX
     public class _3dxSettings
     {
         public string ServerUrl = "https://server/3dspace";
-        public string CookiesString = "SERVERID=abc; JSESSIONID=12345";
+        public string CookiesString = "SERVERID=abc; JSESSIONID=def";
         public bool KeepAlive = true;
         public int KeepAliveIntervalMinutes = 5;
         public int QueryThreads = 8;

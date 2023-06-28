@@ -10,6 +10,27 @@ namespace libCommon
             return result;
         }
 
+        public static string Truncate(this string value, int maxLength, string truncationSuffix = "")
+        {
+            if (value.Length > maxLength)
+            {
+                var result = value[..maxLength].Trim() + truncationSuffix;
+                return result;
+            }
+            else
+            {
+                return value;
+            }
+        }
+
+        public static string TruncateFilename(this string? value, int maxLength)
+        {
+            var extension = Path.GetExtension(value) ?? "";
+            var truncatedFilename = Path.GetFileNameWithoutExtension(value)?.Truncate(maxLength - extension.Length).Trim() + extension;
+
+            return truncatedFilename;
+        }
+
         public static IEnumerable<T> Recurse<T>(this T source, Func<T, T?> childSelector, bool depthFirst = false)
         {
             var list = new List<T>() { source };
@@ -30,27 +51,6 @@ namespace libCommon
             {
                 yield return result;
             }
-        }
-
-        public static string Truncate(this string value, int maxLength, string truncationSuffix = "")
-        {
-            if (value.Length > maxLength)
-            {
-                var result = value[..maxLength].Trim() + truncationSuffix;
-                return result;
-            }
-            else
-            {
-                return value;
-            }
-        }
-
-        public static string TruncateFilename(this string? value, int maxLength)
-        {
-            var extension = Path.GetExtension(value) ?? "";
-            var truncatedFilename = Path.GetFileNameWithoutExtension(value)?.Truncate(maxLength - extension.Length).Trim() + extension;
-
-            return truncatedFilename;
         }
 
         public static IEnumerable<T> Recurse<T>(this IEnumerable<T> source, Func<T, IEnumerable<T>> childSelector, bool depthFirst = false)

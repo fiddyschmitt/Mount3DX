@@ -10,37 +10,80 @@ namespace libCommon.Utilities
 {
     public static class QueueUtility
     {
-        public static Task Process<T>(IProducerConsumerCollection<T> collection, Func<T, IEnumerable<T>> processItem, int maxDegreeOfParallelism, CancellationToken ct)
+        public static void Recurse2<T>(this IEnumerable<T> source, Func<T, IEnumerable<T>> childSelector, int maxThreads, CancellationToken ct)
         {
-            var tasks = new Task[maxDegreeOfParallelism];
-            int activeThreadsNumber = 0;
-            for (int i = 0; i < tasks.Length; i++)
+            var collection = new BlockingCollection<T>();
+            foreach (var item in source)
             {
-                tasks[i] = Task.Factory.StartNew(() =>
-                {
-                    while (true)
-                    {
-                        Interlocked.Increment(ref activeThreadsNumber);
-
-                        while (collection.TryTake(out T item))
-                        {
-                            var nextItems = processItem(item);
-                            foreach (var nextItem in nextItems)
-                            {
-                                collection.TryAdd(nextItem);
-                            }
-                        }
-
-                        Interlocked.Decrement(ref activeThreadsNumber);
-                        if (activeThreadsNumber == 0) //all tasks finished
-                            break;
-                    }
-
-                    Debug.WriteLine($"Thread finished. Active threads: {activeThreadsNumber}");
-                }, ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                collection.Add(item);
             }
 
-            return Task.WhenAll(tasks);
+            var marshall = new ManualResetEvent(true);
+            var activeThreadsNumber = 0;
+            var stop = false;
+
+            var tasks = new List<Thread>();
+            for (int i = 0; i < maxThreads; i++)
+            {
+                var newThread = new Thread(() =>
+                {
+                    while (!ct.IsCancellationRequested)
+                    {
+                        marshall.WaitOne();
+                        if (stop) break;
+                        Interlocked.Increment(ref activeThreadsNumber);
+                        while (collection.TryTake(out T item, 100))
+                        {
+                            var subItems = childSelector(item);
+                            foreach (var subItem in subItems)
+                            {
+                                collection.Add(subItem);
+                            }
+                        }
+                        Interlocked.Decrement(ref activeThreadsNumber);
+                    }
+                })
+                {
+                    IsBackground = true
+                };
+                newThread.Start();
+
+                tasks.Add(newThread);
+            }
+
+            //once in a while, take a survey to determine if we've finished
+            var check = new Thread(new ThreadStart(() =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    if (collection.Count == 0)
+                    {
+                        //hold all the workers up to do a survey
+                        marshall.Reset();
+                        Thread.Sleep(1000);
+                        //Debug.WriteLine($"activeThreadsNumber: {activeThreadsNumber}, collection.Count(): {collection.Count}");
+                        //final survey
+                        if (activeThreadsNumber == 0 && collection.Count == 0)
+                        {
+                            //finished
+                            stop = true;
+                            marshall.Set();
+                            break;
+                        }
+                        marshall.Set();
+                    }
+                    else
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+            }))
+            {
+                IsBackground = true
+            };
+            check.Start();
+
+            tasks.ToList().ForEach(t => t.Join());
         }
     }
 }

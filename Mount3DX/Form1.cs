@@ -191,8 +191,8 @@ namespace Mount3DX
             int totalDocs = 0;
             int totalFiles = 0;
 
-            var recurseTask = QueueUtility
-                    .Process(folderQueue, folder =>
+            QueueUtility
+                    .Recurse2(folderQueue, folder =>
                     {
                         var itemsInFolder = _3dxServer.GetItemsInFolder(folder, securityContext);
 
@@ -217,8 +217,7 @@ namespace Mount3DX
 
                         return folder.Subfolders;
 
-                    }, settings._3dx.QueryThreads, new CancellationToken());
-            recurseTask.Wait();
+                    }, settings._3dx.QueryThreads, CancellationToken.None);
 
             /*
             var itemTypes = _3dxServer
