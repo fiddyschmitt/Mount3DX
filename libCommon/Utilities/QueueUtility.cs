@@ -15,7 +15,7 @@ namespace libCommon.Utilities
             var collection = new BlockingCollection<T>();
             foreach (var item in source)
             {
-                collection.Add(item);
+                collection.Add(item, ct);
             }
 
             var marshall = new ManualResetEvent(true);
@@ -32,7 +32,7 @@ namespace libCommon.Utilities
                         marshall.WaitOne();
                         if (stop) break;
                         Interlocked.Increment(ref activeThreadsNumber);
-                        while (collection.TryTake(out T item, 100))
+                        while (collection.TryTake(out T? item, 100))
                         {
                             var subItems = childSelector(item);
                             foreach (var subItem in subItems)

@@ -17,27 +17,34 @@ namespace lib3dx
     public class _3dxServer
     {
         readonly CancellationTokenSource CancellationTokenSource = new();
-        readonly Task? PingTask;
+        Task? PingTask;
 
-        public _3dxServer(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes)
+        public _3dxServer(string serverUrl, string cookies)
         {
             ServerUrl = serverUrl;
             Cookies = cookies;
-            KeepAlive = keepAlive;
-            KeepAliveInterval = TimeSpan.FromMinutes(keepAliveIntervalMinutes);
-
-            if (keepAlive)
-            {
-                PingTask = Task.Factory.StartNew(() =>
-                {
-                    while (!CancellationTokenSource.IsCancellationRequested)
-                    {
-                        Ping();
-                        Task.Delay(KeepAliveInterval, CancellationTokenSource.Token).Wait();
-                    }
-                });
-            }
         }
+
+        public void StartKeepAlive(int keepAliveIntervalMinutes)
+        {
+            var keepAliveInterval = TimeSpan.FromMinutes(keepAliveIntervalMinutes);
+
+            PingTask = Task.Factory.StartNew(() =>
+            {
+                while (!CancellationTokenSource.IsCancellationRequested)
+                {
+                    Ping();
+                    Task.Delay(keepAliveInterval, CancellationTokenSource.Token).Wait();
+                }
+            });
+        }
+
+        public void StopKeepAlive()
+        {
+            CancellationTokenSource.Cancel();
+            PingTask?.Wait();
+        }
+
 
         public bool Ping()
         {
@@ -66,12 +73,6 @@ namespace lib3dx
             { }
 
             return success;
-        }
-
-        public void Close()
-        {
-            CancellationTokenSource.Cancel();
-            PingTask?.Wait();
         }
 
         public string GetSecurityContext()
@@ -187,7 +188,7 @@ namespace lib3dx
             return result!;
         }
 
-        public List<_3dxDocument> GetDocuments(List<string> documentIds, _3dxFolder parent)
+        public List<_3dxDocument?> GetDocuments(List<string> documentIds, _3dxFolder parent)
         {
             var getDocumentDetails = ServerUrl.UrlCombine($"resources/v1/modeler/documents/ids");
 
@@ -365,8 +366,5 @@ namespace lib3dx
 
         public string ServerUrl { get; }
         public string Cookies { get; }
-        public bool KeepAlive { get; }
-        public int QueryThreads { get; }
-        public TimeSpan KeepAliveInterval { get; }
     }
 }

@@ -1,4 +1,5 @@
-﻿using libCommon.Events;
+﻿using lib3dx;
+using libCommon.Events;
 using libVFS.WebDAV.Stores;
 using libWebDAV;
 using NWebDav.Server.Stores;
@@ -14,9 +15,9 @@ namespace Mount3DX
 {
     public class Session
     {
-        private readonly Settings settings;
+        private readonly Settings Settings;
 
-        readonly _3dxStore? _3dxStore;
+        _3dxServer? _3dxServer;
         WebdavHost? webdavHost;
         public string ComputedUNC { get; protected set; }
 
@@ -25,7 +26,7 @@ namespace Mount3DX
 
         public Session(Settings settings)
         {
-            this.settings = settings;
+            Settings = settings;
             ComputedUNC = settings.Vfs.GetComputedUNC();
         }
 
@@ -34,19 +35,11 @@ namespace Mount3DX
             Progress?.Invoke(this, new ProgressEventArgs()
             {
                 Nature = ProgressEventArgs.EnumNature.Neutral,
-                Message = "Connecting to 3dx"
+                Message = "Connecting to 3DX"
             });
 
-            var _3dxStore = new _3dxStore(
-                settings._3dx.ServerUrl,
-                settings._3dx.CookiesString,
-                settings._3dx.KeepAlive,
-                settings._3dx.KeepAliveIntervalMinutes,
-                settings._3dx.QueryThreads,
-                Progress);
-
-            /*
-            var pingSuccessful = _3dxStore.Ping();
+            _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Settings._3dx.Cookies);
+            var pingSuccessful = _3dxServer.Ping();
 
             if (!pingSuccessful)
             {
@@ -58,9 +51,13 @@ namespace Mount3DX
                     Message = "The 3DX server could not be contacted. Please check the URL and Cookies."
                 });
 
-                return false;
+                return;
             }
-            */
+
+            if (Settings._3dx.KeepAlive)
+            {
+                _3dxServer.StartKeepAlive(Settings._3dx.KeepAliveIntervalMinutes);
+            }
 
             Progress?.Invoke(this, new ProgressEventArgs()
             {
@@ -70,8 +67,13 @@ namespace Mount3DX
 
             try
             {
-                //var store = new libVFS.WebDAV.Stores.DiskStore(@"C:\", false);
-                webdavHost = new WebdavHost(settings.Vfs.WebDavServerUrl, _3dxStore);
+                var _3dxStore = new _3dxStore(
+                    Settings._3dx.ServerUrl,
+                    Settings._3dx.Cookies,
+                    Settings._3dx.QueryThreads,
+                    Progress);
+
+                webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
             }
             catch (Exception ex)
             {
@@ -112,7 +114,7 @@ namespace Mount3DX
 
             try
             {
-                _3dxStore?.Close();
+                _3dxServer?.StopKeepAlive();
             }
             catch { }
         }

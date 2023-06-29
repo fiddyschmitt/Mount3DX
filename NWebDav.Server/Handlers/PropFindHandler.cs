@@ -193,7 +193,7 @@ namespace NWebDav.Server.Handlers
             return true;
         }
 
-        new Dictionary<(Uri Uri, PropertyMode PropertyMode), XDocument> cachedResponses = new();
+        readonly Dictionary<(Uri Uri, PropertyMode PropertyMode), XDocument> cachedResponses = new();
 
         private async Task AddPropertyAsync(IHttpContext httpContext, XElement xResponse, XElement xPropStatValues, IPropertyManager propertyManager, IStoreItem item, XName propertyName, IList<XName> addedProperties)
         {

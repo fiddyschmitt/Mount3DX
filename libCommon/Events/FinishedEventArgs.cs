@@ -9,6 +9,6 @@ namespace libCommon.Events
     public class FinishedEventArgs : EventArgs
     {
         public bool Success;
-        public string Message;
+        public string? Message;
     }
 }

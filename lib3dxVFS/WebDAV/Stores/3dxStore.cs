@@ -31,9 +31,20 @@ namespace libVFS.WebDAV.Stores
         readonly Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new();
         readonly Dictionary<string, _3dxStoreItem> pathToItemMapping = new();
 
-        public _3dxStore(string serverUrl, string cookies, bool keepAlive, int keepAliveIntervalMinutes, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        public _3dxStore(string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
-            _3dxServer = new _3dxServer(serverUrl, cookies, keepAlive, keepAliveIntervalMinutes);
+            _3dxServer = new _3dxServer(serverUrl, cookies);
+
+            progress?.Invoke(this, new ProgressEventArgs()
+            {
+                Message = $"Connecting to 3DX",
+                Nature = ProgressEventArgs.EnumNature.Neutral
+            });
+
+            if (!_3dxServer.Ping())
+            {
+
+            }
 
             progress?.Invoke(this, new ProgressEventArgs()
             {
@@ -400,11 +411,6 @@ namespace libVFS.WebDAV.Stores
 
             // The item doesn't exist
             return Task.FromResult<IStoreItem?>(null);
-        }
-
-        public void Close()
-        {
-            _3dxServer.Close();
         }
     }
 }

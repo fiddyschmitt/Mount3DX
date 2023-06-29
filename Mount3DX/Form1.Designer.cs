@@ -181,6 +181,7 @@
             // 
             // btnOpenVirtualDrive
             // 
+            btnOpenVirtualDrive.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnOpenVirtualDrive.Location = new Point(246, 261);
             btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
             btnOpenVirtualDrive.Size = new Size(205, 23);

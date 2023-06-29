@@ -9,7 +9,7 @@ namespace libCommon.Events
     public class ProgressEventArgs : EventArgs
     {
         public EnumNature Nature;
-        public string Message;
+        public string? Message;
 
         public enum EnumNature
         {

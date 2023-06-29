@@ -54,7 +54,7 @@ namespace Mount3DX
             }
 
             txt3dxServerUrl.Text = settings._3dx.ServerUrl;
-            txt3dxCookieString.Text = settings._3dx.CookiesString;
+            txt3dxCookieString.Text = settings._3dx.Cookies;
             chkKeepAlive.Checked = settings._3dx.KeepAlive;
             txtKeepAliveIntervalMinutes.Value = settings._3dx.KeepAliveIntervalMinutes;
 
@@ -66,7 +66,7 @@ namespace Mount3DX
             try
             {
                 settings._3dx.ServerUrl = txt3dxServerUrl.Text;
-                settings._3dx.CookiesString = txt3dxCookieString.Text;
+                settings._3dx.Cookies = txt3dxCookieString.Text;
                 settings._3dx.KeepAlive = chkKeepAlive.Checked;
                 settings._3dx.KeepAliveIntervalMinutes = (int)txtKeepAliveIntervalMinutes.Value;
 
@@ -169,7 +169,7 @@ namespace Mount3DX
         private void Scratch()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.CookiesString, false, 5);
+            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.Cookies);
 
             var root = new _3dxFolder(
                                 "root",
