@@ -29,8 +29,10 @@ namespace libWebDAV
 
             // Use debug output for logging
             var adapter = new DebugOutputAdapter();
-            adapter.LogLevels.Add(LogLevel.Debug);
-            adapter.LogLevels.Add(LogLevel.Info);
+            //adapter.LogLevels.Add(LogLevel.Debug);
+            //adapter.LogLevels.Add(LogLevel.Info);
+            adapter.LogLevels.Add(LogLevel.Error);
+
             LoggerFactory.Factory = adapter;
 
             runningHost = Host
