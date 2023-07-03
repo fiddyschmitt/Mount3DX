@@ -145,6 +145,10 @@ namespace Mount3DX
                     }
                     else
                     {
+                        lblRunningStatus.BackColor = Color.Red;
+                        lblRunningStatus.ForeColor = Color.White;
+                        lblRunningStatus.Text = args.Message;
+
                         grp3dx.Enabled = true;
                         grpVfs.Enabled = true;
                     }

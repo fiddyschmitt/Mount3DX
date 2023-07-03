@@ -34,11 +34,7 @@ namespace lib3dxVFS.WebDAV.Stores
             new DavCreationDate<_3dxStoreItem>
             {
                 Getter = (context, item) => item._fileInfo.CreationTimeUtc,
-                Setter = (context, item, value) =>
-                {
-                    item._fileInfo.CreationTimeUtc = value;
-                    return DavStatusCode.Ok;
-                }
+                Setter = (context, item, value) => DavStatusCode.NotImplemented
             },
             new DavDisplayName<_3dxStoreItem>
             {

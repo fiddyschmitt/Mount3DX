@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 
 using NWebDav.Server.Helpers;
@@ -78,6 +79,8 @@ namespace NWebDav.Server
             var request = httpContext.Request;
             if (request == null)
                 throw new ArgumentException("The HTTP context doesn't have a request.", nameof(httpContext));
+
+            Debug.WriteLine(request.Url);
 
             // Make sure the HTTP context has a response
             var response = httpContext.Response;

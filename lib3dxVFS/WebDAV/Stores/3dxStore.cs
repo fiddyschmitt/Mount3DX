@@ -41,11 +41,6 @@ namespace libVFS.WebDAV.Stores
                 Nature = ProgressEventArgs.EnumNature.Neutral
             });
 
-            if (!_3dxServer.Ping())
-            {
-
-            }
-
             progress?.Invoke(this, new ProgressEventArgs()
             {
                 Message = $"Querying 3DX for documents",
@@ -53,20 +48,34 @@ namespace libVFS.WebDAV.Stores
             });
 
             rootFolder = new _3dxFolder(
-                                "root",
+                                Guid.NewGuid().ToString(),
                                 "",
                                 null,
                                 DateTime.Now,
                                 DateTime.Now,
                                 DateTime.Now);
 
+            /*
+            var docsRoot = new _3dxFolder(
+                                Guid.NewGuid().ToString(),
+                                "Documents",
+                                rootFolder,
+                                DateTime.Now,
+                                DateTime.Now,
+                                DateTime.Now);
+
+            rootFolder.Subfolders.Add(docsRoot);
+            */
+
+            var docsRoot = rootFolder;
+
             var allDocuments = _3dxServer
-                                    .GetAllDocuments(rootFolder, serverUrl, cookies, queryThreads, progress);
+                                    .GetAllDocuments(docsRoot, serverUrl, cookies, queryThreads, progress);
 
             //var abc = allDocuments.SerializeToJson();
             //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
 
-            rootFolder.Subfolders = allDocuments
+            docsRoot.Subfolders = allDocuments
                                         .Cast<_3dxFolder>()
                                         .ToList();
 

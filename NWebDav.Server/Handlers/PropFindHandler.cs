@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -69,11 +70,9 @@ namespace NWebDav.Server.Handlers
             var propertyList = new List<XName>();
             var propertyMode = await GetRequestedPropertiesAsync(request, propertyList).ConfigureAwait(false);
 
-            if (cachedResponses.ContainsKey((request.Url, propertyMode)))
+            if (cachedResponses.ContainsKey((request.Url, request.GetDepth())))
             {
-                
-
-                var cachedDoc = cachedResponses[(request.Url, propertyMode)];
+                var cachedDoc = cachedResponses[(request.Url, request.GetDepth())];
 
                 var str1 = request.Url + " " + cachedDoc.ToString().Length;
 
@@ -181,19 +180,18 @@ namespace NWebDav.Server.Handlers
                 xMultiStatus.Add(xResponse);
             }
 
-            var str = request.Url + " " + xDocument.ToString().Length;
-            //cachedResponses.Add((request.Url, propertyMode), xDocument);
+            //cachedResponses.Add((request.Url, request.GetDepth()), xDocument);
 
             // Stream the document
             await response.SendResponseAsync(DavStatusCode.MultiStatus, xDocument).ConfigureAwait(false);
 
-            
+
 
             // Finished writing
             return true;
         }
 
-        readonly Dictionary<(Uri Uri, PropertyMode PropertyMode), XDocument> cachedResponses = new();
+        readonly Dictionary<(Uri RequestUri, int Depth), XDocument> cachedResponses = new();
 
         private async Task AddPropertyAsync(IHttpContext httpContext, XElement xResponse, XElement xPropStatValues, IPropertyManager propertyManager, IStoreItem item, XName propertyName, IList<XName> addedProperties)
         {
@@ -207,7 +205,7 @@ namespace NWebDav.Server.Handlers
                     {
                         var value = await propertyManager.GetPropertyAsync(httpContext, item, propertyName).ConfigureAwait(false);
                         if (value is IEnumerable<XElement>)
-                            value = ((IEnumerable<XElement>) value).Cast<object>().ToArray();
+                            value = ((IEnumerable<XElement>)value).Cast<object>().ToArray();
 
                         // Make sure we use the same 'prop' tag to add all properties
                         var xProp = xPropStatValues.Element(WebDavNamespaces.DavNs + "prop");

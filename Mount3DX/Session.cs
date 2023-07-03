@@ -45,9 +45,9 @@ namespace Mount3DX
             {
                 Stop();
 
-                Progress?.Invoke(this, new ProgressEventArgs()
+                Finished?.Invoke(this, new FinishedEventArgs()
                 {
-                    Nature = ProgressEventArgs.EnumNature.Bad,
+                    Success = false,
                     Message = "The 3DX server could not be contacted. Please check the URL and Cookies."
                 });
 
