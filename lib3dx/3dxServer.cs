@@ -34,7 +34,11 @@ namespace lib3dx
                 while (!CancellationTokenSource.IsCancellationRequested)
                 {
                     Ping();
-                    Task.Delay(keepAliveInterval, CancellationTokenSource.Token).Wait();
+                    try
+                    {
+                        Task.Delay(keepAliveInterval, CancellationTokenSource.Token).Wait();
+                    }
+                    catch { }
                 }
             });
         }
@@ -228,7 +232,7 @@ namespace lib3dx
             var totalPages = (int)(totalDocs / (double)pageSize);
             var pages = Enumerable
                 .Range(1, totalPages + 1)
-                //.Take(50)
+                //.Take(10)
                 .ToList();
 
             int pagesRetrieved = 0;
