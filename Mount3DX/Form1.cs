@@ -19,7 +19,7 @@ namespace Mount3DX
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "0.1";
+        public static readonly string PROGRAM_VERSION = "0.2";
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -54,7 +54,6 @@ namespace Mount3DX
             }
 
             txt3dxServerUrl.Text = settings._3dx.ServerUrl;
-            txt3dxCookieString.Text = settings._3dx.Cookies;
             chkKeepAlive.Checked = settings._3dx.KeepAlive;
             txtKeepAliveIntervalMinutes.Value = settings._3dx.KeepAliveIntervalMinutes;
 
@@ -66,7 +65,6 @@ namespace Mount3DX
             try
             {
                 settings._3dx.ServerUrl = txt3dxServerUrl.Text;
-                settings._3dx.Cookies = txt3dxCookieString.Text;
                 settings._3dx.KeepAlive = chkKeepAlive.Checked;
                 settings._3dx.KeepAliveIntervalMinutes = (int)txtKeepAliveIntervalMinutes.Value;
 
@@ -97,7 +95,6 @@ namespace Mount3DX
             lblRunningStatus.Text = "";
 
             grp3dx.Enabled = false;
-            grpVfs.Enabled = false;
 
             if (btnStart.Text.Equals("Start"))
             {
@@ -150,7 +147,6 @@ namespace Mount3DX
                         lblRunningStatus.Text = args.Message;
 
                         grp3dx.Enabled = true;
-                        grpVfs.Enabled = true;
                     }
 
                     btnStart.Enabled = true;
@@ -164,7 +160,6 @@ namespace Mount3DX
                 btnStart.Text = "Start";
 
                 grp3dx.Enabled = true;
-                grpVfs.Enabled = true;
                 btnOpenVirtualDrive.Visible = false;
             }
         }
@@ -173,7 +168,9 @@ namespace Mount3DX
         private void Scratch()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.Cookies);
+            var loginUrl = settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
+            var cookies = _3dxLogin.GetSessionCookies(loginUrl);
+            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, cookies);
 
             var root = new _3dxFolder(
                                 "root",

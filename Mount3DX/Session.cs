@@ -1,4 +1,5 @@
 ﻿using lib3dx;
+using libCommon;
 using libCommon.Events;
 using libVFS.WebDAV.Stores;
 using libWebDAV;
@@ -35,10 +36,19 @@ namespace Mount3DX
             Progress?.Invoke(this, new ProgressEventArgs()
             {
                 Nature = ProgressEventArgs.EnumNature.Neutral,
+                Message = "Please log in to 3DX using the Firefox browser that was opened..."
+            });
+
+            var loginUrl = Settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
+            var cookies = _3dxLogin.GetSessionCookies(loginUrl);
+
+            Progress?.Invoke(this, new ProgressEventArgs()
+            {
+                Nature = ProgressEventArgs.EnumNature.Neutral,
                 Message = "Connecting to 3DX"
             });
 
-            _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Settings._3dx.Cookies);
+            _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, cookies);
             var pingSuccessful = _3dxServer.Ping();
 
             if (!pingSuccessful)
@@ -69,7 +79,7 @@ namespace Mount3DX
             {
                 var _3dxStore = new _3dxStore(
                     Settings._3dx.ServerUrl,
-                    Settings._3dx.Cookies,
+                    cookies,
                     Settings._3dx.QueryThreads,
                     Progress);
 
