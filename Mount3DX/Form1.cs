@@ -54,10 +54,10 @@ namespace Mount3DX
             }
 
             txt3dxServerUrl.Text = settings._3dx.ServerUrl;
-            chkKeepAlive.Checked = settings._3dx.KeepAlive;
-            txtKeepAliveIntervalMinutes.Value = settings._3dx.KeepAliveIntervalMinutes;
 
-            //txtMapToDriveLetter.Text = settings.Vfs.MapToDriveLetter;
+            txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
+            txtQueryThreads.Value = settings._3dx.QueryThreads;
+            txtKeepAliveIntervalMinutes.Value = settings._3dx.KeepAliveIntervalMinutes;
         }
 
         private void SaveSettings()
@@ -65,10 +65,10 @@ namespace Mount3DX
             try
             {
                 settings._3dx.ServerUrl = txt3dxServerUrl.Text;
-                settings._3dx.KeepAlive = chkKeepAlive.Checked;
-                settings._3dx.KeepAliveIntervalMinutes = (int)txtKeepAliveIntervalMinutes.Value;
 
-                //ings.Vfs.MapToDriveLetter = txtMapToDriveLetter.Text;
+                settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
+                settings._3dx.QueryThreads = (int)txtQueryThreads.Value;
+                settings._3dx.KeepAliveIntervalMinutes = (int)txtKeepAliveIntervalMinutes.Value;
 
                 var settingsJson = settings.SerializeToJson();
 

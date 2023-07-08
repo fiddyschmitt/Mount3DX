@@ -17,10 +17,9 @@ namespace Mount3DX
     public class _3dxSettings
     {
         public string ServerUrl = "https://server/3dspace";
-        public bool KeepAlive = true;
-        public int KeepAliveIntervalMinutes = 5;
-        public int QueryThreads = 8;
         public int RefreshIntervalMinutes = 30;
+        public int QueryThreads = 8;
+        public int KeepAliveIntervalMinutes = 5;
     }
 
     public class VfsSettings

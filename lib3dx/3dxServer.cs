@@ -16,7 +16,7 @@ namespace lib3dx
 {
     public class _3dxServer
     {
-        readonly CancellationTokenSource CancellationTokenSource = new();
+        CancellationTokenSource CancelPingTask = new();
         Task? PingTask;
 
         public _3dxServer(string serverUrl, string cookies)
@@ -28,15 +28,16 @@ namespace lib3dx
         public void StartKeepAlive(int keepAliveIntervalMinutes)
         {
             var keepAliveInterval = TimeSpan.FromMinutes(keepAliveIntervalMinutes);
+            CancelPingTask = new();
 
             PingTask = Task.Factory.StartNew(() =>
             {
-                while (!CancellationTokenSource.IsCancellationRequested)
+                while (!CancelPingTask.IsCancellationRequested)
                 {
                     Ping();
                     try
                     {
-                        Task.Delay(keepAliveInterval, CancellationTokenSource.Token).Wait();
+                        Task.Delay(keepAliveInterval, CancelPingTask.Token).Wait();
                     }
                     catch { }
                 }
@@ -45,7 +46,7 @@ namespace lib3dx
 
         public void StopKeepAlive()
         {
-            CancellationTokenSource.Cancel();
+            CancelPingTask.Cancel();
             PingTask?.Wait();
         }
 

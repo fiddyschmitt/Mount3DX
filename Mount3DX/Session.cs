@@ -19,6 +19,7 @@ namespace Mount3DX
         private readonly Settings Settings;
 
         _3dxServer? _3dxServer;
+        _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
         public string ComputedUNC { get; protected set; }
 
@@ -64,7 +65,7 @@ namespace Mount3DX
                 return;
             }
 
-            if (Settings._3dx.KeepAlive)
+            if (Settings._3dx.KeepAliveIntervalMinutes > 0)
             {
                 _3dxServer.StartKeepAlive(Settings._3dx.KeepAliveIntervalMinutes);
             }
@@ -77,11 +78,16 @@ namespace Mount3DX
 
             try
             {
-                var _3dxStore = new _3dxStore(
+                _3dxStore = new _3dxStore(
                     Settings._3dx.ServerUrl,
                     cookies,
                     Settings._3dx.QueryThreads,
                     Progress);
+
+                if (Settings._3dx.RefreshIntervalMinutes > 0)
+                {
+                    _3dxStore.StartRefresh(Settings._3dx.RefreshIntervalMinutes);
+                }
 
                 webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
             }
@@ -125,6 +131,12 @@ namespace Mount3DX
             try
             {
                 _3dxServer?.StopKeepAlive();
+            }
+            catch { }
+
+            try
+            {
+                _3dxStore?.StopRefresh();
             }
             catch { }
         }
