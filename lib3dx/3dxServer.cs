@@ -222,7 +222,7 @@ namespace lib3dx
         }
 
 
-        public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress, CancellationToken cancellationToken)
         {
             var firstPage = GetDocumentPage(serverUrl, cookies, 1, 1).Result;
 
@@ -245,6 +245,11 @@ namespace lib3dx
                             .WithDegreeOfParallelism(queryThreads)
                             .SelectMany(page =>
                             {
+                                if (cancellationToken.IsCancellationRequested)
+                                {
+                                    return new List<_3dxDocument>();
+                                }
+
                                 var pageJson = GetDocumentPage(serverUrl, cookies, page, pageSize).Result;
 
                                 var dataField = JObject.Parse(pageJson)["data"] ?? throw new Exception("data could not retrieved");

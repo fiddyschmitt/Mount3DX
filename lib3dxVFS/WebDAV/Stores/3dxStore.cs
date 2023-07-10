@@ -92,7 +92,7 @@ namespace libVFS.WebDAV.Stores
             var docsRoot = rootFolder;
 
             var allDocuments = _3dxServer
-                                    .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress);
+                                    .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress, CancelRefreshTask.Token);
 
             //var abc = allDocuments.SerializeToJson();
             //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
