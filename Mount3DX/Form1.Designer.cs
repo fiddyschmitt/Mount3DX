@@ -38,6 +38,7 @@
             btnStart = new Button();
             lblRunningStatus = new Label();
             btnOpenVirtualDrive = new Button();
+            lblVersion = new Label();
             grp3dx.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)txtRefreshIntervalMinutes).BeginInit();
             SuspendLayout();
@@ -135,11 +136,22 @@
             btnOpenVirtualDrive.Visible = false;
             btnOpenVirtualDrive.Click += btnOpenVirtualDrive_Click;
             // 
+            // lblVersion
+            // 
+            lblVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            lblVersion.AutoSize = true;
+            lblVersion.Location = new Point(636, 156);
+            lblVersion.Name = "lblVersion";
+            lblVersion.Size = new Size(30, 15);
+            lblVersion.TabIndex = 5;
+            lblVersion.Text = "vX.X";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(678, 180);
+            Controls.Add(lblVersion);
             Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
             Controls.Add(btnStart);
@@ -167,5 +179,6 @@
         private Label label4;
         private NumericUpDown txtRefreshIntervalMinutes;
         private Label label1;
+        private Label lblVersion;
     }
 }

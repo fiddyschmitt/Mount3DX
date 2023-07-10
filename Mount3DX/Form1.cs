@@ -23,7 +23,9 @@ namespace Mount3DX
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Text = $"{PROGRAM_NAME} {PROGRAM_VERSION}";
+            Text = $"{PROGRAM_NAME}";
+            lblVersion.Text = $"v{PROGRAM_VERSION}";
+            MinimumSize = Size;
 
             LoadSettings();
 
