@@ -26,6 +26,8 @@ namespace Mount3DX
         public event EventHandler<ProgressEventArgs>? Progress;
         public event EventHandler<FinishedEventArgs>? Finished;
 
+        public static string? cookies;
+
         public Session(Settings settings)
         {
             Settings = settings;
@@ -40,14 +42,30 @@ namespace Mount3DX
                 Message = "Please log in to 3DX using the Firefox browser that was opened..."
             });
 
-            var loginUrl = Settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
-            var cookies = _3dxLogin.GetSessionCookies(loginUrl);
-
             Progress?.Invoke(this, new ProgressEventArgs()
             {
                 Nature = ProgressEventArgs.EnumNature.Neutral,
                 Message = "Connecting to 3DX"
             });
+
+            var loginUrl = Settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
+
+            if (cookies == null)
+            {
+                cookies = _3dxLogin.GetSessionCookies(loginUrl);
+            }
+            else
+            {
+                //see if the cookies work
+                _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, cookies);
+
+                var currentCookiesWork = _3dxServer.Ping();
+                if (!currentCookiesWork)
+                {
+                    //the cookies didn't work. Let's log in again
+                    cookies = _3dxLogin.GetSessionCookies(loginUrl);
+                }
+            }
 
             _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, cookies);
             var pingSuccessful = _3dxServer.Ping();
