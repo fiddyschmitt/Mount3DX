@@ -29,63 +29,32 @@
         private void InitializeComponent()
         {
             grp3dx = new GroupBox();
-            label6 = new Label();
-            txtQueryThreads = new NumericUpDown();
             label4 = new Label();
             txtRefreshIntervalMinutes = new NumericUpDown();
             label1 = new Label();
-            label5 = new Label();
-            txtKeepAliveIntervalMinutes = new NumericUpDown();
-            label3 = new Label();
             txt3dxServerUrl = new TextBox();
             label2 = new Label();
             btnStart = new Button();
             lblRunningStatus = new Label();
             btnOpenVirtualDrive = new Button();
             grp3dx.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)txtQueryThreads).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtRefreshIntervalMinutes).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)txtKeepAliveIntervalMinutes).BeginInit();
             SuspendLayout();
             // 
             // grp3dx
             // 
             grp3dx.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            grp3dx.Controls.Add(label6);
-            grp3dx.Controls.Add(txtQueryThreads);
             grp3dx.Controls.Add(label4);
             grp3dx.Controls.Add(txtRefreshIntervalMinutes);
             grp3dx.Controls.Add(label1);
-            grp3dx.Controls.Add(label5);
-            grp3dx.Controls.Add(txtKeepAliveIntervalMinutes);
-            grp3dx.Controls.Add(label3);
             grp3dx.Controls.Add(txt3dxServerUrl);
             grp3dx.Controls.Add(label2);
             grp3dx.Location = new Point(12, 12);
             grp3dx.Name = "grp3dx";
-            grp3dx.Size = new Size(654, 156);
+            grp3dx.Size = new Size(654, 111);
             grp3dx.TabIndex = 1;
             grp3dx.TabStop = false;
             grp3dx.Text = "3DX settings";
-            // 
-            // label6
-            // 
-            label6.AutoSize = true;
-            label6.Location = new Point(86, 86);
-            label6.Name = "label6";
-            label6.Size = new Size(84, 15);
-            label6.TabIndex = 13;
-            label6.Text = "Query threads:";
-            // 
-            // txtQueryThreads
-            // 
-            txtQueryThreads.Location = new Point(176, 84);
-            txtQueryThreads.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-            txtQueryThreads.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            txtQueryThreads.Name = "txtQueryThreads";
-            txtQueryThreads.Size = new Size(41, 23);
-            txtQueryThreads.TabIndex = 12;
-            txtQueryThreads.Value = new decimal(new int[] { 16, 0, 0, 0 });
             // 
             // label4
             // 
@@ -114,33 +83,6 @@
             label1.TabIndex = 9;
             label1.Text = "Refresh document list every:";
             // 
-            // label5
-            // 
-            label5.AutoSize = true;
-            label5.Location = new Point(223, 115);
-            label5.Name = "label5";
-            label5.Size = new Size(50, 15);
-            label5.TabIndex = 8;
-            label5.Text = "minutes";
-            // 
-            // txtKeepAliveIntervalMinutes
-            // 
-            txtKeepAliveIntervalMinutes.Location = new Point(176, 113);
-            txtKeepAliveIntervalMinutes.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-            txtKeepAliveIntervalMinutes.Name = "txtKeepAliveIntervalMinutes";
-            txtKeepAliveIntervalMinutes.Size = new Size(41, 23);
-            txtKeepAliveIntervalMinutes.TabIndex = 3;
-            txtKeepAliveIntervalMinutes.Value = new decimal(new int[] { 5, 0, 0, 0 });
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.Location = new Point(105, 115);
-            label3.Name = "label3";
-            label3.Size = new Size(65, 15);
-            label3.TabIndex = 4;
-            label3.Text = "Keep Alive:";
-            // 
             // txt3dxServerUrl
             // 
             txt3dxServerUrl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -161,7 +103,7 @@
             // btnStart
             // 
             btnStart.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnStart.Location = new Point(12, 187);
+            btnStart.Location = new Point(12, 144);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(75, 23);
             btnStart.TabIndex = 0;
@@ -174,7 +116,7 @@
             lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
             lblRunningStatus.BackColor = SystemColors.Control;
-            lblRunningStatus.Location = new Point(93, 191);
+            lblRunningStatus.Location = new Point(93, 148);
             lblRunningStatus.Name = "lblRunningStatus";
             lblRunningStatus.Size = new Size(97, 15);
             lblRunningStatus.TabIndex = 3;
@@ -183,7 +125,7 @@
             // btnOpenVirtualDrive
             // 
             btnOpenVirtualDrive.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnOpenVirtualDrive.Location = new Point(246, 187);
+            btnOpenVirtualDrive.Location = new Point(246, 144);
             btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
             btnOpenVirtualDrive.Size = new Size(205, 23);
             btnOpenVirtualDrive.TabIndex = 4;
@@ -196,7 +138,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(678, 223);
+            ClientSize = new Size(678, 180);
             Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
             Controls.Add(btnStart);
@@ -207,9 +149,7 @@
             Load += Form1_Load;
             grp3dx.ResumeLayout(false);
             grp3dx.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)txtQueryThreads).EndInit();
             ((System.ComponentModel.ISupportInitialize)txtRefreshIntervalMinutes).EndInit();
-            ((System.ComponentModel.ISupportInitialize)txtKeepAliveIntervalMinutes).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -219,16 +159,11 @@
         private GroupBox grp3dx;
         private TextBox txt3dxServerUrl;
         private Label label2;
-        private NumericUpDown txtKeepAliveIntervalMinutes;
-        private Label label3;
-        private Label label5;
         private Button btnStart;
         private Label lblRunningStatus;
         private Button btnOpenVirtualDrive;
-        private NumericUpDown txtQueryThreads;
         private Label label4;
         private NumericUpDown txtRefreshIntervalMinutes;
         private Label label1;
-        private Label label6;
     }
 }

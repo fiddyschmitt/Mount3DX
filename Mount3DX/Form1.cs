@@ -56,8 +56,6 @@ namespace Mount3DX
             txt3dxServerUrl.Text = settings._3dx.ServerUrl;
 
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
-            txtQueryThreads.Value = settings._3dx.QueryThreads;
-            txtKeepAliveIntervalMinutes.Value = settings._3dx.KeepAliveIntervalMinutes;
         }
 
         private void SaveSettings()
@@ -67,8 +65,6 @@ namespace Mount3DX
                 settings._3dx.ServerUrl = txt3dxServerUrl.Text;
 
                 settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
-                settings._3dx.QueryThreads = (int)txtQueryThreads.Value;
-                settings._3dx.KeepAliveIntervalMinutes = (int)txtKeepAliveIntervalMinutes.Value;
 
                 var settingsJson = settings.SerializeToJson();
 
