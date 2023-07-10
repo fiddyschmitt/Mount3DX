@@ -317,8 +317,8 @@ namespace lib3dx
                 var name = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
                 var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
-                _ = DateTime.TryParse(o["dataelements"]?["originated"]?.ToString(), out DateTime created);
-                _ = DateTime.TryParse(o["dataelements"]?["modified"]?.ToString(), out DateTime modified);
+                _ = DateTime.TryParse(file["dataelements"]?["originated"]?.ToString(), out DateTime created);
+                _ = DateTime.TryParse(file["dataelements"]?["modified"]?.ToString(), out DateTime modified);
                 var accessed = modified;
                 var size = 0UL;
 
