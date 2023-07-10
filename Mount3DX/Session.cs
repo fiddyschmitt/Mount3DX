@@ -77,7 +77,7 @@ namespace Mount3DX
                 Finished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
-                    Message = "The 3DX server could not be contacted. Please check the URL and Cookies."
+                    Message = "The 3DX server could not be contacted. Please check the URL."
                 });
 
                 return;
