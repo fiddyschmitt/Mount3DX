@@ -71,8 +71,6 @@ namespace NWebDav.Server
         /// </returns>
         public async Task DispatchRequestAsync(IHttpContext httpContext)
         {
-            var requestStart = DateTime.Now;
-
             // Make sure a HTTP context is specified
             if (httpContext == null)
                 throw new ArgumentNullException(nameof(httpContext));
@@ -174,9 +172,6 @@ namespace NWebDav.Server
                 // Always close the context
                 await httpContext.CloseAsync().ConfigureAwait(false);
             }
-
-            var duration = DateTime.Now - requestStart;
-            Debug.WriteLine($"[{duration.TotalMilliseconds:N0} ms]: Processed request for: {request.Url}");
         }
     }
 }
