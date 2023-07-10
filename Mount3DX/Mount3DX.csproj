@@ -6,7 +6,13 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationIcon>Mount3DX.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Mount3DX.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\lib3dxVFS\lib3dxVFS.csproj" />

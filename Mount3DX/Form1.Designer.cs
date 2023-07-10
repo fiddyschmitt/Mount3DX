@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             grp3dx = new GroupBox();
             label4 = new Label();
             txtRefreshIntervalMinutes = new NumericUpDown();
@@ -143,6 +144,7 @@
             Controls.Add(lblRunningStatus);
             Controls.Add(btnStart);
             Controls.Add(grp3dx);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "Mount 3DX";
             FormClosed += Form1_FormClosed;
