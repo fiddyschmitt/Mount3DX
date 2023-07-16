@@ -32,15 +32,6 @@ namespace Mount3DX
 
             //Scratch();
 
-            //todo: The Windows 10 WebDAV client needs several settings tweaked:
-            //HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WebClient\Parameters
-            //      FileAttributesLimitInBytes = 4294967295     //Allows explorer to open folders which contain many items
-            //      FileSizeLimitInBytes = 4294967295           //Allows large files to be opened
-            //      InternetServerTimeoutInSec = 180            //Give the server a longer time to respond
-            //      LocalServerTimeoutInSec = 180               //Give the server a longer time to respond
-            //      SendReceiveTimeoutInSec = 180               //Give the server a longer time to respond
-            //After changing the settings, restart the 'WebClient' service
-
             lblRunningStatus.Text = string.Empty;
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
