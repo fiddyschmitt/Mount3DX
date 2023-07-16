@@ -19,7 +19,7 @@ namespace Mount3DX
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "0.2";
+        public static readonly string PROGRAM_VERSION = "1.0";
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -27,6 +27,7 @@ namespace Mount3DX
             lblVersion.Text = $"v{PROGRAM_VERSION}";
             MinimumSize = Size;
 
+            InitLogging();
             LoadSettings();
 
             //Scratch();
@@ -41,6 +42,16 @@ namespace Mount3DX
             //After changing the settings, restart the 'WebClient' service
 
             lblRunningStatus.Text = string.Empty;
+
+            Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
+        }
+
+        private static void InitLogging()
+        {
+            if (Log.Filename != null)
+            {
+                File.Delete(Log.Filename);
+            }
         }
 
         readonly string settingsFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
@@ -96,6 +107,8 @@ namespace Mount3DX
 
             if (btnStart.Text.Equals("Start"))
             {
+                Log.WriteLine($"Start button clicked");
+
                 btnStart.Enabled = false;
 
                 SaveSettings();
@@ -154,6 +167,7 @@ namespace Mount3DX
             }
             else
             {
+                Log.WriteLine($"Stop button clicked");
                 session?.Stop();
                 btnStart.Text = "Start";
 
@@ -168,7 +182,7 @@ namespace Mount3DX
         {
             var loginUrl = settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
             var cookies = _3dxLogin.GetSessionCookies(loginUrl);
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, cookies);
+            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, cookies.Cookies);
 
             var root = new _3dxFolder(
                                 "root",
@@ -235,7 +249,7 @@ namespace Mount3DX
             */
         }
 
-        private void btnOpenVirtualDrive_Click(object sender, EventArgs e)
+        private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)
         {
             if (session != null)
             {

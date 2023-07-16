@@ -69,111 +69,118 @@ namespace libVFS.WebDAV.Stores
 
         void RefreshDocumentsList()
         {
-            rootFolder = new _3dxFolder(
-                                Guid.NewGuid().ToString(),
-                                "",
-                                null,
-                                DateTime.Now,
-                                DateTime.Now,
-                                DateTime.Now);
+            try
+            {
+                rootFolder = new _3dxFolder(
+                                    Guid.NewGuid().ToString(),
+                                    "",
+                                    null,
+                                    DateTime.Now,
+                                    DateTime.Now,
+                                    DateTime.Now);
 
-            /*
-            var docsRoot = new _3dxFolder(
-                                Guid.NewGuid().ToString(),
-                                "Documents",
-                                rootFolder,
-                                DateTime.Now,
-                                DateTime.Now,
-                                DateTime.Now);
+                /*
+                var docsRoot = new _3dxFolder(
+                                    Guid.NewGuid().ToString(),
+                                    "Documents",
+                                    rootFolder,
+                                    DateTime.Now,
+                                    DateTime.Now,
+                                    DateTime.Now);
 
-            rootFolder.Subfolders.Add(docsRoot);
-            */
+                rootFolder.Subfolders.Add(docsRoot);
+                */
 
-            var docsRoot = rootFolder;
+                var docsRoot = rootFolder;
 
-            var allDocuments = _3dxServer
-                                    .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress, CancelRefreshTask.Token);
+                var allDocuments = _3dxServer
+                                        .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress, CancelRefreshTask.Token);
 
-            //var abc = allDocuments.SerializeToJson();
-            //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
+                //var abc = allDocuments.SerializeToJson();
+                //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
 
-            docsRoot.Subfolders = allDocuments
-                                        .Cast<_3dxFolder>()
-                                        .ToList();
+                docsRoot.Subfolders = allDocuments
+                                            .Cast<_3dxFolder>()
+                                            .ToList();
 
-            //some documents have identical names. Give each an index number
-            var duplicateDocuments = new[] { rootFolder }
-                                           .Recurse(folder => folder.Subfolders)
-                                           .OfType<_3dxDocument>()
-                                           .GroupBy(
-                                               folder => folder.FullPath.ToLower(),
-                                               folder => folder,
-                                               (key, grp) => new
-                                               {
-                                                   FullPath = key,
-                                                   Documents = grp.ToList()
-                                               })
-                                           .Where(grp => grp.Documents.Count > 1)
-                                           .ToList();
+                //some documents have identical names. Give each an index number
+                var duplicateDocuments = new[] { rootFolder }
+                                               .Recurse(folder => folder.Subfolders)
+                                               .OfType<_3dxDocument>()
+                                               .GroupBy(
+                                                   folder => folder.FullPath.ToLower(),
+                                                   folder => folder,
+                                                   (key, grp) => new
+                                                   {
+                                                       FullPath = key,
+                                                       Documents = grp.ToList()
+                                                   })
+                                               .Where(grp => grp.Documents.Count > 1)
+                                               .ToList();
 
-            duplicateDocuments
-                .ForEach(grp =>
-                {
-                    var i = 1;
-                    foreach (var document in grp.Documents)
-                    {
-                        document.Name += $" ({i}) ({document.DocumentType})";
-                        i++;
-                    }
-                });
-
-            //some files have identical names. Make them unique by adding the rev number
-            var documentsWithDuplicateFiles = new[] { rootFolder }
-                                .Recurse(folder => folder.Subfolders)
-                                .OfType<_3dxDocument>()
-                                .Select(document => new
-                                {
-                                    Document = document,
-                                    DuplicateGroups = document
-                                                        .Files
-                                                        .GroupBy(
-                                                            file => file.FullPath.ToLower(),
-                                                            file => file,
-                                                            (key, grp) => new
-                                                            {
-                                                                FullPath = key,
-                                                                Files = grp.ToList()
-                                                            })
-                                                        .Where(grp => grp.Files.Count > 1)
-                                })
-                                .Where(document => document.DuplicateGroups.Any())
-                                .ToList();
-
-            documentsWithDuplicateFiles
-                .ForEach(doc =>
-                {
-                    foreach (var duplicateGroup in doc.DuplicateGroups)
+                duplicateDocuments
+                    .ForEach(grp =>
                     {
                         var i = 1;
-                        foreach (var file in duplicateGroup.Files)
+                        foreach (var document in grp.Documents)
                         {
-                            file.Name = $"{Path.GetFileNameWithoutExtension(file.Name)} ({i}){Path.GetExtension(file.Name)}";
+                            document.Name += $" ({i}) ({document.DocumentType})";
                             i++;
                         }
-                    }
-                });
+                    });
 
-            pathToCollectionMapping = new[] { rootFolder }
-                                        .Recurse(folder => folder.Subfolders)
-                                        .Select(folder => new _3dxStoreCollection(LockingManager, folder, ServerUrl, Cookies))
-                                        .ToDictionary(folder => folder.FullPath, folder => folder);
+                //some files have identical names. Make them unique by adding the rev number
+                var documentsWithDuplicateFiles = new[] { rootFolder }
+                                    .Recurse(folder => folder.Subfolders)
+                                    .OfType<_3dxDocument>()
+                                    .Select(document => new
+                                    {
+                                        Document = document,
+                                        DuplicateGroups = document
+                                                            .Files
+                                                            .GroupBy(
+                                                                file => file.FullPath.ToLower(),
+                                                                file => file,
+                                                                (key, grp) => new
+                                                                {
+                                                                    FullPath = key,
+                                                                    Files = grp.ToList()
+                                                                })
+                                                            .Where(grp => grp.Files.Count > 1)
+                                    })
+                                    .Where(document => document.DuplicateGroups.Any())
+                                    .ToList();
 
-            pathToItemMapping = new[] { rootFolder }
-                                        .Recurse(folder => folder.Subfolders)
-                                        .OfType<_3dxDocument>()
-                                        .SelectMany(document => document.Files)
-                                        .Select(file => new _3dxStoreItem(LockingManager, file, false, ServerUrl, Cookies))
-                                        .ToDictionary(folder => folder.FullPath, folder => folder);
+                documentsWithDuplicateFiles
+                    .ForEach(doc =>
+                    {
+                        foreach (var duplicateGroup in doc.DuplicateGroups)
+                        {
+                            var i = 1;
+                            foreach (var file in duplicateGroup.Files)
+                            {
+                                file.Name = $"{Path.GetFileNameWithoutExtension(file.Name)} ({i}){Path.GetExtension(file.Name)}";
+                                i++;
+                            }
+                        }
+                    });
+
+                pathToCollectionMapping = new[] { rootFolder }
+                                            .Recurse(folder => folder.Subfolders)
+                                            .Select(folder => new _3dxStoreCollection(LockingManager, folder, ServerUrl, Cookies))
+                                            .ToDictionary(folder => folder.FullPath, folder => folder);
+
+                pathToItemMapping = new[] { rootFolder }
+                                            .Recurse(folder => folder.Subfolders)
+                                            .OfType<_3dxDocument>()
+                                            .SelectMany(document => document.Files)
+                                            .Select(file => new _3dxStoreItem(LockingManager, file, false, ServerUrl, Cookies))
+                                            .ToDictionary(folder => folder.FullPath, folder => folder);
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while refreshing the document list:{Environment.NewLine}{ex}");
+            }
         }
 
         public Task<IStoreCollection> GetCollectionAsync(Uri uri, IHttpContext httpContext)
@@ -230,6 +237,8 @@ namespace libVFS.WebDAV.Stores
                     RefreshDocumentsList();
                 }
             });
+
+            Log.WriteLine($"Started Document Refresh task at interval of {keepAliveIntervalMinutes:N0} minutes.");
         }
 
         public void StopRefresh()

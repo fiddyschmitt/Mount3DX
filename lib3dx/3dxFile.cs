@@ -26,60 +26,71 @@ namespace lib3dx
 
         public MemoryStream Download(string serverUrl, string cookies)
         {
-            //get download token
-            var objectUrl = serverUrl.UrlCombine(@$"resources/v1/application/CSRF");
-
-            var request = new HttpRequestMessage()
+            try
             {
-                RequestUri = new Uri(objectUrl),
-                Method = HttpMethod.Get
-            };
+                Log.WriteLine("Downloading file");
 
-            var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+                //get download token
+                var objectUrl = serverUrl.UrlCombine(@$"resources/v1/application/CSRF");
 
-            var downloadTokenJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-            var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
-
-
-            //get the download url
-            var downloadLocationQueryUrl = serverUrl.UrlCombine($"resources/v1/modeler/documents/{DocumentObjectId}/files/{ObjectId}/DownloadTicket");
-            request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri(downloadLocationQueryUrl),
-                Method = HttpMethod.Put
-            };
-            request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
-
-            httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
-
-            var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-            var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
-
-            MemoryStream result;
-            if (datalements == null)
-            {
-                result = new MemoryStream();
-            }
-            else
-            {
-                var downloadUrl = datalements["ticketURL"]?.ToString();
-
-                if (downloadToken == null)
+                var request = new HttpRequestMessage()
                 {
-                    throw new Exception($"Could not get Download URL for file with id {DocumentObjectId}. {FullPath}");
+                    RequestUri = new Uri(objectUrl),
+                    Method = HttpMethod.Get
+                };
+
+                var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+
+                var downloadTokenJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
+
+
+                //get the download url
+                var downloadLocationQueryUrl = serverUrl.UrlCombine($"resources/v1/modeler/documents/{DocumentObjectId}/files/{ObjectId}/DownloadTicket");
+                request = new HttpRequestMessage()
+                {
+                    RequestUri = new Uri(downloadLocationQueryUrl),
+                    Method = HttpMethod.Put
+                };
+                request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
+
+                httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+
+                var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
+
+                MemoryStream result;
+                if (datalements == null)
+                {
+                    result = new MemoryStream();
+                }
+                else
+                {
+                    var downloadUrl = datalements["ticketURL"]?.ToString();
+
+                    if (downloadToken == null)
+                    {
+                        throw new Exception($"Could not get Download URL for file with id {DocumentObjectId}. {FullPath}");
+                    }
+
+                    //download the file
+                    httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
+
+                    var response = httpClient.GetAsync(downloadUrl).Result;
+                    result = new MemoryStream();
+                    response.Content.CopyTo(result, null, CancellationToken.None);
                 }
 
-                //download the file
-                httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
-
-                var response = httpClient.GetAsync(downloadUrl).Result;
-                result = new MemoryStream();
-                response.Content.CopyTo(result, null, CancellationToken.None);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while downloading file to MemoryStream:{Environment.NewLine}{ex}");
             }
 
-            return result;
+            return (MemoryStream)MemoryStream.Null;
         }
     }
 }

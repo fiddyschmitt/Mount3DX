@@ -26,7 +26,7 @@ namespace Mount3DX
         public event EventHandler<ProgressEventArgs>? Progress;
         public event EventHandler<FinishedEventArgs>? Finished;
 
-        public static string? cookies;
+        public static string? Cookies { get; set; }
 
         public Session(Settings settings)
         {
@@ -36,42 +36,94 @@ namespace Mount3DX
 
         public void Start()
         {
-            Progress?.Invoke(this, new ProgressEventArgs()
-            {
-                Nature = ProgressEventArgs.EnumNature.Neutral,
-                Message = "Please log in to 3DX using the Firefox browser that was opened..."
-            });
-
-            Progress?.Invoke(this, new ProgressEventArgs()
-            {
-                Nature = ProgressEventArgs.EnumNature.Neutral,
-                Message = "Connecting to 3DX"
-            });
+            Log.WriteLine("Session starting");
 
             var loginUrl = Settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
 
-            if (cookies == null)
+            if (Cookies == null)
             {
-                cookies = _3dxLogin.GetSessionCookies(loginUrl);
+                Progress?.Invoke(this, new ProgressEventArgs()
+                {
+                    Nature = ProgressEventArgs.EnumNature.Neutral,
+                    Message = "Please log in to 3DX using the Firefox browser that was opened..."
+                });
+
+                Log.WriteLine("Acquiring cookies.");
+                var cookiesResult = _3dxLogin.GetSessionCookies(loginUrl);
+
+                if (cookiesResult.Success)
+                {
+                    Log.WriteLine("Cookies acquired successfully.");
+                    Cookies = cookiesResult.Cookies;
+                }
+                else
+                {
+                    Log.WriteLine("Cookies not acquired successfully.");
+                }
             }
             else
             {
-                //see if the cookies work
-                _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, cookies);
+                Log.WriteLine("Cookies present. Pinging server.");
 
+                //see if the cookies work
+                _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
                 var currentCookiesWork = _3dxServer.Ping();
-                if (!currentCookiesWork)
+
+                if (currentCookiesWork)
+                {
+                    Log.WriteLine("Server responded to ping.");
+                }
+                else
                 {
                     //the cookies didn't work. Let's log in again
-                    cookies = _3dxLogin.GetSessionCookies(loginUrl);
+                    Progress?.Invoke(this, new ProgressEventArgs()
+                    {
+                        Nature = ProgressEventArgs.EnumNature.Neutral,
+                        Message = "Please log in to 3DX using the Firefox browser that was opened..."
+                    });
+
+                    Log.WriteLine("Server did not respond to ping. Acquiring new cookies.");
+                    var cookiesResult = _3dxLogin.GetSessionCookies(loginUrl);
+
+                    if (cookiesResult.Success)
+                    {
+                        Log.WriteLine("Cookies acquired successfully.");
+                        Cookies = cookiesResult.Cookies;
+                    }
+                    else
+                    {
+                        Log.WriteLine("Cookies not acquired successfully.");
+                    }
                 }
             }
 
-            _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, cookies);
+            if (Cookies == null)
+            {
+                Log.WriteLine("Could not acquire cookies. Displaying error message.");
+
+                Stop();
+
+                Finished?.Invoke(this, new FinishedEventArgs()
+                {
+                    Success = false,
+                    Message = "Cookies could not be acquired. Please check the URL."
+                });
+
+                return;
+            }
+
+            Log.WriteLine("Pinging server.");
+            _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
             var pingSuccessful = _3dxServer.Ping();
 
-            if (!pingSuccessful)
+            if (pingSuccessful)
             {
+                Log.WriteLine("Server responded to ping.");
+            }
+            else
+            {
+                Log.WriteLine("Server did not respond to ping. Displaying error message.");
+
                 Stop();
 
                 Finished?.Invoke(this, new FinishedEventArgs()
@@ -91,26 +143,36 @@ namespace Mount3DX
             Progress?.Invoke(this, new ProgressEventArgs()
             {
                 Nature = ProgressEventArgs.EnumNature.Neutral,
-                Message = "Initiating WebDAV server"
+                Message = "Initialising WebDAV server"
             });
+
+
 
             try
             {
+                Log.WriteLine($"Initialising {nameof(_3dxStore)}.");
+
                 _3dxStore = new _3dxStore(
                     Settings._3dx.ServerUrl,
-                    cookies,
+                    Cookies,
                     Settings._3dx.QueryThreads,
                     Progress);
+
+                Log.WriteLine($"{nameof(_3dxStore)} initialised.");
 
                 if (Settings._3dx.RefreshIntervalMinutes > 0)
                 {
                     _3dxStore.StartRefresh(Settings._3dx.RefreshIntervalMinutes);
                 }
 
+                Log.WriteLine("Initialising WebDAV server");
                 webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
+                Log.WriteLine("WebDAV server initialised.");
             }
             catch (Exception ex)
             {
+                Log.WriteLine($"Error while initialising WebDAV server:{Environment.NewLine}{ex}");
+
                 Stop();
 
                 Finished?.Invoke(this, new FinishedEventArgs()
@@ -124,7 +186,9 @@ namespace Mount3DX
 
             Task.Factory.StartNew(() =>
             {
+                Log.WriteLine("Starting WebDAV server");
                 webdavHost.Start();
+                Log.WriteLine("WebDAV server started.");
             });
 
             //NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);

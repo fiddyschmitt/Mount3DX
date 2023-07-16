@@ -134,7 +134,7 @@
             btnOpenVirtualDrive.Text = "Open virtual drive";
             btnOpenVirtualDrive.UseVisualStyleBackColor = true;
             btnOpenVirtualDrive.Visible = false;
-            btnOpenVirtualDrive.Click += btnOpenVirtualDrive_Click;
+            btnOpenVirtualDrive.Click += BtnOpenVirtualDrive_Click;
             // 
             // lblVersion
             // 

@@ -42,6 +42,8 @@ namespace lib3dx
                     catch { }
                 }
             });
+
+            Log.WriteLine($"Started KeepAlive at interval of {keepAliveIntervalMinutes:N0} minutes.");
         }
 
         public void StopKeepAlive()
@@ -72,10 +74,15 @@ namespace lib3dx
                         success = true;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Log.WriteLine($"Error while pinging sever:{Environment.NewLine}{ex}");
+                }
             }
-            catch
-            { }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while creating HttpClient to ping the sever:{Environment.NewLine}{ex}");
+            }
 
             return success;
         }
@@ -256,6 +263,8 @@ namespace lib3dx
 
                                 var documents = dataField
                                                 .Select(o => JTokenToDocument(o, parent))
+                                                .Where(doc => doc != null)
+                                                .Cast<_3dxDocument>()
                                                 .ToList();
 
                                 Interlocked.Increment(ref pagesRetrieved);
@@ -269,7 +278,6 @@ namespace lib3dx
 
                                 return documents;
                             })
-                            .Where(doc => doc != null)
                             .ToList();
 
             return result!;
