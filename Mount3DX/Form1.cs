@@ -19,7 +19,7 @@ namespace Mount3DX
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "1.0.0";
+        public static readonly string PROGRAM_VERSION = "1.0.1";
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -72,7 +72,12 @@ namespace Mount3DX
 
                 var settingsJson = settings.SerializeToJson();
 
-                var existingSettingsFileContent = File.ReadAllText(settingsFilename);
+                var existingSettingsFileContent = string.Empty;
+                if (File.Exists(settingsFilename))
+                {
+                    existingSettingsFileContent = File.ReadAllText(settingsFilename);
+                }
+
                 if (!string.IsNullOrEmpty(settingsJson) && !settingsJson.Equals(existingSettingsFileContent))
                 {
                     File.WriteAllText(settingsFilename, settingsJson);
