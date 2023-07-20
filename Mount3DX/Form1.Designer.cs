@@ -140,7 +140,7 @@
             // 
             lblVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lblVersion.AutoSize = true;
-            lblVersion.Location = new Point(636, 148);
+            lblVersion.Location = new Point(630, 148);
             lblVersion.Name = "lblVersion";
             lblVersion.Size = new Size(30, 15);
             lblVersion.TabIndex = 5;

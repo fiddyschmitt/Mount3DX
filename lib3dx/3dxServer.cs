@@ -19,6 +19,8 @@ namespace lib3dx
         CancellationTokenSource CancelPingTask = new();
         Task? PingTask;
 
+        public event EventHandler<ProgressEventArgs>? KeepAliveFailed;
+
         public _3dxServer(string serverUrl, string cookies)
         {
             ServerUrl = serverUrl;
@@ -32,14 +34,34 @@ namespace lib3dx
 
             PingTask = Task.Factory.StartNew(() =>
             {
+                var startTime = DateTime.Now;
+
                 while (!CancelPingTask.IsCancellationRequested)
                 {
-                    Ping();
+                    var pingSuccessful = Ping();
+
+                    if (!pingSuccessful)
+                    {
+                        KeepAliveFailed?.Invoke(this, new ProgressEventArgs()
+                        {
+                            Message = "Server can no longer be pinged.",
+                            Nature = ProgressEventArgs.EnumNature.Bad
+                        });
+
+                        break;
+                    }
+
                     try
                     {
                         Task.Delay(keepAliveInterval, CancelPingTask.Token).Wait();
                     }
                     catch { }
+                }
+
+                if (!CancelPingTask.IsCancellationRequested)
+                {
+                    var duration = DateTime.Now - startTime;
+                    Log.WriteLine($"KeepAlive finished abruptly after {duration.FormatTimeSpan()}");
                 }
             });
 
@@ -49,7 +71,7 @@ namespace lib3dx
         public void StopKeepAlive()
         {
             CancelPingTask.Cancel();
-            PingTask?.Wait();
+            PingTask?.Wait(1000);   //a timeout because it might be the PingTask which has told the session to stop
         }
 
 
@@ -240,7 +262,7 @@ namespace lib3dx
             var totalPages = (int)(totalDocs / (double)pageSize);
             var pages = Enumerable
                 .Range(1, totalPages + 1)
-                //.Take(10)
+                .Take(10)
                 .ToList();
 
             int pagesRetrieved = 0;

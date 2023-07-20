@@ -31,6 +31,12 @@ namespace libCommon
             return truncatedFilename;
         }
 
+        public static string FormatTimeSpan(this TimeSpan timeSpan)
+        {
+            string? FormatPart(int quantity, string name) => quantity > 0 ? $"{quantity} {name}{(quantity > 1 ? "s" : "")}" : null;
+            return string.Join(", ", new[] { FormatPart(timeSpan.Days, "day"), FormatPart(timeSpan.Hours, "hour"), FormatPart(timeSpan.Minutes, "minute") }.Where(x => x != null));
+        }
+
         public static IEnumerable<T> Recurse<T>(this T source, Func<T, T?> childSelector, bool depthFirst = false)
         {
             var list = new List<T>() { source };

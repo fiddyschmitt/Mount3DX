@@ -19,7 +19,7 @@ namespace Mount3DX
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "1.0.1";
+        public static readonly string PROGRAM_VERSION = "1.1.1";
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -104,6 +104,7 @@ namespace Mount3DX
             if (btnStart.Text.Equals("Start"))
             {
                 Log.WriteLine($"Start button clicked");
+                var startTime = DateTime.Now;
 
                 btnStart.Enabled = false;
 
@@ -159,14 +160,29 @@ namespace Mount3DX
                     btnStart.Enabled = true;
                 }));
 
+                session.SessionError += (sender, args) => Invoke(new MethodInvoker(() =>
+                {
+                    session?.Stop();
+
+                    btnStart.Text = "Start";
+                    grp3dx.Enabled = true;
+                    btnOpenVirtualDrive.Visible = false;
+
+                    var sessionDuration = DateTime.Now - startTime;
+
+                    lblRunningStatus.BackColor = Color.Red;
+                    lblRunningStatus.ForeColor = Color.White;
+                    lblRunningStatus.Text = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
+                }));
+
                 Task.Factory.StartNew(session.Start);
             }
             else
             {
                 Log.WriteLine($"Stop button clicked");
                 session?.Stop();
-                btnStart.Text = "Start";
 
+                btnStart.Text = "Start";
                 grp3dx.Enabled = true;
                 btnOpenVirtualDrive.Visible = false;
             }

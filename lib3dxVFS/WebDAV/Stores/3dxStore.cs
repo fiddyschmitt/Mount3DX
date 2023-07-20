@@ -35,6 +35,7 @@ namespace libVFS.WebDAV.Stores
         public string Cookies { get; }
         public int QueryThreads { get; }
         public EventHandler<ProgressEventArgs>? Progress { get; }
+        public EventHandler<ProgressEventArgs>? RefreshFailed { get; set; }
 
         public _3dxStore(string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
@@ -180,6 +181,12 @@ namespace libVFS.WebDAV.Stores
             catch (Exception ex)
             {
                 Log.WriteLine($"Error while refreshing the document list:{Environment.NewLine}{ex}");
+
+                RefreshFailed?.Invoke(this, new ProgressEventArgs()
+                {
+                    Message = $"Error while refreshing document list: {ex.Message}",
+                    Nature = ProgressEventArgs.EnumNature.Bad
+                });
             }
         }
 
@@ -244,7 +251,7 @@ namespace libVFS.WebDAV.Stores
         public void StopRefresh()
         {
             CancelRefreshTask.Cancel();
-            RefreshTask?.Wait();
+            RefreshTask?.Wait(1000);    //a timeout because it might be the RefreshTask which has told the session to stop
         }
     }
 }

@@ -25,6 +25,7 @@ namespace Mount3DX
 
         public event EventHandler<ProgressEventArgs>? InitialisationProgress;
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
+        public event EventHandler<ProgressEventArgs>? SessionError;
 
         public static string? Cookies { get; set; }
 
@@ -137,6 +138,7 @@ namespace Mount3DX
 
             if (Settings._3dx.KeepAliveIntervalMinutes > 0)
             {
+                _3dxServer.KeepAliveFailed += SessionError;
                 _3dxServer.StartKeepAlive(Settings._3dx.KeepAliveIntervalMinutes);
             }
 
@@ -162,6 +164,7 @@ namespace Mount3DX
 
                 if (Settings._3dx.RefreshIntervalMinutes > 0)
                 {
+                    _3dxStore.RefreshFailed += SessionError;
                     _3dxStore.StartRefresh(Settings._3dx.RefreshIntervalMinutes);
                 }
 
@@ -187,8 +190,22 @@ namespace Mount3DX
             Task.Factory.StartNew(() =>
             {
                 Log.WriteLine("Starting WebDAV server");
-                webdavHost.Start();
-                Log.WriteLine("WebDAV server started.");
+
+                try
+                {
+                    webdavHost.Start();
+                    Log.WriteLine("WebDAV server started.");
+                }
+                catch (Exception ex)
+                {
+                    Log.WriteLine($"Error while starting {nameof(WebdavHost)}:{Environment.NewLine}{ex}");
+
+                    SessionError?.Invoke(this, new ProgressEventArgs()
+                    {
+                        Message = $"Error while starting {nameof(WebdavHost)}: {ex.Message}",
+                        Nature = ProgressEventArgs.EnumNature.Bad
+                    });
+                }
             });
 
             //NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);
