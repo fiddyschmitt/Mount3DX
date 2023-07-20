@@ -23,8 +23,8 @@ namespace Mount3DX
         WebdavHost? webdavHost;
         public string ComputedUNC { get; protected set; }
 
-        public event EventHandler<ProgressEventArgs>? Progress;
-        public event EventHandler<FinishedEventArgs>? Finished;
+        public event EventHandler<ProgressEventArgs>? InitialisationProgress;
+        public event EventHandler<FinishedEventArgs>? InitialisationFinished;
 
         public static string? Cookies { get; set; }
 
@@ -42,7 +42,7 @@ namespace Mount3DX
 
             if (Cookies == null)
             {
-                Progress?.Invoke(this, new ProgressEventArgs()
+                InitialisationProgress?.Invoke(this, new ProgressEventArgs()
                 {
                     Nature = ProgressEventArgs.EnumNature.Neutral,
                     Message = "Please log in to 3DX using the Firefox browser that was opened..."
@@ -76,7 +76,7 @@ namespace Mount3DX
                 else
                 {
                     //the cookies didn't work. Let's log in again
-                    Progress?.Invoke(this, new ProgressEventArgs()
+                    InitialisationProgress?.Invoke(this, new ProgressEventArgs()
                     {
                         Nature = ProgressEventArgs.EnumNature.Neutral,
                         Message = "Please log in to 3DX using the Firefox browser that was opened..."
@@ -103,7 +103,7 @@ namespace Mount3DX
 
                 Stop();
 
-                Finished?.Invoke(this, new FinishedEventArgs()
+                InitialisationFinished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
                     Message = "Cookies could not be acquired. Please check the URL."
@@ -126,7 +126,7 @@ namespace Mount3DX
 
                 Stop();
 
-                Finished?.Invoke(this, new FinishedEventArgs()
+                InitialisationFinished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
                     Message = "The 3DX server could not be contacted. Please check the URL."
@@ -140,7 +140,7 @@ namespace Mount3DX
                 _3dxServer.StartKeepAlive(Settings._3dx.KeepAliveIntervalMinutes);
             }
 
-            Progress?.Invoke(this, new ProgressEventArgs()
+            InitialisationProgress?.Invoke(this, new ProgressEventArgs()
             {
                 Nature = ProgressEventArgs.EnumNature.Neutral,
                 Message = "Initialising WebDAV server"
@@ -156,7 +156,7 @@ namespace Mount3DX
                     Settings._3dx.ServerUrl,
                     Cookies,
                     Settings._3dx.QueryThreads,
-                    Progress);
+                    InitialisationProgress);
 
                 Log.WriteLine($"{nameof(_3dxStore)} initialised.");
 
@@ -175,7 +175,7 @@ namespace Mount3DX
 
                 Stop();
 
-                Finished?.Invoke(this, new FinishedEventArgs()
+                InitialisationFinished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
                     Message = $"Error while initialising WebDAV server: {ex.Message}"
@@ -196,7 +196,7 @@ namespace Mount3DX
             //Process.Start("explorer.exe", settings.Vfs.MapToDriveLetter);
             Process.Start("explorer.exe", ComputedUNC);
 
-            Finished?.Invoke(this, new FinishedEventArgs()
+            InitialisationFinished?.Invoke(this, new FinishedEventArgs()
             {
                 Success = true,
             });

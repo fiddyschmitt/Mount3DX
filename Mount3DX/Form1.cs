@@ -112,7 +112,7 @@ namespace Mount3DX
 
                 session = new Session(settings);
 
-                session.Progress += (sender, args) => Invoke(new MethodInvoker(() =>
+                session.InitialisationProgress += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
                     switch (args.Nature)
                     {
@@ -135,7 +135,7 @@ namespace Mount3DX
                     lblRunningStatus.Text = args.Message;
                 }));
 
-                session.Finished += (sender, args) => Invoke(new MethodInvoker(() =>
+                session.InitialisationFinished += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
                     if (args.Success)
                     {
