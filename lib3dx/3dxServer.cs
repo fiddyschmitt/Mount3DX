@@ -40,6 +40,8 @@ namespace lib3dx
                 {
                     var pingSuccessful = Ping();
 
+                    if (CancelPingTask.IsCancellationRequested) break;
+
                     if (!pingSuccessful)
                     {
                         KeepAliveFailed?.Invoke(this, new ProgressEventArgs()
@@ -56,6 +58,8 @@ namespace lib3dx
                         Task.Delay(keepAliveInterval, CancelPingTask.Token).Wait();
                     }
                     catch { }
+
+                    if (CancelPingTask.IsCancellationRequested) break;
                 }
 
                 if (!CancelPingTask.IsCancellationRequested)

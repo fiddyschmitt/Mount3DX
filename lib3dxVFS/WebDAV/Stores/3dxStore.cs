@@ -242,6 +242,8 @@ namespace libVFS.WebDAV.Stores
                     if (CancelRefreshTask.IsCancellationRequested) break;
 
                     RefreshDocumentsList();
+
+                    if (CancelRefreshTask.IsCancellationRequested) break;
                 }
             });
 
