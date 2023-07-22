@@ -68,7 +68,7 @@ namespace Mount3DX
 
                 //see if the cookies work
                 _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
-                var currentCookiesWork = _3dxServer.Ping();
+                var currentCookiesWork = _3dxServer.Ping(Settings._3dx.ServerUrl, Cookies, CancellationToken.None);
 
                 if (currentCookiesWork)
                 {
@@ -115,7 +115,7 @@ namespace Mount3DX
 
             Log.WriteLine("Pinging server.");
             _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
-            var pingSuccessful = _3dxServer.Ping();
+            var pingSuccessful = _3dxServer.Ping(Settings._3dx.ServerUrl, Cookies, CancellationToken.None);
 
             if (pingSuccessful)
             {

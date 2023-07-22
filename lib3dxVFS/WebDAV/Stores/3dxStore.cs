@@ -23,8 +23,6 @@ namespace libVFS.WebDAV.Stores
 {
     public class _3dxStore : IStore
     {
-        readonly _3dxServer _3dxServer;
-
         readonly ILockingManager LockingManager = new InMemoryLockingManager();
 
         _3dxFolder? rootFolder;
@@ -44,8 +42,6 @@ namespace libVFS.WebDAV.Stores
             QueryThreads = queryThreads;
             Progress = progress;
 
-
-            _3dxServer = new _3dxServer(serverUrl, cookies);
 
             progress?.Invoke(this, new ProgressEventArgs()
             {

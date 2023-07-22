@@ -197,8 +197,8 @@ namespace Mount3DX
 #pragma warning restore IDE0051 // Remove unused private members
         {
             var loginUrl = settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
-            var cookies = _3dxLogin.GetSessionCookies(loginUrl);
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, cookies.Cookies);
+            var (Success, Cookies) = _3dxLogin.GetSessionCookies(loginUrl);
+            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, Cookies);
 
             var root = new _3dxFolder(
                                 "root",

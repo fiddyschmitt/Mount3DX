@@ -38,7 +38,7 @@ namespace lib3dx
 
                 while (!CancelPingTask.IsCancellationRequested)
                 {
-                    var pingSuccessful = Ping();
+                    var pingSuccessful = Ping(ServerUrl, Cookies, CancelPingTask.Token);
 
                     if (CancelPingTask.IsCancellationRequested) break;
 
@@ -79,22 +79,22 @@ namespace lib3dx
         }
 
 
-        public bool Ping()
+        public static bool Ping(string serverUrl, string cookies, CancellationToken cancellationToken)
         {
-            var pingUrl = ServerUrl.UrlCombine(@"resources/v1/modeler/documents/ABC123AABEC11256");
+            var pingUrl = serverUrl.UrlCombine(@"resources/v1/modeler/documents/ABC123AABEC11256");
 
             var success = false;
 
             try
             {
                 var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", Cookies);
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookies);
                 var request = new HttpRequestMessage(HttpMethod.Get, pingUrl);
 
                 try
                 {
-                    var response = httpClient.Send(request);
-                    var responseStr = response.Content.ReadAsStringAsync().Result;
+                    var response = httpClient.Send(request, cancellationToken);
+                    var responseStr = response.Content.ReadAsStringAsync(cancellationToken).Result;
                     if (responseStr.Contains("Object Does Not Exist"))
                     {
                         success = true;
@@ -255,7 +255,7 @@ namespace lib3dx
         }
 
 
-        public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress, CancellationToken cancellationToken)
+        public static List<_3dxDocument> GetAllDocuments(_3dxFolder parent, string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress, CancellationToken cancellationToken)
         {
             var firstPage = GetDocumentPage(serverUrl, cookies, 1, 1).Result;
 
@@ -296,7 +296,7 @@ namespace lib3dx
                                 Interlocked.Increment(ref pagesRetrieved);
                                 Interlocked.Add(ref documentsDiscovered, documents.Count);
 
-                                progress?.Invoke(this, new ProgressEventArgs()
+                                progress?.Invoke(null, new ProgressEventArgs()
                                 {
                                     Message = $"Retrieved {pagesRetrieved:N0}/{totalPages:N0} pages. {documentsDiscovered:N0} documents discovered.",
                                     Nature = ProgressEventArgs.EnumNature.Neutral
