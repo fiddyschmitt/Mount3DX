@@ -25,6 +25,7 @@ namespace Mount3DX
         {
             Text = $"{PROGRAM_NAME}";
             lblVersion.Text = $"v{PROGRAM_VERSION}";
+            lblVersion.Left = grp3dx.Right - lblVersion.Width;
             MinimumSize = Size;
 
             InitLogging();
