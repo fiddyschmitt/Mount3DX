@@ -155,6 +155,8 @@ namespace Mount3DX
                         lblRunningStatus.ForeColor = Color.White;
                         lblRunningStatus.Text = args.Message;
 
+                        btnOpenVirtualDrive.Visible = false;
+
                         grp3dx.Enabled = true;
                     }
 
@@ -167,13 +169,14 @@ namespace Mount3DX
 
                     btnStart.Text = "Start";
                     grp3dx.Enabled = true;
-                    btnOpenVirtualDrive.Visible = false;
 
                     var sessionDuration = DateTime.Now - startTime;
 
                     lblRunningStatus.BackColor = Color.Red;
                     lblRunningStatus.ForeColor = Color.White;
                     lblRunningStatus.Text = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
+
+                    btnOpenVirtualDrive.Visible = false;
                 }));
 
                 Task.Factory.StartNew(session.Start);

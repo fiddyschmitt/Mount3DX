@@ -118,9 +118,10 @@
             lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
             lblRunningStatus.BackColor = SystemColors.Control;
-            lblRunningStatus.Location = new Point(93, 148);
+            lblRunningStatus.Location = new Point(93, 145);
             lblRunningStatus.Name = "lblRunningStatus";
-            lblRunningStatus.Size = new Size(97, 15);
+            lblRunningStatus.Padding = new Padding(3);
+            lblRunningStatus.Size = new Size(103, 21);
             lblRunningStatus.TabIndex = 3;
             lblRunningStatus.Text = "lblRunningStatus";
             // 
