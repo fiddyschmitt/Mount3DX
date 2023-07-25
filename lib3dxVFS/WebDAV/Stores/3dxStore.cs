@@ -90,15 +90,37 @@ namespace libVFS.WebDAV.Stores
 
                 var docsRoot = rootFolder;
 
-                var allDocuments = _3dxServer
-                                        .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress, CancelRefreshTask.Token);
+                int attempt = 1;
+                int maxAttempts = 5;
+                for (attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    try
+                    {
+                        var allDocuments = _3dxServer
+                                                .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress, CancelRefreshTask.Token);
 
-                //var abc = allDocuments.SerializeToJson();
-                //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
+                        //var abc = allDocuments.SerializeToJson();
+                        //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
 
-                docsRoot.Subfolders = allDocuments
-                                            .Cast<_3dxFolder>()
-                                            .ToList();
+                        docsRoot.Subfolders = allDocuments
+                                                    .Cast<_3dxFolder>()
+                                                    .ToList();
+
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        if (attempt == maxAttempts)
+                        {
+                            throw;
+                        }
+                    }
+                }
+
+                if (attempt > 1)
+                {
+                    Debugger.Break();
+                }
 
                 //some documents have identical names. Give each an index number
                 var duplicateDocuments = new[] { rootFolder }
