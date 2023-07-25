@@ -90,7 +90,7 @@ namespace libVFS.WebDAV.Stores
 
                 var docsRoot = rootFolder;
 
-                int attempt = 1;
+                int attempt;
                 int maxAttempts = 5;
                 for (attempt = 1; attempt <= maxAttempts; attempt++)
                 {

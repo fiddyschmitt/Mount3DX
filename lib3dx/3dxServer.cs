@@ -38,7 +38,19 @@ namespace lib3dx
 
                 while (!CancelPingTask.IsCancellationRequested)
                 {
-                    var pingSuccessful = Ping(ServerUrl, Cookies, CancelPingTask.Token);
+                    int attempt;
+                    int maxAttempts = 5;
+
+                    var pingSuccessful = false;
+
+                    for (attempt = 1; attempt <= maxAttempts && !CancelPingTask.IsCancellationRequested; attempt++)
+                    {
+                        pingSuccessful = Ping(ServerUrl, Cookies, CancelPingTask.Token);
+
+                        if (pingSuccessful) break;
+
+                        try { Task.Delay(TimeSpan.FromSeconds(60), CancelPingTask.Token).Wait(); } catch { }
+                    }
 
                     if (CancelPingTask.IsCancellationRequested) break;
 
@@ -53,11 +65,12 @@ namespace lib3dx
                         break;
                     }
 
-                    try
+                    if (attempt > 1)
                     {
-                        Task.Delay(keepAliveInterval, CancelPingTask.Token).Wait();
+                        Debugger.Break();
                     }
-                    catch { }
+
+                    try { Task.Delay(keepAliveInterval, CancelPingTask.Token).Wait(); } catch { }
 
                     if (CancelPingTask.IsCancellationRequested) break;
                 }
