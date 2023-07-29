@@ -115,7 +115,7 @@ namespace libVFS.WebDAV.Stores
                     {
                         if (attempt == maxAttempts)
                         {
-                            throw new Exception($"Could not retrieve documents after {attempt} attempts. {ex.Message}");
+                            throw new Exception($"Could not retrieve documents after {attempt} {"attempt".Pluralize(attempt)}. {ex.Message}");
                         }
                     }
                 }
