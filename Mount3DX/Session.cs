@@ -72,7 +72,7 @@ namespace Mount3DX
 
                 if (currentCookiesWork)
                 {
-                    Log.WriteLine("Server responded to ping.");
+                    Log.WriteLine("Cookies are stilled valid.");
                 }
                 else
                 {
@@ -239,6 +239,8 @@ namespace Mount3DX
                 _3dxStore?.StopRefresh();
             }
             catch { }
+
+            Log.WriteLine($"Session stopped.");
         }
     }
 }

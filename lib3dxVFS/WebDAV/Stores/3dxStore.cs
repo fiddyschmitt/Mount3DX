@@ -200,7 +200,7 @@ namespace libVFS.WebDAV.Stores
                                             .ToDictionary(folder => folder.FullPath, folder => folder);
 
                 var duration = DateTime.Now - startTime;
-                Log.WriteLine($"Document list refreshed. {pathToItemMapping.Count:N0} {"document".Pluralize(pathToItemMapping.Count)}. {attempt:N0} {"attempt".Pluralize(attempt)}. {duration.FormatTimeSpan()}");
+                Log.WriteLine($"Document list refreshed in {duration.FormatTimeSpan()}, with {attempt:N0} {"attempt".Pluralize(attempt)}. {pathToItemMapping.Count:N0} {"file".Pluralize(pathToItemMapping.Count)}.");
             }
             catch (Exception ex)
             {

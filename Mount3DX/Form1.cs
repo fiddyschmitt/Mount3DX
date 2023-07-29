@@ -141,6 +141,8 @@ namespace Mount3DX
                 {
                     if (args.Success)
                     {
+                        Log.WriteLine("Session started successfully.");
+
                         btnStart.Text = "Stop";
 
                         lblRunningStatus.BackColor = Color.LimeGreen;
@@ -151,6 +153,8 @@ namespace Mount3DX
                     }
                     else
                     {
+                        Log.WriteLine($"Session failed to start: {args.Message}");
+
                         lblRunningStatus.BackColor = Color.Red;
                         lblRunningStatus.ForeColor = Color.White;
                         lblRunningStatus.Text = args.Message;
