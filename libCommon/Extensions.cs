@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Globalization;
 
 namespace libCommon
 {
@@ -21,6 +22,16 @@ namespace libCommon
             {
                 return value;
             }
+        }
+
+        public static string Pluralize(this string singular, int count)
+        {
+            if (count == 1)
+            {
+                return singular;
+            }
+
+            return $"{singular}s";
         }
 
         public static string TruncateFilename(this string? value, int maxLength)

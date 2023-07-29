@@ -194,7 +194,6 @@ namespace Mount3DX
                 try
                 {
                     webdavHost.Start();
-                    Log.WriteLine("WebDAV server started.");
                 }
                 catch (Exception ex)
                 {
@@ -206,6 +205,8 @@ namespace Mount3DX
                         Nature = ProgressEventArgs.EnumNature.Bad
                     });
                 }
+
+                Log.WriteLine("WebDAV server finished");
             });
 
             //NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);

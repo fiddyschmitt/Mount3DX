@@ -66,6 +66,9 @@ namespace libVFS.WebDAV.Stores
 
         void RefreshDocumentsList()
         {
+            Log.WriteLine("Refreshing document list");
+            var startTime = DateTime.Now;
+
             try
             {
                 rootFolder = new _3dxFolder(
@@ -108,11 +111,11 @@ namespace libVFS.WebDAV.Stores
 
                         break;
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         if (attempt == maxAttempts)
                         {
-                            throw;
+                            throw new Exception($"Could not retrieve documents after {attempt} attempts. {ex.Message}");
                         }
                     }
                 }
@@ -195,6 +198,9 @@ namespace libVFS.WebDAV.Stores
                                             .SelectMany(document => document.Files)
                                             .Select(file => new _3dxStoreItem(LockingManager, file, false, ServerUrl, Cookies))
                                             .ToDictionary(folder => folder.FullPath, folder => folder);
+
+                var duration = DateTime.Now - startTime;
+                Log.WriteLine($"Document list refreshed. {pathToItemMapping.Count:N0} {"document".Pluralize(pathToItemMapping.Count)}. {attempt:N0} {"attempt".Pluralize(attempt)}. {duration.FormatTimeSpan()}");
             }
             catch (Exception ex)
             {
@@ -251,11 +257,7 @@ namespace libVFS.WebDAV.Stores
             {
                 while (!CancelRefreshTask.IsCancellationRequested)
                 {
-                    try
-                    {
-                        Task.Delay(keepAliveInterval, CancelRefreshTask.Token).Wait();
-                    }
-                    catch { }
+                    try { Task.Delay(keepAliveInterval, CancelRefreshTask.Token).Wait(); } catch { }
 
                     if (CancelRefreshTask.IsCancellationRequested) break;
 

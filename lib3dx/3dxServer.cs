@@ -56,6 +56,8 @@ namespace lib3dx
 
                     if (!pingSuccessful)
                     {
+                        Log.WriteLine($"Server can no longer be pinged. Attempted {attempt} {"time".Pluralize(attempt)}.");
+
                         KeepAliveFailed?.Invoke(this, new ProgressEventArgs()
                         {
                             Message = "Server can no longer be pinged.",

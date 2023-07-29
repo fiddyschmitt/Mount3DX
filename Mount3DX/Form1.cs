@@ -177,6 +177,8 @@ namespace Mount3DX
                     lblRunningStatus.Text = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
 
                     btnOpenVirtualDrive.Visible = false;
+
+                    Log.WriteLine(lblRunningStatus.Text);
                 }));
 
                 Task.Factory.StartNew(session.Start);
