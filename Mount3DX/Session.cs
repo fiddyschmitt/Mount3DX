@@ -72,7 +72,7 @@ namespace Mount3DX
 
                 if (currentCookiesWork)
                 {
-                    Log.WriteLine("Cookies are stilled valid.");
+                    Log.WriteLine("Cookies are still valid.");
                 }
                 else
                 {
