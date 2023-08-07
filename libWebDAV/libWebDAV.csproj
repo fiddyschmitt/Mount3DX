@@ -5,6 +5,7 @@
 	<AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
 
   <ItemGroup>

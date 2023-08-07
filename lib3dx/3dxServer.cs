@@ -278,10 +278,10 @@ namespace lib3dx
             var totalDocs = int.Parse(totalDocsStr);
 
             var pageSize = 100;
-            var totalPages = (int)(totalDocs / (double)pageSize);
+            var totalPages = (int)Math.Ceiling(totalDocs / (double)pageSize);
             var pages = Enumerable
                 .Range(1, totalPages + 1)
-                //s.Take(10)
+                //.Take(10)
                 .ToList();
 
             int pagesRetrieved = 0;
