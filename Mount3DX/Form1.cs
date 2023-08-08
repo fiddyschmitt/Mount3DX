@@ -19,7 +19,7 @@ namespace Mount3DX
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "1.1.0";
+        public static readonly string PROGRAM_VERSION = "1.2.0";
 
         private void Form1_Load(object sender, EventArgs e)
         {
