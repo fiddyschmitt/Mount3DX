@@ -1,12 +1,10 @@
 ﻿using libCommon;
+using Microsoft.Win32;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Firefox;
 using OpenQA.Selenium.Support.UI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace lib3dx
 {
@@ -14,16 +12,11 @@ namespace lib3dx
     {
         public static (bool Success, string Cookies) GetSessionCookies(string loginUrl)
         {
-            FirefoxDriver? driver = null;
+            IWebDriver? driver = null;
 
             try
             {
-                var driverService = FirefoxDriverService.CreateDefaultService();
-                driverService.HideCommandPromptWindow = true;
-                driver = new FirefoxDriver(driverService, new FirefoxOptions()
-                {
-                    AcceptInsecureCertificates = true
-                });
+                driver = GetDriverForDefaultBrowser();
 
                 var wait = new WebDriverWait(driver, TimeSpan.FromMinutes(2));
 
@@ -52,6 +45,50 @@ namespace lib3dx
                 }
                 catch { }
             }
+        }
+
+        static IWebDriver GetDriverForDefaultBrowser()
+        {
+            var browser = GetDefaultBrowser();
+
+            return browser switch
+            {
+                "chrome" => new ChromeDriver(),
+                "firefox" => new FirefoxDriver(),
+                "edge" => new EdgeDriver(),
+                _ => throw new Exception("Unsupported browser."),
+            };
+        }
+
+        static string? GetDefaultBrowser()
+        {
+            using RegistryKey? userChoiceKey = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice");
+            if (userChoiceKey == null)
+            {
+                throw new Exception("Failed to get default browser.");
+            }
+
+            var progIdValue = userChoiceKey?.GetValue("Progid");
+            if (progIdValue == null)
+            {
+                throw new Exception("Failed to get default browser.");
+            }
+
+            var progIdLower = progIdValue?.ToString()?.ToLower() ?? "unknown";
+            if (progIdLower.Contains("chrome"))
+            {
+                return "chrome";
+            }
+            else if (progIdLower.Contains("firefox"))
+            {
+                return "firefox";
+            }
+            else if (progIdLower.Contains("edge"))
+            {
+                return "edge";
+            }
+
+            return null;
         }
     }
 }
