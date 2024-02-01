@@ -19,7 +19,7 @@ namespace lib3dxVFS.WebDAV.Stores
     {
         public readonly _3dxFile _fileInfo;
 
-        public _3dxStoreItem(ILockingManager lockingManager, _3dxFile fileInfo, bool isWritable, string serverUrl, string cookies)
+        public _3dxStoreItem(ILockingManager lockingManager, _3dxFile fileInfo, bool isWritable, string serverUrl, _3dxCookies cookies)
         {
             LockingManager = lockingManager;
             _fileInfo = fileInfo;
@@ -101,7 +101,7 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public bool IsWritable { get; }
         public string ServerUrl { get; }
-        public string Cookies { get; }
+        public _3dxCookies Cookies { get; }
 
         public string Name => _fileInfo.Name;
         public string UniqueKey => _fileInfo.ObjectId;

@@ -30,12 +30,12 @@ namespace libVFS.WebDAV.Stores
         Dictionary<string, _3dxStoreItem> pathToItemMapping = new();
 
         public string ServerUrl { get; }
-        public string Cookies { get; }
+        public _3dxCookies Cookies { get; }
         public int QueryThreads { get; }
         public EventHandler<ProgressEventArgs>? Progress { get; }
         public EventHandler<ProgressEventArgs>? RefreshFailed { get; set; }
 
-        public _3dxStore(string serverUrl, string cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        public _3dxStore(string serverUrl, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
             ServerUrl = serverUrl;
             Cookies = cookies;
@@ -99,14 +99,17 @@ namespace libVFS.WebDAV.Stores
                 {
                     try
                     {
+                        var _3dxServer = new _3dxServer(ServerUrl, Cookies);
+
                         var allDocuments = _3dxServer
-                                                .GetAllDocuments(docsRoot, ServerUrl, Cookies, QueryThreads, Progress, CancelRefreshTask.Token);
+                                                .GetAllDocuments(docsRoot, Cookies, QueryThreads, Progress);
 
                         //var abc = allDocuments.SerializeToJson();
                         //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
 
                         docsRoot.Subfolders = allDocuments
                                                     .Cast<_3dxFolder>()
+                                                    .OrderBy(folder => folder.Name)
                                                     .ToList();
 
                         break;
@@ -127,7 +130,7 @@ namespace libVFS.WebDAV.Stores
 
                 if (attempt > 1)
                 {
-                    Debugger.Break();
+                    //Debugger.Break();
                 }
 
                 //some documents have identical names. Give each an index number

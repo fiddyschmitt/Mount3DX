@@ -19,7 +19,7 @@ namespace lib3dxVFS.WebDAV.Stores
     {
         private static readonly XElement s_xDavCollection = new(WebDavNamespaces.DavNs + "collection");
 
-        public _3dxStoreCollection(ILockingManager lockingManager, _3dxFolder folderInfo, string serverUrl, string cookies)
+        public _3dxStoreCollection(ILockingManager lockingManager, _3dxFolder folderInfo, string serverUrl, _3dxCookies cookies)
         {
             this.LockingManager = lockingManager;
             FolderInfo = folderInfo;
@@ -42,7 +42,7 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public _3dxFolder FolderInfo { get; }
         public string ServerUrl { get; }
-        public string Cookies { get; }
+        public _3dxCookies Cookies { get; }
 
         public Task<StoreItemResult> CopyAsync(IStoreCollection destination, string name, bool overwrite, IHttpContext httpContext)
         {

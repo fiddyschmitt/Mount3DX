@@ -29,6 +29,7 @@ namespace lib3dx
             return $"{Name}";
         }
 
+        /*
         public void PopulateSubfoldersRecursively(string serverUrl, string cookies, int queryThreads)
         {
             var folderQueue = new ConcurrentQueue<_3dxFolder>();
@@ -44,6 +45,7 @@ namespace lib3dx
                         return folder.Subfolders;
                     }, queryThreads, CancellationToken.None);
         }
+        */
 
         public static List<_3dxFolder> GetSubFolders(_3dxFolder folder, string serverUrl, string cookies)
         {

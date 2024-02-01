@@ -27,7 +27,7 @@ namespace Mount3DX
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
         public event EventHandler<ProgressEventArgs>? SessionError;
 
-        public static string? Cookies { get; set; }
+        public static _3dxCookies? Cookies { get; set; }
 
         public Session(Settings settings)
         {
@@ -39,8 +39,6 @@ namespace Mount3DX
         {
             Log.WriteLine("Session starting");
 
-            var loginUrl = Settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
-
             if (Cookies == null)
             {
                 InitialisationProgress?.Invoke(this, new ProgressEventArgs()
@@ -50,7 +48,7 @@ namespace Mount3DX
                 });
 
                 Log.WriteLine("Acquiring cookies.");
-                var cookiesResult = _3dxLogin.GetSessionCookies(loginUrl);
+                var cookiesResult = _3dxLogin.GetSessionCookies(Settings._3dx.ServerUrl);
 
                 if (cookiesResult.Success)
                 {
@@ -68,7 +66,7 @@ namespace Mount3DX
 
                 //see if the cookies work
                 _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
-                var currentCookiesWork = _3dxServer.Ping(Settings._3dx.ServerUrl, Cookies, CancellationToken.None);
+                var currentCookiesWork = _3dxServer.Ping(Cookies, CancellationToken.None);
 
                 if (currentCookiesWork)
                 {
@@ -84,7 +82,7 @@ namespace Mount3DX
                     });
 
                     Log.WriteLine("Server did not respond to ping. Acquiring new cookies.");
-                    var cookiesResult = _3dxLogin.GetSessionCookies(loginUrl);
+                    var cookiesResult = _3dxLogin.GetSessionCookies(Settings._3dx.ServerUrl);
 
                     if (cookiesResult.Success)
                     {
@@ -115,7 +113,7 @@ namespace Mount3DX
 
             Log.WriteLine("Pinging server.");
             _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
-            var pingSuccessful = _3dxServer.Ping(Settings._3dx.ServerUrl, Cookies, CancellationToken.None);
+            var pingSuccessful = _3dxServer.Ping(Cookies, CancellationToken.None);
 
             if (pingSuccessful)
             {

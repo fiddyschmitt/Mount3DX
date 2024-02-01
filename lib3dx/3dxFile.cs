@@ -24,7 +24,7 @@ namespace lib3dx
             Size = size;
         }
 
-        public MemoryStream Download(string serverUrl, string cookies)
+        public MemoryStream Download(string serverUrl, _3dxCookies cookies)
         {
             try
             {
@@ -40,7 +40,7 @@ namespace lib3dx
                 };
 
                 var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+                httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSpace.Cookie);
 
                 var downloadTokenJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
                 var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
@@ -56,7 +56,7 @@ namespace lib3dx
                 request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
 
                 httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+                httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSpace.Cookie);
 
                 var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
                 var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];

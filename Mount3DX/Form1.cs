@@ -19,7 +19,7 @@ namespace Mount3DX
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "1.2.0";
+        public static readonly string PROGRAM_VERSION = "1.3.0";
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -202,8 +202,10 @@ namespace Mount3DX
         private void Scratch()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            var loginUrl = settings._3dx.ServerUrl.UrlCombine("common/emxNavigator.jsp");
-            var (Success, Cookies) = _3dxLogin.GetSessionCookies(loginUrl);
+            var (Success, Cookies) = _3dxLogin.GetSessionCookies(settings._3dx.ServerUrl);
+
+            if (Cookies == null) return;
+
             var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, Cookies);
 
             var root = new _3dxFolder(
