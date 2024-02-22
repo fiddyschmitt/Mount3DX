@@ -18,12 +18,13 @@ using System.Diagnostics;
 using libVFS.VFS.Folders;
 using libCommon.Events;
 using System.Web;
+using lib3dxVFS.WebDAV.Locks;
 
 namespace libVFS.WebDAV.Stores
 {
     public class _3dxStore : IStore
     {
-        readonly ILockingManager LockingManager = new InMemoryLockingManager();
+        readonly ILockingManager LockingManager = new NoLocking();
 
         _3dxFolder? rootFolder;
         Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new();
@@ -111,6 +112,40 @@ namespace libVFS.WebDAV.Stores
                                                     .Cast<_3dxFolder>()
                                                     .OrderBy(folder => folder.Name)
                                                     .ToList();
+
+                        //Add one level of indirection: A folder for each document (without Rev number)
+                        //docsRoot.Subfolders = allDocuments
+                        //                        .GroupBy(
+                        //                            doc => doc.OriginalName,
+                        //                            doc => doc,
+                        //                            (k, grp) => new
+                        //                            {
+                        //                                FolderName = k,
+                        //                                Docs = grp.ToList()
+                        //                            })
+                        //                        .Select(grp =>
+                        //                        {
+                        //                            var genericFolderForDocument = new _3dxFolder(
+                        //                                                    Guid.NewGuid().ToString(),
+                        //                                                    grp.FolderName,
+                        //                                                    docsRoot,
+                        //                                                    grp.Docs.FirstOrDefault()?.CreationTimeUtc ?? DateTime.Now,
+                        //                                                    grp.Docs.FirstOrDefault()?.LastWriteTimeUtc ?? DateTime.Now,
+                        //                                                    grp.Docs.FirstOrDefault()?.LastAccessTimeUtc ?? DateTime.Now);
+
+                        //                            var subfolders = grp
+                        //                                                .Docs
+                        //                                                .Cast<_3dxFolder>()
+                        //                                                .ToList();
+
+                        //                            subfolders
+                        //                                .ForEach(subfolder => subfolder.Parent = genericFolderForDocument);
+
+                        //                            genericFolderForDocument.Subfolders.AddRange(subfolders);
+
+                        //                            return genericFolderForDocument;
+                        //                        })
+                        //                        .ToList();
 
                         break;
                     }
@@ -200,6 +235,16 @@ namespace libVFS.WebDAV.Stores
                                             .Select(folder => new _3dxStoreCollection(LockingManager, folder, ServerUrl, Cookies))
                                             .ToDictionary(folder => folder.FullPath, folder => folder);
 
+                //using (var file = File.OpenWrite(@"C:\Temp\pathToCollectionMapping.txt"))
+                //using (var sw = new StreamWriter(file))
+                //{
+                //    foreach (var kvp in pathToCollectionMapping)
+                //    {
+                //        sw.WriteLine($"{kvp.Key} = {kvp.Value.FullPath}");
+                //    }
+                //}
+
+
                 pathToItemMapping = new[] { rootFolder }
                                             .Recurse(folder => folder.Subfolders)
                                             .OfType<_3dxDocument>()
@@ -234,6 +279,7 @@ namespace libVFS.WebDAV.Stores
         public Task<IStoreItem?> GetItemAsync(Uri uri, IHttpContext httpContext)
         {
             var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
+            requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
 
             if (pathToCollectionMapping.ContainsKey(requestedPath))
             {
