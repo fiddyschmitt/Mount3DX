@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -69,17 +70,6 @@ namespace NWebDav.Server.Handlers
             // Determine the list of properties that need to be obtained
             var propertyList = new List<XName>();
             var propertyMode = await GetRequestedPropertiesAsync(request, propertyList).ConfigureAwait(false);
-
-            if (cachedResponses.ContainsKey((request.Url, request.GetDepth())))
-            {
-                var cachedDoc = cachedResponses[(request.Url, request.GetDepth())];
-
-                var str1 = request.Url + " " + cachedDoc.ToString().Length;
-
-                // Stream the document
-                await response.SendResponseAsync(DavStatusCode.MultiStatus, cachedDoc).ConfigureAwait(false);
-                return true;
-            }
 
             // Generate the list of items from which we need to obtain the properties
             var entries = new List<PropertyEntry>();
@@ -182,6 +172,11 @@ namespace NWebDav.Server.Handlers
 
             //cachedResponses.Add((request.Url, request.GetDepth()), xDocument);
 
+            //var requestedPath = UriHelper.GetDecodedPath(request.Url)[1..].Replace('/', Path.DirectorySeparatorChar);
+            //requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
+            //var outputFilename = Path.Combine(@"C:\Temp\2024-02-22 - propfinds", requestedPath) + ".txt";
+            //File.WriteAllText(outputFilename, xDocument.ToString());
+
             // Stream the document
             await response.SendResponseAsync(DavStatusCode.MultiStatus, xDocument).ConfigureAwait(false);
 
@@ -190,8 +185,6 @@ namespace NWebDav.Server.Handlers
             // Finished writing
             return true;
         }
-
-        readonly Dictionary<(Uri RequestUri, int Depth), XDocument> cachedResponses = new();
 
         private async Task AddPropertyAsync(IHttpContext httpContext, XElement xResponse, XElement xPropStatValues, IPropertyManager propertyManager, IStoreItem item, XName propertyName, IList<XName> addedProperties)
         {
