@@ -40,6 +40,13 @@ namespace libWebDAV
                         //.UseUrls("http://*:11000")
                         .ConfigureWebHostDefaults(webBuilder =>
                         {
+                            /*
+                            webBuilder.ConfigureKestrel(serverOptions =>
+                            {
+                                serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(10);
+                            });
+                            */
+
                             webBuilder.UseStartup<Startup>();
                         })
                         .Build();

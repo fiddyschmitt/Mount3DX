@@ -52,6 +52,11 @@ namespace libWebDAV
 
                 // Dispatch request
                 await webDavDispatcher.DispatchRequestAsync(httpContext).ConfigureAwait(false);
+
+                //Address port exhaustion of the ephemeral ports.
+                //Confirm by running:
+                //Get-NetTCPConnection | Group-Object -Property State, OwningProcess | Select -Property Count, Name, @{Name="ProcessName";Expression={(Get-Process -PID ($_.Name.Split(',')[-1].Trim(' '))).Name}}, Group | Sort Count -Descending | Select-Object -First 10
+                context.Connection.RequestClose();
             });
         }
     }
