@@ -316,10 +316,52 @@ namespace lib3dx
                             .WithDegreeOfParallelism(queryThreads)
                             .SelectMany(page =>
                             {
-                                var docPageStr = GetDocumentPage(cookies, page, pageSize, searchId);
-                                var docPageJson = JObject.Parse(docPageStr);
+                                string docPageStr;
+                                JToken? resultObj = null;
 
-                                var resultObj = docPageJson["results"] ?? throw new Exception($"Could not retrieve results for page {page}");
+                                int attempt;
+                                int maxAttempts = 5;
+
+                                for (attempt = 1; attempt <= maxAttempts; attempt++)
+                                {
+                                    try
+                                    {
+                                        docPageStr = GetDocumentPage(cookies, page, pageSize, searchId);
+                                        var docPageJson = JObject.Parse(docPageStr);
+                                        resultObj = docPageJson["results"];
+
+                                        if (docPageJson != null)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Log.WriteLine($"Could not retrieve results for page {page}, during attempt {attempt}. {ex.Message}");
+                                    }
+                                }
+
+                                if (resultObj == null)
+                                {
+                                    var couldNotRetrievePage = $"Could not retrieve results for page {page}. Attempted {attempt} {"time".Pluralize(attempt)}.";
+                                    Log.WriteLine(couldNotRetrievePage);
+
+                                    /*
+                                    progress?.Invoke(null, new ProgressEventArgs()
+                                    {
+                                        Message = couldNotRetrievePage,
+                                        Nature = ProgressEventArgs.EnumNature.Bad
+                                    });
+                                    */
+
+                                    throw new Exception(couldNotRetrievePage);
+                                }
+
+                                if (attempt > 1)
+                                {
+                                    Log.WriteLine($"Successfully retrieved page {page} after {attempt} {"attempt".Pluralize(attempt)}");
+                                }
+
 
                                 var documentIds = resultObj
                                                     .Select(result =>
@@ -383,6 +425,10 @@ namespace lib3dx
             }
 
             derivedName = FileUtility.ReplaceInvalidChars(derivedName);
+
+            derivedName = derivedName.TrimEnd('.').Trim();
+            derivedName = derivedName[..Math.Min(120, derivedName.Length)];
+            derivedName = derivedName.TrimEnd('.').Trim();
 
             var newDocument = new _3dxDocument(
                                     documentObjectId,
