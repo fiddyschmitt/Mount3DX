@@ -66,37 +66,37 @@ namespace lib3dxVFS.WebDAV.Stores
             },
 
             // Default locking property handling via the LockingManager
-            new DavLockDiscoveryDefault<_3dxStoreItem>(),
-            new DavSupportedLockDefault<_3dxStoreItem>(),
+            //new DavLockDiscoveryDefault<_3dxStoreItem>(),
+            //new DavSupportedLockDefault<_3dxStoreItem>(),
 
-            // Hopmann/Lippert collection properties
-            // (although not a collection, the IsHidden property might be valuable)
-            new DavExtCollectionIsHidden<_3dxStoreItem>
-            {
-                Getter = (context, item) => false
-            },
+            //// Hopmann/Lippert collection properties
+            //// (although not a collection, the IsHidden property might be valuable)
+            //new DavExtCollectionIsHidden<_3dxStoreItem>
+            //{
+            //    Getter = (context, item) => false
+            //},
 
-            // Win32 extensions
-            new Win32CreationTime<_3dxStoreItem>
-            {
-                Getter = (context, item) => item._fileInfo.CreationTimeUtc,
-                Setter = (context, item, value) => DavStatusCode.NotImplemented
-            },
-            new Win32LastAccessTime<_3dxStoreItem>
-            {
-                Getter = (context, item) => item._fileInfo.LastAccessTimeUtc,
-                Setter = (context, item, value) => DavStatusCode.NotImplemented
-            },
-            new Win32LastModifiedTime<_3dxStoreItem>
-            {
-                Getter = (context, item) => item._fileInfo.LastWriteTimeUtc,
-                Setter = (context, item, value) => DavStatusCode.NotImplemented
-            },
-            new Win32FileAttributes<_3dxStoreItem>
-            {
-                Getter = (context, item) => FileAttributes.Normal,
-                Setter = (context, item, value) => DavStatusCode.NotImplemented
-            }
+            //// Win32 extensions
+            //new Win32CreationTime<_3dxStoreItem>
+            //{
+            //    Getter = (context, item) => item._fileInfo.CreationTimeUtc,
+            //    Setter = (context, item, value) => DavStatusCode.NotImplemented
+            //},
+            //new Win32LastAccessTime<_3dxStoreItem>
+            //{
+            //    Getter = (context, item) => item._fileInfo.LastAccessTimeUtc,
+            //    Setter = (context, item, value) => DavStatusCode.NotImplemented
+            //},
+            //new Win32LastModifiedTime<_3dxStoreItem>
+            //{
+            //    Getter = (context, item) => item._fileInfo.LastWriteTimeUtc,
+            //    Setter = (context, item, value) => DavStatusCode.NotImplemented
+            //},
+            //new Win32FileAttributes<_3dxStoreItem>
+            //{
+            //    Getter = (context, item) => FileAttributes.Normal,
+            //    Setter = (context, item, value) => DavStatusCode.NotImplemented
+            //}
         });
 
         public bool IsWritable { get; }
@@ -111,7 +111,11 @@ namespace lib3dxVFS.WebDAV.Stores
             //var result = Task.FromResult((Stream)_fileInfo.OpenRead());
             //var result = Task.FromResult((Stream)new MemoryStream());
             var fileInMemory = _fileInfo.Download(ServerUrl, Cookies);
-            fileInMemory.Seek(0, SeekOrigin.Begin);
+
+            if (fileInMemory.CanSeek)
+            {
+                fileInMemory.Seek(0, SeekOrigin.Begin);
+            }
             var result = Task.FromResult((Stream)fileInMemory);
             return result;
         }

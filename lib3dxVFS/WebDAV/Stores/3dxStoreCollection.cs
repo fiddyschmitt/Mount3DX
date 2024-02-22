@@ -135,68 +135,68 @@ namespace lib3dxVFS.WebDAV.Stores
             },
 
             // Default locking property handling via the LockingManager
-            new DavLockDiscoveryDefault<_3dxStoreCollection>(),
-            new DavSupportedLockDefault<_3dxStoreCollection>(),
+            //new DavLockDiscoveryDefault<_3dxStoreCollection>(),
+            //new DavSupportedLockDefault<_3dxStoreCollection>(),
 
             // Hopmann/Lippert collection properties
-            new DavExtCollectionChildCount<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
-            },
-            new DavExtCollectionIsFolder<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => true
-            },
-            new DavExtCollectionIsHidden<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => false
-            },
-            new DavExtCollectionIsStructuredDocument<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => false
-            },
-            new DavExtCollectionHasSubs<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Any()
-            },
-            new DavExtCollectionNoSubs<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => false
-            },
-            new DavExtCollectionObjectCount<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
-            },
-            new DavExtCollectionReserved<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => !collection.IsWritable
-            },
-            new DavExtCollectionVisibleCount<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
-            },
+            //new DavExtCollectionChildCount<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
+            //},
+            //new DavExtCollectionIsFolder<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => true
+            //},
+            //new DavExtCollectionIsHidden<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => false
+            //},
+            //new DavExtCollectionIsStructuredDocument<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => false
+            //},
+            //new DavExtCollectionHasSubs<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.Subfolders.Any()
+            //},
+            //new DavExtCollectionNoSubs<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => false
+            //},
+            //new DavExtCollectionObjectCount<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
+            //},
+            //new DavExtCollectionReserved<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => !collection.IsWritable
+            //},
+            //new DavExtCollectionVisibleCount<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.Subfolders.Count
+            //},
 
             // Win32 extensions
-            new Win32CreationTime<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.CreationTimeUtc,
-                Setter = (context, collection, value) => DavStatusCode.NotImplemented
-            },
-            new Win32LastAccessTime<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.LastAccessTimeUtc,
-                Setter = (context, collection, value) => DavStatusCode.NotImplemented
-            },
-            new Win32LastModifiedTime<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => collection.FolderInfo.LastWriteTimeUtc,
-                Setter = (context, collection, value) => DavStatusCode.NotModified
-            },
-            new Win32FileAttributes<_3dxStoreCollection>
-            {
-                Getter = (context, collection) => FileAttributes.Directory,
-                Setter = (context, collection, value) => DavStatusCode.NotModified
-            }
+            //new Win32CreationTime<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.CreationTimeUtc,
+            //    Setter = (context, collection, value) => DavStatusCode.NotImplemented
+            //},
+            //new Win32LastAccessTime<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.LastAccessTimeUtc,
+            //    Setter = (context, collection, value) => DavStatusCode.NotImplemented
+            //},
+            //new Win32LastModifiedTime<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => collection.FolderInfo.LastWriteTimeUtc,
+            //    Setter = (context, collection, value) => DavStatusCode.NotModified
+            //},
+            //new Win32FileAttributes<_3dxStoreCollection>
+            //{
+            //    Getter = (context, collection) => FileAttributes.Directory,
+            //    Setter = (context, collection, value) => DavStatusCode.NotModified
+            //}
             });
 
     }
