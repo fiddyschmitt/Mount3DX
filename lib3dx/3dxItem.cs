@@ -11,7 +11,7 @@ namespace lib3dx
     {
         public string ObjectId { get; set; }
         public string Name { get; set; }
-        protected _3dxItem? Parent { get; set; }
+        public _3dxItem? Parent { get; set; }
         public DateTime CreationTimeUtc { get; set; } = new DateTime(2027, 1, 1);
         public DateTime LastWriteTimeUtc { get; set; } = new DateTime(2027, 1, 1);
         public DateTime LastAccessTimeUtc { get; set; } = new DateTime(2027, 1, 1);
