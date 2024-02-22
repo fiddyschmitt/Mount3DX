@@ -45,7 +45,13 @@ namespace libCommon
         public static string FormatTimeSpan(this TimeSpan timeSpan)
         {
             string? FormatPart(int quantity, string name) => quantity > 0 ? $"{quantity} {name}{(quantity > 1 ? "s" : "")}" : null;
-            return string.Join(", ", new[] { FormatPart(timeSpan.Days, "day"), FormatPart(timeSpan.Hours, "hour"), FormatPart(timeSpan.Minutes, "minute") }.Where(x => x != null));
+            return string.Join(", ", new[] { 
+                FormatPart(timeSpan.Days, "day"), 
+                FormatPart(timeSpan.Hours, "hour"), 
+                FormatPart(timeSpan.Minutes, "minute"),
+                FormatPart(timeSpan.Seconds, "second")}
+            .Where(x => x != null)
+            .Take(2));
         }
 
         public static IEnumerable<T> Recurse<T>(this T source, Func<T, T?> childSelector, bool depthFirst = false)
