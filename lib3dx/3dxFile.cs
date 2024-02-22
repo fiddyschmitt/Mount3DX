@@ -24,7 +24,7 @@ namespace lib3dx
             Size = size;
         }
 
-        public MemoryStream Download(string serverUrl, _3dxCookies cookies)
+        public Stream Download(string serverUrl, _3dxCookies cookies)
         {
             try
             {
@@ -61,7 +61,7 @@ namespace lib3dx
                 var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
                 var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
 
-                MemoryStream result;
+                Stream result;
                 if (datalements == null)
                 {
                     result = new MemoryStream();
@@ -78,9 +78,17 @@ namespace lib3dx
                     //download the file
                     httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
 
-                    var response = httpClient.GetAsync(downloadUrl).Result;
-                    result = new MemoryStream();
-                    response.Content.CopyTo(result, null, CancellationToken.None);
+                    //settings to allow large files to be downloaded
+                    httpClient.Timeout = TimeSpan.FromMinutes(30);  //default is 1 minute, 40 seconds
+                    var opt = HttpCompletionOption.ResponseHeadersRead; //to avoid: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647.
+
+                    var response = httpClient.GetAsync(downloadUrl, opt).Result;
+
+                    //todo: Consider returning response.Content.ReadAsStream(), instead of MemoryStream being the intermediary. Might need to be seekable though;
+                    //result = new MemoryStream();
+                    //response.Content.CopyTo(result, null, CancellationToken.None);
+
+                    result = response.Content.ReadAsStream();
                 }
 
                 return result;
@@ -90,7 +98,7 @@ namespace lib3dx
                 Log.WriteLine($"Error while downloading file to MemoryStream:{Environment.NewLine}{ex}");
             }
 
-            return (MemoryStream)MemoryStream.Null;
+            return (MemoryStream)Stream.Null;
         }
     }
 }
