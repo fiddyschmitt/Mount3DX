@@ -119,7 +119,7 @@ namespace NWebDav.Server.Helpers
         {
             // Obtain the depth header (no header means infinity)
             var depthHeader = request.GetHeaderValue("Depth");
-            if (depthHeader == null || depthHeader == "infinity")
+            if (string.IsNullOrEmpty(depthHeader) || depthHeader == "infinity")
                 return int.MaxValue;
 
             // Determined depth
