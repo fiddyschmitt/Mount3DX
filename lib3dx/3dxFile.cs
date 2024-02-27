@@ -64,7 +64,7 @@ namespace lib3dx
                 Stream result;
                 if (datalements == null)
                 {
-                    result = new MemoryStream();
+                    result = Stream.Null;
                 }
                 else
                 {
