@@ -17,7 +17,7 @@ namespace Mount3DX
     public class Session
     {
         private readonly Settings Settings;
-
+        private readonly uint MaxMetadataSizeInBytes;
         _3dxServer? _3dxServer;
         _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
@@ -29,9 +29,10 @@ namespace Mount3DX
 
         public static _3dxCookies? Cookies { get; set; }
 
-        public Session(Settings settings)
+        public Session(Settings settings, uint maxMetadataSizeInBytes)
         {
             Settings = settings;
+            MaxMetadataSizeInBytes = maxMetadataSizeInBytes;
             ComputedUNC = settings.Vfs.GetComputedUNC();
         }
 
@@ -154,8 +155,10 @@ namespace Mount3DX
 
                 _3dxStore = new _3dxStore(
                     Settings._3dx.ServerUrl,
+                    Settings.Vfs.WebDavServerUrl,
                     Cookies,
                     Settings._3dx.QueryThreads,
+                    MaxMetadataSizeInBytes,
                     InitialisationProgress);
 
                 Log.WriteLine($"{nameof(_3dxStore)} initialised.");

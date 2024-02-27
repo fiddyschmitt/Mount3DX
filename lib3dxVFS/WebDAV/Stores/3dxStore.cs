@@ -19,6 +19,9 @@ using libVFS.VFS.Folders;
 using libCommon.Events;
 using System.Web;
 using lib3dxVFS.WebDAV.Locks;
+using NWebDav.Server.Handlers;
+using lib3dxVFS.WebDAV.Stubs;
+using libCommon.Comparers;
 
 namespace libVFS.WebDAV.Stores
 {
@@ -31,16 +34,20 @@ namespace libVFS.WebDAV.Stores
         Dictionary<string, _3dxStoreItem> pathToItemMapping = new();
 
         public string ServerUrl { get; }
+        public string WebDavServerUrl { get; }
         public _3dxCookies Cookies { get; }
         public int QueryThreads { get; }
+        private uint MaxMetadataSizeInBytes;
         public EventHandler<ProgressEventArgs>? Progress { get; }
         public EventHandler<ProgressEventArgs>? RefreshFailed { get; set; }
 
-        public _3dxStore(string serverUrl, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        public _3dxStore(string serverUrl, string webDavServerUrl, _3dxCookies cookies, int queryThreads, uint maxMetadataSizeInBytes, EventHandler<ProgressEventArgs>? progress)
         {
             ServerUrl = serverUrl;
+            WebDavServerUrl = webDavServerUrl;
             Cookies = cookies;
             QueryThreads = queryThreads;
+            MaxMetadataSizeInBytes = maxMetadataSizeInBytes;
             Progress = progress;
 
 
@@ -230,27 +237,121 @@ namespace libVFS.WebDAV.Stores
                         }
                     });
 
-                pathToCollectionMapping = new[] { rootFolder }
-                                            .Recurse(folder => folder.Subfolders)
-                                            .Select(folder => new _3dxStoreCollection(LockingManager, folder, ServerUrl, Cookies))
-                                            .ToDictionary(folder => folder.FullPath, folder => folder);
+                //Windows 10 has very restrictive WebDAV settings. By default, metadata returned by PROPFIND must be less than 1,000,000 bytes.
+                //This is controlled by HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WebClient\Parameters\FileAttributesLimitInBytes
+                //Let's create a folder structure which fits within that constraint.
 
-                //using (var file = File.OpenWrite(@"C:\Temp\pathToCollectionMapping.txt"))
-                //using (var sw = new StreamWriter(file))
-                //{
-                //    foreach (var kvp in pathToCollectionMapping)
-                //    {
-                //        sw.WriteLine($"{kvp.Key} = {kvp.Value.FullPath}");
-                //    }
-                //}
+                //MaxMetadataSizeInBytes = 1_000_000;
+                var originalTopLevelFolders = rootFolder
+                                                .Subfolders
+                                                .OrderBy(folder => folder.Name, new ExplorerComparer())
+                                                .ToList();
+
+                var numberFoldersToUse = 1;
+                while (true)
+                {
+                    pathToCollectionMapping = new[] { rootFolder }
+                                                .Recurse(folder => folder.Subfolders)
+                                                .Select(folder => new _3dxStoreCollection(LockingManager, folder, ServerUrl, Cookies))
+                                                .ToDictionary(folder => folder.FullPath, folder => folder);
+
+                    pathToItemMapping = new[] { rootFolder }
+                                                .Recurse(folder => folder.Subfolders)
+                                                .OfType<_3dxDocument>()
+                                                .SelectMany(document => document.Files)
+                                                .Select(file => new _3dxStoreItem(LockingManager, file, false, ServerUrl, Cookies))
+                                                .ToDictionary(folder => folder.FullPath, folder => folder);
+
+                    var folderUrlsToCheck = new List<string>();
+                    if (numberFoldersToUse == 1)
+                    {
+                        folderUrlsToCheck.Add(WebDavServerUrl);
+                    }
+                    else
+                    {
+                        folderUrlsToCheck = rootFolder
+                                                .Subfolders
+                                                .Select(f => WebDavServerUrl.UrlCombine(f.Name))
+                                                .ToList();
+                    }
+
+                    var anyAreOversize = folderUrlsToCheck
+                                            .Any(folder =>
+                                            {
+                                                //Check how large the metadata is folder this folder
+                                                var propFindHandler = new PropFindHandler();
+                                                var fakeHttpContext = new FakeHttpContext(new Uri(folder), 1);
+                                                _ = propFindHandler.HandleRequestAsync(fakeHttpContext, this).Result;
+                                                var folderMetadataLength = fakeHttpContext.Response.Stream.Length;
+                                                fakeHttpContext.Response.Stream.Close();
+
+                                                var isOversize = folderMetadataLength > MaxMetadataSizeInBytes;
+
+                                                if (isOversize)
+                                                {
+                                                    Log.WriteLine($"Folder metadata is {folderMetadataLength:N0} bytes, which exceeds WebClient's maximum.");
+                                                }
+
+                                                return isOversize;
+                                            });
+
+                    if (anyAreOversize)
+                    {
+                        numberFoldersToUse++;
+                        var itemsPerFolder = (int)Math.Ceiling(originalTopLevelFolders.Count / (double)numberFoldersToUse);
+
+                        var newTopLevelFolders = originalTopLevelFolders
+                                                    .Chunk(itemsPerFolder)
+                                                    .Select((chunk, index) =>
+                                                    {
+                                                        var firstDocName = (chunk.First() as _3dxDocument)?.OriginalName;
+                                                        var lastDocName = (chunk.Last() as _3dxDocument)?.OriginalName;
+
+                                                        string newVirtualFolderName;
+                                                        if (firstDocName == null || lastDocName == null)
+                                                        {
+                                                            newVirtualFolderName = $"{index + 1}";
+                                                        }
+                                                        else
+                                                        {
+                                                            newVirtualFolderName = $"{firstDocName} ... {lastDocName}";
+                                                        }
+
+                                                        var newVirtualFolder = new _3dxFolder(
+                                                                            Guid.NewGuid().ToString(),
+                                                                            newVirtualFolderName,
+                                                                            rootFolder,
+                                                                            DateTime.Now,
+                                                                            DateTime.Now,
+                                                                            DateTime.Now);
+
+                                                        var subfolders = chunk
+                                                                            .OfType<_3dxFolder>()
+                                                                            .ToList();
+
+                                                        subfolders
+                                                            .ForEach(subfolder => subfolder.Parent = newVirtualFolder);
+
+                                                        newVirtualFolder.Subfolders.AddRange(subfolders);
+
+                                                        return newVirtualFolder;
+                                                    })
+                                                    .ToList();
 
 
-                pathToItemMapping = new[] { rootFolder }
-                                            .Recurse(folder => folder.Subfolders)
-                                            .OfType<_3dxDocument>()
-                                            .SelectMany(document => document.Files)
-                                            .Select(file => new _3dxStoreItem(LockingManager, file, false, ServerUrl, Cookies))
-                                            .ToDictionary(folder => folder.FullPath, folder => folder);
+                        rootFolder.Subfolders = newTopLevelFolders;
+                    }
+                    else
+                    {
+                        //all fit
+                        break;
+                    }
+                }
+
+                if (numberFoldersToUse > 1)
+                {
+                    Log.WriteLine($"Had to use {numberFoldersToUse:N0} top-level folders to fit within the WebClient constraint of {MaxMetadataSizeInBytes:N0} bytes.");
+                }
 
                 var duration = DateTime.Now - startTime;
                 Log.WriteLine($"Document list refreshed in {duration.FormatTimeSpan()}, with {attempt:N0} {"attempt".Pluralize(attempt)}. {pathToItemMapping.Count:N0} {"file".Pluralize(pathToItemMapping.Count)}.");

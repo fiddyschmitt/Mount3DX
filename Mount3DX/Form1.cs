@@ -8,6 +8,7 @@ using System.Net;
 using System.Diagnostics;
 using libCommon.Utilities;
 using System.Collections.Concurrent;
+using Microsoft.Win32;
 
 namespace Mount3DX
 {
@@ -36,6 +37,69 @@ namespace Mount3DX
             lblRunningStatus.Text = string.Empty;
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
+            LogWebClientSetrtings();
+            LoadWebclientSettings();
+        }
+
+        public static uint FileAttributesLimitInBytes = 1_000_000;
+
+        private void LoadWebclientSettings()
+        {
+            var webclientSettingsKey = @"SYSTEM\CurrentControlSet\Services\WebClient\Parameters";
+
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(webclientSettingsKey);
+                if (key != null)
+                {
+                    var valueData = key.GetValue("FileAttributesLimitInBytes") ?? $"{FileAttributesLimitInBytes}";
+                    FileAttributesLimitInBytes = unchecked((uint)(int)valueData);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while reading WebClient settings from {webclientSettingsKey}: {ex}");
+            }
+        }
+
+        private void LogWebClientSetrtings()
+        {
+            var webclientSettingsKey = @"SYSTEM\CurrentControlSet\Services\WebClient\Parameters";
+
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(webclientSettingsKey);
+                if (key != null)
+                {
+                    var lines = key
+                                    .GetValueNames()
+                                    .ToList()
+                                    .Select(valueName =>
+                                    {
+                                        var valueKind = key.GetValueKind(valueName);
+
+                                        object valueData = key.GetValue(valueName) ?? "";
+                                        if (valueKind == RegistryValueKind.DWord)
+                                        {
+                                            valueData = unchecked((uint)(int)valueData);
+                                        }
+                                        else
+                                        {
+                                            valueData = valueData?.ToString() ?? "";
+                                        }
+
+                                        var line = ($@"    {valueName} ({valueKind}) = {valueData}");
+                                        return line;
+                                    })
+                                    .ToString(Environment.NewLine);
+
+                    Log.WriteLine($@"WebClient settings:{Environment.NewLine}HKLM\{webclientSettingsKey}{Environment.NewLine}{lines}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while reading WebClient settings from {webclientSettingsKey}: {ex}");
+            }
         }
 
         private static void InitLogging()
@@ -112,7 +176,7 @@ namespace Mount3DX
                 SaveSettings();
                 LoadSettings();
 
-                session = new Session(settings);
+                session = new Session(settings, FileAttributesLimitInBytes);
 
                 session.InitialisationProgress += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
