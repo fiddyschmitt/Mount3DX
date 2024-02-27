@@ -44,7 +44,7 @@ namespace libCommon
 
         public static string FormatTimeSpan(this TimeSpan timeSpan)
         {
-            string? FormatPart(int quantity, string name) => quantity > 0 ? $"{quantity} {name}{(quantity > 1 ? "s" : "")}" : null;
+            static string? FormatPart(int quantity, string name) => quantity > 0 ? $"{quantity} {name}{(quantity > 1 ? "s" : "")}" : null;
             return string.Join(", ", new[] { 
                 FormatPart(timeSpan.Days, "day"), 
                 FormatPart(timeSpan.Hours, "hour"), 
