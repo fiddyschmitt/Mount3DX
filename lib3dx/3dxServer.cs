@@ -330,7 +330,7 @@ namespace lib3dx
                                         var docPageJson = JObject.Parse(docPageStr);
                                         resultObj = docPageJson["results"];
 
-                                        if (docPageJson != null)
+                                        if (resultObj != null)
                                         {
                                             break;
                                         }
@@ -362,7 +362,7 @@ namespace lib3dx
                                     Log.WriteLine($"Successfully retrieved page {page} after {attempt} {"attempt".Pluralize(attempt)}");
                                 }
 
-
+                                
                                 var documentIds = resultObj
                                                     .Select(result =>
                                                     {
