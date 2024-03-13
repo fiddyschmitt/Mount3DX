@@ -32,7 +32,7 @@ namespace Mount3DX
             InitLogging();
             LoadSettings();
 
-            //Scratch();
+            Scratch();
 
             lblRunningStatus.Text = string.Empty;
 
@@ -266,75 +266,41 @@ namespace Mount3DX
         private void Scratch()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            var (Success, Cookies) = _3dxLogin.GetSessionCookies(settings._3dx.ServerUrl);
+            _3dxCookies? cookies = null;
 
-            if (Cookies == null) return;
-
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, Cookies);
-
-            var root = new _3dxFolder(
-                                "root",
-                                "",
-                                null,
-                                DateTime.Now,
-                                DateTime.Now,
-                                DateTime.Now)
+            var cookiesFile = @"C:\Temp\cookies.txt";
+            if (File.Exists(cookiesFile))
             {
-                Subfolders = _3dxServer.GetRootFolders()
-            };
+                cookies = File.ReadAllText(cookiesFile).DeserializeJson<_3dxCookies>();
 
-            var securityContext = _3dxServer.GetSecurityContext();
+                if (!lib3dx._3dxServer.Ping(cookies, CancellationToken.None))
+                {
+                    //the cache cookies are invalid
+                    cookies = null;
+                }
+            }
 
-            var folderQueue = new ConcurrentQueue<_3dxFolder>();
-            root.Subfolders.ForEach(rt => folderQueue.Enqueue(rt));
+            if (cookies == null)
+            {
+                var (Success, Cookies) = _3dxLogin.GetSessionCookies(settings._3dx.ServerUrl);
+                if (Cookies == null) return;
+                cookies = Cookies;
+                var cookiesStr = Cookies.SerializeToJson();
+                File.WriteAllText(cookiesFile, cookiesStr);
+            }
 
-            int totalFolders = 0;
-            int totalDocs = 0;
-            int totalFiles = 0;
+            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, cookies);
 
-            QueueUtility
-                    .Recurse2(folderQueue, folder =>
-                    {
-                        var itemsInFolder = _3dxServer.GetItemsInFolder(folder, securityContext);
 
-                        var documents = itemsInFolder
-                                            .OfType<_3dxDocument>()
-                                            .ToList();
+            //1. Get all the collectors
+            var collectorsFolder = new _3dxFolder(Guid.NewGuid().ToString(), "Collectors", null, DateTime.Now, DateTime.Now, DateTime.Now);
+            var collectors = _3dxServer.GetAllCollectors(collectorsFolder, cookies, 8, null);
 
-                        var files = documents
-                                        .Sum(doc => doc.Files.Count);
+            //2. Establish all the parents & children (not working yet)
+            _3dxServer.PopulateParentsAndChildren(collectors, cookies, 8, null);
 
-                        folder.Subfolders = itemsInFolder
-                                            .Except(documents)
-                                            .OfType<_3dxFolder>()
-                                            .ToList();
-
-                        Interlocked.Add(ref totalFolders, folder.Subfolders.Count);
-                        Interlocked.Add(ref totalDocs, documents.Count);
-                        Interlocked.Add(ref totalFiles, files);
-
-                        //Debug.WriteLine($"{folder.FullPath}\tSubfolders: {folder.Subfolders.Count:N0}\tDocs: {documents.Count:N0}");
-                        Debug.WriteLine($"Total folders: {totalFolders:N0}\tTotal docs: {totalDocs:N0}\tTotal files: {totalFiles:N0}");
-
-                        return folder.Subfolders;
-
-                    }, settings._3dx.QueryThreads, CancellationToken.None);
-
-            /*
-            var itemTypes = _3dxServer
-                                .itemTypes
-                                .GroupBy(
-                                    itemType => itemType,
-                                    itemType => itemType,
-                                    (key, grp) => new
-                                    {
-                                        ItemType = key,
-                                        Count = grp.Count()
-                                    })
-                                .OrderByDescending(grp => grp.Count)
-                                .Select(grp => $"{grp.ItemType},{grp.Count}")
-                                .ToString(Environment.NewLine);
-            */
+            //3. Get the documents for each collector or Part
+            var specs = _3dxServer.GetSpecificationDocuments("E2268A56C908000065C062670001FABC", collectorsFolder);
         }
 
         private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)

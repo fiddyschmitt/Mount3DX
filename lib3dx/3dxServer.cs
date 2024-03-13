@@ -286,7 +286,7 @@ namespace lib3dx
             return documents;
         }
 
-
+        
         public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
             var firstPageStr = GetDocumentPage(cookies, 0, 1, null);
@@ -534,6 +534,236 @@ namespace lib3dx
             var searchResultsJsonStr = response.Content.ReadAsStringAsync().Result;
 
             return searchResultsJsonStr;
+        }
+
+        public List<_3dxCollector> GetAllCollectors(_3dxFolder parent, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        {
+            var firstPageStr = GetCollectorsPage(cookies, 0, 1, null);
+            var firstPageJson = JObject.Parse(firstPageStr) ?? throw new Exception("Could not parse JSON retrieved from first search");
+
+            var totalCollectorsStr = (firstPageJson["infos"]?["nmatches"]?.ToString()) ?? throw new Exception("Could not find nmatches field in JSON");
+            var totalCollectors = int.Parse(totalCollectorsStr);
+
+            var nextStartStr = (firstPageJson["infos"]?["next_start"]?.ToString()) ?? throw new Exception("Could not find next_start field in JSON");
+            var searchId = nextStartStr.Split(" ", StringSplitOptions.None).Last();
+
+
+
+            var pageSize = 100;
+            var totalPages = (int)Math.Ceiling(totalCollectors / (double)pageSize);
+            var pages = Enumerable
+                .Range(0, totalPages)
+                //.Take(10)
+                .ToList();
+
+            var pagesRetrieved = 0;
+            var collectorsDiscovered = 0;
+
+            var result = pages
+                            .AsParallel()
+                            .AsOrdered()
+                            .WithDegreeOfParallelism(queryThreads)
+                            .SelectMany(page =>
+                            {
+                                string collectorsPageStr;
+                                JToken? resultObj = null;
+
+                                int attempt;
+                                int maxAttempts = 5;
+
+                                for (attempt = 1; attempt <= maxAttempts; attempt++)
+                                {
+                                    try
+                                    {
+                                        collectorsPageStr = GetCollectorsPage(cookies, page, pageSize, searchId);
+                                        var docPageJson = JObject.Parse(collectorsPageStr);
+                                        resultObj = docPageJson["results"];
+
+                                        if (resultObj != null)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Log.WriteLine($"Could not retrieve Collectors results for page {page}, during attempt {attempt}. {ex.Message}");
+                                    }
+                                }
+
+                                if (resultObj == null)
+                                {
+                                    var couldNotRetrievePage = $"Could not retrieve Collectors results for page {page}. Attempted {attempt} {"time".Pluralize(attempt)}.";
+                                    Log.WriteLine(couldNotRetrievePage);
+
+                                    throw new Exception(couldNotRetrievePage);
+                                }
+
+                                if (attempt > 1)
+                                {
+                                    Log.WriteLine($"Successfully retrieved Collectors page {page} after {attempt} {"attempt".Pluralize(attempt)}");
+                                }
+
+
+                                var collectors = resultObj
+                                                    .Select(result =>
+                                                    {
+                                                        var attributes = result["attributes"];
+
+                                                        var resourceIdAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("resourceid") ?? false);
+                                                        var resourceId = resourceIdAttribute?["value"]?.ToString();
+
+                                                        var labelAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("ds6w:label") ?? false);
+                                                        var label = labelAttribute?["value"]?.ToString();
+
+                                                        var createdAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("ds6w:when/ds6w:created") ?? false);
+                                                        var created = DateTime.Parse(createdAttribute?["value"]?.ToString());
+
+                                                        var modifiedAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("ds6w:when/ds6w:modified") ?? false);
+                                                        var modified = DateTime.Parse(modifiedAttribute?["value"]?.ToString());
+
+                                                        var newCollector = new _3dxCollector(resourceId, label, null, created, modified, modified);
+                                                        return newCollector;
+                                                    })
+                                                    .ToList();
+
+                                Interlocked.Increment(ref pagesRetrieved);
+                                Interlocked.Add(ref collectorsDiscovered, collectors.Count);
+
+                                //progress?.Invoke(null, new ProgressEventArgs()
+                                //{
+                                //    Message = $"Retrieved {pagesRetrieved:N0}/{totalPages:N0} pages. {collectorsDiscovered:N0} documents discovered.",
+                                //    Nature = ProgressEventArgs.EnumNature.Neutral
+                                //});
+
+                                return collectors;
+                            })
+                            .ToList();
+
+            return result!;
+        }
+
+        public void PopulateParentsAndChildren(List<_3dxCollector> collectors, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        {
+            collectors
+                .Where(collector => collector.ObjectId == "3F55985610280000647597C400056B35")
+                .ToList()
+                .ForEach(collector =>
+                {
+                    var relationsStr = GetRelationsPage(cookies, collector.ObjectId);
+                    Console.WriteLine();
+                });
+        }
+
+        public static string GetRelationsPage(_3dxCookies cookies, string itemId)
+        {
+            var searchUrl = cookies._3DSpace.BaseUrl.UrlCombine("resources/enorelnav/navigate/getecosystem");
+
+            var requestJson = $$"""
+                    {
+                        "ecoSystemWithDetail":true,
+                        "debug":false,
+                        "id":"{{itemId}}"}
+                    """;
+
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(searchUrl),
+                Method = HttpMethod.Post,
+                Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+            };
+
+            var httpClient = WebUtility.NewHttpClientWithCompression();
+
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSpace.Cookie);
+
+            var response = httpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var searchResultsJsonStr = response.Content.ReadAsStringAsync().Result;
+
+            return searchResultsJsonStr;
+        }
+
+        public static string GetCollectorsPage(_3dxCookies cookies, int pageNumber, int pageSize, string? searchId)
+        {
+            var searchUrl = cookies._3DSearch.BaseUrl.UrlCombine("search?xrequestedwith=xmlhttprequest");
+
+            var requestJson = $$"""
+                    {
+                        "label": "preview-1c00d81706698017698",
+                        "locale": "en",
+                        "nresults": {{pageSize}},
+                        "query": "((flattenedtaxonomies:types/BOE_Collector))",
+                        "refine": {
+                        },
+                        "select_predicate": [
+                            "ds6w:label",
+                            "ds6w:status",
+                            "ds6w:type"
+                        ],
+                        "source": [
+                            "3dspace"
+                        ],
+                        "start": 0,
+                        "tenant": "OnPremise",
+                        "with_synthesis": true
+                    }
+                    """;
+
+            if (pageNumber > 0)
+            {
+                var start = pageNumber * pageSize;
+                var nextStart = $"{start} 0 {pageNumber} {searchId}";
+
+                requestJson = requestJson.Replace("""
+                        "start": 0,
+                        """,
+
+                    $$"""
+                        "next_start": "{{nextStart}}",
+                        """);
+            }
+
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(searchUrl),
+                Method = HttpMethod.Post,
+                Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+            };
+
+            var httpClient = WebUtility.NewHttpClientWithCompression();
+
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSearch.Cookie);
+
+            var response = httpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var searchResultsJsonStr = response.Content.ReadAsStringAsync().Result;
+
+            return searchResultsJsonStr;
+        }
+
+        public List<_3dxDocument?> GetSpecificationDocuments(string parentId, _3dxFolder parent)
+        {
+            var getDocumentDetails = ServerUrl.UrlCombine($"resources/v1/modeler/documents/parentId/{parentId}?parentRelName=SpecificationDocument&parentDirection=from&$fields=indexedImage,indexedTypeicon,isDocumentType&$include=versions");
+
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(getDocumentDetails),
+                Method = HttpMethod.Get,
+            };
+
+            var httpClient = WebUtility.NewHttpClientWithCompression();
+
+            httpClient.DefaultRequestHeaders.Add("Cookie", Cookies._3DSpace.Cookie);
+
+            var documentDetailsJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+
+            var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
+
+            var documents = dataField
+                                .Select(o => JTokenToDocument(o, parent))
+                                .ToList();
+
+            return documents;
         }
 
         public string ServerUrl { get; }
