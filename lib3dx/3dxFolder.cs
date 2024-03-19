@@ -19,6 +19,7 @@ namespace lib3dx
     public class _3dxFolder : _3dxItem
     {
         public List<_3dxFolder> Subfolders = new();
+        public List<_3dxFile> Files = new();
 
         public _3dxFolder(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc) : base(objectId, name, parent, creationTimeUtc, lastWriteTimeUtc, lastAccessTimeUtc)
         {

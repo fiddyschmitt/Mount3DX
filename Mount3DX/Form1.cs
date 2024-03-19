@@ -9,6 +9,7 @@ using System.Diagnostics;
 using libCommon.Utilities;
 using System.Collections.Concurrent;
 using Microsoft.Win32;
+using libCommon.Comparers;
 
 namespace Mount3DX
 {
@@ -292,15 +293,20 @@ namespace Mount3DX
             var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, cookies);
 
 
-            //1. Get all the collectors
             var collectorsFolder = new _3dxFolder(Guid.NewGuid().ToString(), "Collectors", null, DateTime.Now, DateTime.Now, DateTime.Now);
-            var collectors = _3dxServer.GetAllCollectors(collectorsFolder, cookies, 8, null);
+            var collectors = _3dxServer
+                                .GetAllCollectors(collectorsFolder, cookies, 8, null)
+                                .ToList();
 
-            //2. Establish all the parents & children (not working yet)
-            _3dxServer.PopulateParentsAndChildren(collectors, cookies, 8, null);
+            Debug.WriteLine($"{DateTime.Now}");
 
-            //3. Get the documents for each collector or Part
-            var specs = _3dxServer.GetSpecificationDocuments("E2268A56C908000065C062670001FABC", collectorsFolder);
+            var allFilesStr = collectors
+                                .OfType<_3dxFolder>()
+                                .Recurse(folder => folder.Subfolders)
+                                .SelectMany(folder => folder.Files)
+                                .OrderBy(file => file.FullPath, new ExplorerComparer())
+                                .Select(file => file.FullPath)
+                                .ToString(Environment.NewLine);
         }
 
         private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)

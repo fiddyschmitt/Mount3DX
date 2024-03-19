@@ -31,5 +31,15 @@ namespace libCommon.Utilities
         {
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
         }
+
+        public static string WebdavCompatibleFilename(string filename)
+        {
+            var derivedName = filename;
+            derivedName = ReplaceInvalidChars(derivedName);
+            derivedName = derivedName.TrimEnd('.').Trim();
+            derivedName = derivedName[..Math.Min(120, derivedName.Length)];
+            derivedName = derivedName.TrimEnd('.').Trim();
+            return derivedName;
+        }
     }
 }

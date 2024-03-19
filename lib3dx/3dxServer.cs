@@ -286,7 +286,7 @@ namespace lib3dx
             return documents;
         }
 
-        
+
         public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
             var firstPageStr = GetDocumentPage(cookies, 0, 1, null);
@@ -362,7 +362,7 @@ namespace lib3dx
                                     Log.WriteLine($"Successfully retrieved page {page} after {attempt} {"attempt".Pluralize(attempt)}");
                                 }
 
-                                
+
                                 var documentIds = resultObj
                                                     .Select(result =>
                                                     {
@@ -424,11 +424,7 @@ namespace lib3dx
                 derivedName += $" ({title})";
             }
 
-            derivedName = FileUtility.ReplaceInvalidChars(derivedName);
-
-            derivedName = derivedName.TrimEnd('.').Trim();
-            derivedName = derivedName[..Math.Min(120, derivedName.Length)];
-            derivedName = derivedName.TrimEnd('.').Trim();
+            derivedName = FileUtility.WebdavCompatibleFilename(derivedName);
 
             var newDocument = new _3dxDocument(
                                     documentObjectId,
@@ -614,6 +610,7 @@ namespace lib3dx
 
                                                         var labelAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("ds6w:label") ?? false);
                                                         var label = labelAttribute?["value"]?.ToString();
+                                                        label = FileUtility.WebdavCompatibleFilename(label);
 
                                                         var createdAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("ds6w:when/ds6w:created") ?? false);
                                                         var created = DateTime.Parse(createdAttribute?["value"]?.ToString());
@@ -624,10 +621,17 @@ namespace lib3dx
                                                         var newCollector = new _3dxCollector(resourceId, label, null, created, modified, modified);
                                                         return newCollector;
                                                     })
+                                                    .Where(collector => collector.Name.EndsWith("Root Software _ Firmware Collector"))
                                                     .ToList();
 
                                 Interlocked.Increment(ref pagesRetrieved);
                                 Interlocked.Add(ref collectorsDiscovered, collectors.Count);
+
+
+                                //Does perform some level of recursion but doesn't go all the way
+                                //PopulateChildren_UsingServerSideRecursion(collectors, cookies, 8, null);
+
+                                PopulateChildren_UsingLocalRecursion(collectors, cookies, 8, null);
 
                                 //progress?.Invoke(null, new ProgressEventArgs()
                                 //{
@@ -639,22 +643,344 @@ namespace lib3dx
                             })
                             .ToList();
 
+            //Populate the files
+            result
+                .OfType<_3dxFolder>()
+                .Recurse2(folder =>
+                {
+                    var specDocs = GetSpecificationDocuments(folder.ObjectId, folder);
+                    folder.Subfolders.AddRange(specDocs);
+
+                    return folder.Subfolders;
+                }, queryThreads, CancellationToken.None);
+
             return result!;
         }
 
-        public void PopulateParentsAndChildren(List<_3dxCollector> collectors, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        //Warning: Does perform some level of recursion but doesn't go all the way
+        public void PopulateChildren_UsingServerSideRecursion(List<_3dxCollector> collectors, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
             collectors
-                .Where(collector => collector.ObjectId == "3F55985610280000647597C400056B35")
-                .ToList()
-                .ForEach(collector =>
+                .OfType<_3dxFolder>()
+                .AsParallel()
+                .WithDegreeOfParallelism(queryThreads)
+                .ForAll(collector =>
                 {
-                    var relationsStr = GetRelationsPage(cookies, collector.ObjectId);
-                    Console.WriteLine();
+                    Debug.WriteLine($"{collector.ObjectId} {collector.FullPath}");
+
+                    //var relationsStr = GetRelationships_UsingProgressiveExpand(cookies, collector.ObjectId);
+
+                    var relationsStr = GetRelationships_UsingExpand(cookies, collector.ObjectId, true);
+                    var resultsObj = JObject
+                                        .Parse(relationsStr)["results"];
+
+                    var allSubfolders = resultsObj
+                                        .Select(res => res["attributes"])
+                                        .Where(attr => attr != null)
+                                        .Where(attr => attr.Any(a => a["name"]?.ToString() == "physicalid"))
+                                        ?.Select(attr =>
+                                        {
+                                            var did = attr.FirstOrDefault(a => a["name"]?.ToString() == "did")?["value"]?.ToString() ?? throw new Exception();
+                                            var physicalId = attr.FirstOrDefault(a => a["name"]?.ToString() == "physicalid")?["value"]?.ToString() ?? throw new Exception();
+                                            var label = attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:label")?["value"]?.ToString() ?? throw new Exception();
+                                            label = FileUtility.WebdavCompatibleFilename(label);
+                                            var created = DateTime.Parse(attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:created")?["value"]?.ToString() ?? throw new Exception());
+                                            var modified = DateTime.Parse(attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:modified")?["value"]?.ToString() ?? throw new Exception());
+                                            var ds6wType = attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:type")?["value"]?.ToString() ?? throw new Exception();
+                                            var itemType = attr.FirstOrDefault(a => a["name"]?.ToString() == "type")?["value"]?.ToString() ?? throw new Exception();
+
+                                            var newFolder = new _3dxFolder(physicalId, label, collector, created, modified, modified);
+                                            return new
+                                            {
+                                                Folder = newFolder,
+                                                did
+                                            };
+                                        })
+                                        .OrderBy(folder => folder.Folder.Name)
+                                        .ToList();
+
+                    //the 'path' arrays tell us the folder structure
+                    resultsObj
+                        .Select(res => res["path"])
+                        .OfType<JArray>()
+                        .ToList()
+                        .ForEach(path =>
+                        {
+                            var currentParentFolder = collector;
+
+                            var didsToExamine = path
+                                                    .Skip(1)        //we don't want the first one, because it's just the collector
+                                                    .SkipLast(1)    //we don't go to the final level because we retrieve that level using GetSpecificationDocuments()
+                                                    .ToList();
+
+                            foreach (var folderDid in didsToExamine)
+                            {
+                                var thisLevelFolder = allSubfolders.FirstOrDefault(f => f.did == folderDid.ToString())?.Folder;
+
+                                if (thisLevelFolder != null)
+                                {
+                                    var alreadyAdded = currentParentFolder.Subfolders.Any(sf => sf.ObjectId == thisLevelFolder.ObjectId);
+                                    if (!alreadyAdded)
+                                    {
+                                        var specDocs = GetSpecificationDocuments(thisLevelFolder.ObjectId, thisLevelFolder);    //todo: We might only need to do this at the leaf nodes
+                                        thisLevelFolder.Subfolders.AddRange(specDocs);
+
+                                        currentParentFolder.Subfolders.Add(thisLevelFolder);
+                                        thisLevelFolder.Parent = currentParentFolder;
+                                    }
+
+                                    currentParentFolder = thisLevelFolder;
+                                }
+                            }
+                        });
                 });
         }
 
-        public static string GetRelationsPage(_3dxCookies cookies, string itemId)
+        public void PopulateChildren_UsingLocalRecursion(List<_3dxCollector> collectors, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        {
+            collectors
+                .OfType<_3dxFolder>()
+                .AsParallel()
+                .WithDegreeOfParallelism(queryThreads)
+                .Recurse2(folder =>
+                {
+                    //Debug.WriteLine($"{folder.ObjectId} {folder.FullPath}");
+
+                    //var relationsStr = GetRelationships_UsingProgressiveExpand(cookies, collector.ObjectId);
+
+                    var relationsStr = GetRelationships_UsingExpand(cookies, folder.ObjectId, false);
+
+                    var subfolders = JObject
+                                        .Parse(relationsStr)["results"]
+                                        .Select(res => res["attributes"])
+                                        .Where(attr => attr != null)
+                                        .Where(attr => attr.Any(a => a["name"]?.ToString() == "physicalid"))
+                                        ?.Select(attr =>
+                                        {
+                                            var physicalId = attr.FirstOrDefault(a => a["name"]?.ToString() == "physicalid")?["value"]?.ToString() ?? throw new Exception();
+                                            var label = attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:label")?["value"]?.ToString() ?? throw new Exception();
+                                            label = FileUtility.WebdavCompatibleFilename(label);
+                                            var created = DateTime.Parse(attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:created")?["value"]?.ToString() ?? throw new Exception());
+                                            var modified = DateTime.Parse(attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:modified")?["value"]?.ToString() ?? throw new Exception());
+                                            var ds6wType = attr.FirstOrDefault(a => a["name"]?.ToString() == "ds6w:type")?["value"]?.ToString() ?? throw new Exception();
+                                            var itemType = attr.FirstOrDefault(a => a["name"]?.ToString() == "type")?["value"]?.ToString() ?? throw new Exception();
+
+                                            var newFolder = new _3dxFolder(physicalId, label, folder, created, modified, modified);
+                                            return newFolder;
+                                        })
+                                        .Where(fol => folder.ObjectId != fol.ObjectId)
+                                        .OrderBy(folder => folder.Name)
+                                        .ToList();
+
+                    folder.Subfolders = subfolders;
+
+                    return subfolders;
+                }, queryThreads, CancellationToken.None);
+        }
+
+        //Warning: entireHierarchy does perform some level of recursion but doesn't go all the way
+        public static string GetRelationships_UsingExpand(_3dxCookies cookies, string itemId, bool entireHierarchy)
+        {
+            var searchUrl = cookies._3DSpace.BaseUrl.UrlCombine("cvservlet/expand");
+
+            var requestJson = $$"""
+                    {
+                        %RECURSION_PLACEHOLDER%
+                        "label": "xEngineer-3473903-1710239530055",
+                        "q.iterative_filter_query_bo": "[ds6w:globalType]:\"ds6w:Document\" OR [ds6w:globalType]:\"ds6w:Part\"",
+                        "root_path_physicalid": [
+                            [
+                                "{{itemId}}"
+                            ]
+                        ],
+                        "select_bo": [
+                            "ds6w:label",
+                            "ds6w:modified",
+                            "ds6w:created",
+                            "ds6w:description",
+                            "ds6wg:revision",
+                            "ds6w:responsible",
+                            "owner",
+                            "ds6w:status",
+                            "ds6w:type",
+                            "ds6wg:EnterpriseExtension.V_PartNumber",
+                            "ds6wg:MaterialUsageExtension.DeclaredQuantity",
+                            "ds6wg:DELFmiContQuantity_Mass.V_ContQuantity",
+                            "ds6wg:DELFmiContQuantity_Volume.V_ContQuantity",
+                            "ds6wg:raw_material.v_dimensiontype",
+                            "type",
+                            "physicalid",
+                            "ds6w:policy",
+                            "ds6w:reservedBy",
+                            "ds6w:globalType",
+                            "ds6wg:PLMReference.V_isLastVersion",
+                            "ds6w:reserved",
+                            "ds6w:identifier"
+                        ]
+                    }
+                    """;
+
+            if (entireHierarchy)
+            {
+                requestJson = requestJson.Replace("%RECURSION_PLACEHOLDER%", "");
+            }
+            else
+            {
+                requestJson = requestJson.Replace("%RECURSION_PLACEHOLDER%", @"""expand_iter"": ""1"",");
+            }
+
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(searchUrl),
+                Method = HttpMethod.Post,
+                Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+            };
+
+            var httpClient = WebUtility.NewHttpClientWithCompression();
+
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSpace.Cookie);
+
+            var response = httpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var searchResultsJsonStr = response.Content.ReadAsStringAsync().Result;
+
+            return searchResultsJsonStr;
+        }
+
+        public static string GetRelationships_UsingProgressiveExpand(_3dxCookies cookies, string itemId)
+        {
+            var searchUrl = cookies._3DSpace.BaseUrl.UrlCombine("cvservlet/progressiveexpand/v2");
+
+            var requestJson = $$"""
+                    {
+                        "batch": {
+                            "expands": [
+                                {
+                                    "aggregation_processors": [
+                                        {
+                                            "truncate": {
+                                                "max_distance_from_prefix": 1,
+                                                "prefix_filter": {
+                                                    "prefix_path": [
+                                                        {
+                                                            "physical_id_path": [
+                                                                "{{itemId}}"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "filter": {
+                                        "or": {
+                                            "filters": [
+                                                {
+                                                    "and_not": {
+                                                        "left": {
+                                                            "and": {
+                                                                "filters": [
+                                                                    {
+                                                                        "prefix_filter": {
+                                                                            "prefix_path": [
+                                                                                {
+                                                                                    "physical_id_path": [
+                                                                                        "{{itemId}}"
+                                                                                    ]
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "right": {
+                                                            "or": {
+                                                                "filters": [
+                                                                    {
+                                                                        "sequence_filter": {
+                                                                            "sequence": [
+                                                                                {
+                                                                                    "uql": "NOT (((typecode:0 OR typecode:1) AND (ds6w_58_globaltype:\"ds6w:Document\" OR ds6w_58_globaltype:\"ds6w:Part\"))  OR (typecode:2 AND NOT (flattenedtaxonomies:\"reltypes/XCADBaseDependency\")))"
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "label": "Expand-Level-1-3473903-ENOSCEN_AP-1710399986368",
+                                    "root": {
+                                        "physical_id": "{{itemId}}"
+                                    }
+                                }
+                            ]
+                        },
+                        "outputs": {
+                            "hits": {
+                                "predefined_computation": [
+                                    "urlstream|thumbnail|2dthb",
+                                    "icons"
+                                ]
+                            },
+                            "select_object": [
+                                "physicalid",
+                                "ds6w:globalType",
+                                "ds6w:label",
+                                "ds6wg:revision",
+                                "ds6w:type",
+                                "ds6w:description",
+                                "ds6w:responsible",
+                                "ds6w:cadMaster",
+                                "ds6w:status",
+                                "owner",
+                                "ds6w:reservedBy",
+                                "bo.pgpshowextension.V_PGP_Show",
+                                "ds6w:modified",
+                                "ds6w:project",
+                                "ds6w:identifier"
+                            ],
+                            "select_pgp": [
+                                "show",
+                                "hide"
+                            ],
+                            "select_relation": [
+                                "physicalid",
+                                "ds6w:globalType",
+                                "ds6w:label",
+                                "matrixtxt",
+                                "ro.pgpshowextension.V_PGP_Show",
+                                "ro.plminstance.v_treeorder"
+                            ]
+                        }
+                    }
+                    """;
+
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(searchUrl),
+                Method = HttpMethod.Post,
+                Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+            };
+
+            var httpClient = WebUtility.NewHttpClientWithCompression();
+
+            httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSpace.Cookie);
+
+            var response = httpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var searchResultsJsonStr = response.Content.ReadAsStringAsync().Result;
+
+            return searchResultsJsonStr;
+        }
+
+        //Warning: For some reason, this only works if the cookie is for 3dspace1
+        public static string GetRelationships_UsingGetEcosystem(_3dxCookies cookies, string itemId)
         {
             var searchUrl = cookies._3DSpace.BaseUrl.UrlCombine("resources/enorelnav/navigate/getecosystem");
 

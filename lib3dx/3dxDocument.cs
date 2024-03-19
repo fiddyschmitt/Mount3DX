@@ -8,7 +8,6 @@ namespace lib3dx
 {
     public class _3dxDocument : _3dxFolder
     {
-        public List<_3dxFile> Files = new();
         public string DocumentType;
         public string Revision { get; set; }
 
