@@ -102,10 +102,19 @@ namespace lib3dx
         {
             var browser = GetDefaultBrowser();
 
+            if (browser == "firefox")
+            {
+                var service = FirefoxDriverService.CreateDefaultService();
+                service.HideCommandPromptWindow = true;
+
+                var options = new FirefoxOptions();
+                var result = new FirefoxDriver(service, options);
+                return result;
+            }
+
             return browser switch
             {
                 "chrome" => new ChromeDriver(),
-                "firefox" => new FirefoxDriver(),
                 "edge" => new EdgeDriver(),
                 _ => throw new Exception("Unsupported browser."),
             };
