@@ -61,7 +61,7 @@ namespace lib3dx
 
             var httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
 
-            httpClient.DefaultRequestHeaders.Add("Cookie", cookies);
+            request.Headers.Add("Cookie", cookies);
 
             var jsonString = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 

@@ -117,8 +117,9 @@ namespace lib3dx
                                         try
                                         {
                                             var httpClient = new HttpClient();
-                                            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", test.Cookies.Cookie);
+                                            
                                             var request = new HttpRequestMessage(HttpMethod.Get, test.TestUrl);
+                                            request.Headers.TryAddWithoutValidation("Cookie", test.Cookies.Cookie);
 
                                             try
                                             {
@@ -174,7 +175,7 @@ namespace lib3dx
             request.Headers.Add("SecurityContext", securityContext);
 
             var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", Cookies._3DSpace.Cookie);
+            request.Headers.Add("Cookie", Cookies._3DSpace.Cookie);
 
             var rootFolderJsonStr = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var result = JObject
@@ -215,7 +216,7 @@ namespace lib3dx
 
             var httpClient = WebUtility.NewHttpClientWithCompression();
 
-            httpClient.DefaultRequestHeaders.Add("Cookie", Cookies._3DSpace.Cookie);
+            request.Headers.Add("Cookie", Cookies._3DSpace.Cookie);
 
             var documentsToRetrieve = new List<string>();
 
@@ -273,7 +274,7 @@ namespace lib3dx
 
             var httpClient = WebUtility.NewHttpClientWithCompression();
 
-            httpClient.DefaultRequestHeaders.Add("Cookie", Cookies._3DSpace.Cookie);
+            request.Headers.Add("Cookie", Cookies._3DSpace.Cookie);
 
             var documentDetailsJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 
@@ -527,7 +528,7 @@ namespace lib3dx
 
             var httpClient = WebUtility.NewHttpClientWithCompression();
 
-            httpClient.DefaultRequestHeaders.Add("Cookie", cookies._3DSearch.Cookie);
+            request.Headers.Add("Cookie", cookies._3DSearch.Cookie);
 
             var response = httpClient.SendAsync(request).Result;
             response.EnsureSuccessStatusCode();

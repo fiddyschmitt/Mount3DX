@@ -30,27 +30,37 @@ namespace libCommon.Utilities
         {
             var httpClient = new HttpClient();
 
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+
             if (cookieString != null)
             {
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookieString);
+                request.Headers.TryAddWithoutValidation("Cookie", cookieString);
             }
 
-            var content = httpClient.GetStringAsync(url).Result;
-            return content;
+            var response = httpClient.Send(request);
+            var responseStr = response.Content.ReadAsStringAsync().Result;
+
+            return responseStr;
         }
 
         public static string HttpPost(string url, StringContent? formData, string? cookieString = null)
         {
             var httpClient = new HttpClient();
 
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = formData
+            };
+
             if (cookieString != null)
             {
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookieString);
+                request.Headers.TryAddWithoutValidation("Cookie", cookieString);
             }
 
-            var response = httpClient.PostAsync(url, formData).Result.Content.ReadAsStringAsync().Result;
+            var response = httpClient.Send(request);
+            var responseStr = response.Content.ReadAsStringAsync().Result;
 
-            return response;
+            return responseStr;
         }
     }
 }
