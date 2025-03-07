@@ -46,10 +46,10 @@ namespace lib3dx
                 driver.Navigate().GoToUrl(loginUrl);
 
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("SERVERID") != null);
-                var serverId = driver.Manage().Cookies.GetCookieNamed("SERVERID").Value;
+                var serverId = driver.Manage().Cookies.GetCookieNamed("SERVERID")?.Value;
 
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("JSESSIONID") != null);
-                var jessionId = driver.Manage().Cookies.GetCookieNamed("JSESSIONID").Value;
+                var jessionId = driver.Manage().Cookies.GetCookieNamed("JSESSIONID")?.Value;
 
                 var _3dSpaceCookie = new _3dxCookie()
                 {
@@ -82,10 +82,10 @@ namespace lib3dx
                 driver.Navigate().GoToUrl(searchService.Url);
 
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("SERVERID") != null);
-                serverId = driver.Manage().Cookies.GetCookieNamed("SERVERID").Value;
+                serverId = driver.Manage().Cookies.GetCookieNamed("SERVERID")?.Value;
 
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("JSESSIONID") != null);
-                jessionId = driver.Manage().Cookies.GetCookieNamed("JSESSIONID").Value;
+                jessionId = driver.Manage().Cookies.GetCookieNamed("JSESSIONID")?.Value;
 
                 var _3dSearchCookie = new _3dxCookie()
                 {
@@ -268,7 +268,7 @@ namespace lib3dx
 
 
 
-                var queryParams = new Dictionary<string, string>
+                var queryParams = new Dictionary<string, string?>
                 {
                     { "resumeUrl", resumeUrl },
                     { "resumePath", resumePath },
