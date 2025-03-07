@@ -172,6 +172,7 @@ namespace Mount3DX
                 var startTime = DateTime.Now;
 
                 btnStart.Enabled = false;
+                Cursor = Cursors.WaitCursor;
 
                 SaveSettings();
                 LoadSettings();
@@ -229,6 +230,7 @@ namespace Mount3DX
                     }
 
                     btnStart.Enabled = true;
+                    Cursor = Cursors.Default;
                 }));
 
                 session.SessionError += (sender, args) => Invoke(new MethodInvoker(() =>
