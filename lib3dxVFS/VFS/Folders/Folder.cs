@@ -10,7 +10,7 @@ namespace libVFS.VFS.Folders
 {
     public class Folder : FileSystemEntry
     {
-        readonly List<FileSystemEntry> children = new();
+        readonly List<FileSystemEntry> children = [];
         public IEnumerable<FileSystemEntry> Children => children;
 
         public void AddChild(FileSystemEntry entry)

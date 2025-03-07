@@ -43,7 +43,7 @@ namespace Mount3DX
 
         public static uint FileAttributesLimitInBytes = 1_000_000;
 
-        private void LoadWebclientSettings()
+        private static void LoadWebclientSettings()
         {
             var webclientSettingsKey = @"SYSTEM\CurrentControlSet\Services\WebClient\Parameters";
 
@@ -62,7 +62,7 @@ namespace Mount3DX
             }
         }
 
-        private void LogWebClientSetrtings()
+        private static void LogWebClientSetrtings()
         {
             var webclientSettingsKey = @"SYSTEM\CurrentControlSet\Services\WebClient\Parameters";
 

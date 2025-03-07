@@ -18,7 +18,7 @@ namespace lib3dx
 {
     public class _3dxFolder : _3dxItem
     {
-        public List<_3dxFolder> Subfolders = new();
+        public List<_3dxFolder> Subfolders = [];
 
         public _3dxFolder(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc) : base(objectId, name, parent, creationTimeUtc, lastWriteTimeUtc, lastAccessTimeUtc)
         {
@@ -75,7 +75,7 @@ namespace lib3dx
                             .Select(o => new
                             {
                                 o.ObjectId,
-                                Title = o.Title[..o.Title.LastIndexOf("(")],
+                                Title = o.Title[..o.Title.LastIndexOf('(')],
                             })
                             .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.Now, DateTime.Now, DateTime.Now))
                             .ToList();

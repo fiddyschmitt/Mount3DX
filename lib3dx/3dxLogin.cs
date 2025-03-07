@@ -207,7 +207,7 @@ namespace lib3dx
                 doc.LoadHtml(responseStr);
                 var samlRequest = doc.DocumentNode.SelectSingleNode($"//input[@name='SAMLRequest']").GetAttributeValue("value", "");
                 var samlUrl = doc.DocumentNode.SelectSingleNode("//form")?.GetAttributeValue("action", "") ?? "";
-                samlUrl = System.Web.HttpUtility.HtmlDecode(samlUrl);
+                samlUrl = HttpUtility.HtmlDecode(samlUrl);
 
                 //post to the SAML URL
                 var postRequestContent = new FormUrlEncodedContent([
@@ -217,18 +217,21 @@ namespace lib3dx
                 var postResponse = client.PostAsync(samlUrl, postRequestContent).Result;
                 responseStr = postResponse.Content.ReadAsStringAsync().Result;
 
-                var resumeFullUrl = postResponse.RequestMessage.RequestUri.ToString().Replace("?", "&");    //to get HttpUtility.ParseQueryString to get the first query param
-                var resumeUrl = HttpUtility.ParseQueryString(resumeFullUrl)["resumeUrl"];
-                var resumePath = HttpUtility.ParseQueryString(resumeFullUrl)["resumePath"];
-                var instanceId = HttpUtility.ParseQueryString(resumeFullUrl)["instanceId"];
-                var assuranceLevel = HttpUtility.ParseQueryString(resumeFullUrl)["assuranceLevel"];
+                //to get HttpUtility.ParseQueryString to get the first query para 
+                var resumeFullUrl = postResponse.RequestMessage?.RequestUri?.ToString().Replace("?", "&") ?? throw new Exception($"Could not retrieve resumeFullUrl");
+
+                var resumeUrl = HttpUtility.ParseQueryString(resumeFullUrl)["resumeUrl"] ?? throw new Exception($"Could not retrieve resumeUrl");
+                var resumePath = HttpUtility.ParseQueryString(resumeFullUrl)["resumePath"] ?? throw new Exception($"Could not retrieve resumePath");
+                var instanceId = HttpUtility.ParseQueryString(resumeFullUrl)["instanceId"] ?? throw new Exception($"Could not retrieve instanceId");
+                var assuranceLevel = HttpUtility.ParseQueryString(resumeFullUrl)["assuranceLevel"] ?? throw new Exception($"Could not retrieve assuranceLevel");
 
                 doc = new HtmlAgilityPack.HtmlDocument();
                 doc.LoadHtml(responseStr);
                 var scripts = doc.DocumentNode.SelectNodes("//script").Select(node => node.GetAttributeValue("src", "")).ToList();
 
                 //put together the url used to authenticate with Secure Badge
-                var gasBaseUri = postResponse.RequestMessage.RequestUri;
+                var gasBaseUri = postResponse.RequestMessage?.RequestUri ?? throw new Exception($"Could not retrieve gasBaseUri");
+
                 var gasBaseUrl = $"{gasBaseUri.Scheme}://{gasBaseUri.Host}{gasBaseUri.AbsolutePath}";
                 var internalSecureBadgeAuth = scripts
                                                     .AsParallel()
@@ -243,10 +246,10 @@ namespace lib3dx
                                                         return scriptText;
                                                     })
                                                     .FirstOrDefault(scriptText => scriptText.Contains("Tn_INTERNAL_SECURE_BADGE_AUTH"))?
-                                                    .Split(new[] { "Tn_INTERNAL_SECURE_BADGE_AUTH=\"" }, StringSplitOptions.None)?
+                                                    .Split(["Tn_INTERNAL_SECURE_BADGE_AUTH=\""], StringSplitOptions.None)?
                                                     .LastOrDefault()?
-                                                    .Split(new[] { "\"" }, StringSplitOptions.None)
-                                                    .FirstOrDefault();
+                                                    .Split(["\""], StringSplitOptions.None)
+                                                    .FirstOrDefault() ?? throw new Exception($"Could not retrieve Tn_INTERNAL_SECURE_BADGE_AUTH from script.");
 
                 var configUrl = gasBaseUrl.UrlCombine("configuration/internal");
                 request = new HttpRequestMessage(HttpMethod.Get, configUrl);

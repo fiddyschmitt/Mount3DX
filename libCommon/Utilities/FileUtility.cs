@@ -17,12 +17,8 @@ namespace libCommon.Utilities
 
             var availableLetter = candidates
                                     .Select(i => @$"{(char)i}:\")
-                                    .FirstOrDefault(candidate => !existingLetters.Any(existing => candidate.Equals(existing, StringComparison.CurrentCultureIgnoreCase)));
-
-            if (availableLetter == null)
-            {
-                throw new Exception($"Could not find an available drive letter.");
-            }
+                                    .FirstOrDefault(candidate => !existingLetters.Any(existing => candidate.Equals(existing, StringComparison.CurrentCultureIgnoreCase)))
+                                    ?? throw new Exception($"Could not find an available drive letter.");
 
             return availableLetter;
         }

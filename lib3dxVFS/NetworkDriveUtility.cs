@@ -73,10 +73,10 @@ namespace libVFS
             //Checks if the last character is \ as this causes error on mapping a drive.
             if (sNetworkPath.Substring(sNetworkPath.Length - 1, 1) == @"\")
             {
-                sNetworkPath = sNetworkPath.Substring(0, sNetworkPath.Length - 1);
+                sNetworkPath = sNetworkPath[..^1];
             }
 
-            NETRESOURCE oNetworkResource = new NETRESOURCE()
+            var oNetworkResource = new NETRESOURCE()
             {
                 oResourceType = ResourceType.RESOURCETYPE_DISK,
                 sLocalName = sDriveLetter + ":",
@@ -90,7 +90,7 @@ namespace libVFS
                 DisconnectNetworkDrive(sDriveLetter, true);
             }
 
-            WNetAddConnection2(ref oNetworkResource, null, null, 0);
+            _ = WNetAddConnection2(ref oNetworkResource, null, null, 0);
         }
 
         public static int DisconnectNetworkDrive(string sDriveLetter, bool bForceDisconnect)

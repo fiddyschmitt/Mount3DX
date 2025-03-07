@@ -16,7 +16,7 @@ namespace libVFS.VFS.Folders
 
         public string MountPoint { get; }
 
-        public FileSystemEntry? GetEntryFromPath(string path, int requestPID, bool createFolderStructure = false)
+        public FileSystemEntry? GetEntryFromPath(string path, bool createFolderStructure = false)
         {
             var pathComponents = path.Split(@"\", StringSplitOptions.RemoveEmptyEntries);
 

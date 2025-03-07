@@ -28,8 +28,8 @@ namespace lib3dxVFS.WebDAV.Stores
             Cookies = cookies;
         }
 
-        public static PropertyManager<_3dxStoreItem> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreItem>(new DavProperty<_3dxStoreItem>[]
-        {
+        public static PropertyManager<_3dxStoreItem> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreItem>(
+        [
             // RFC-2518 properties
             new DavCreationDate<_3dxStoreItem>
             {
@@ -97,7 +97,7 @@ namespace lib3dxVFS.WebDAV.Stores
             //    Getter = (context, item) => FileAttributes.Normal,
             //    Setter = (context, item, value) => DavStatusCode.NotImplemented
             //}
-        });
+        ]);
 
         public bool IsWritable { get; }
         public string ServerUrl { get; }

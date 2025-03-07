@@ -30,14 +30,14 @@ namespace libVFS.WebDAV.Stores
         readonly ILockingManager LockingManager = new NoLocking();
 
         _3dxFolder? rootFolder;
-        Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new();
-        Dictionary<string, _3dxStoreItem> pathToItemMapping = new();
+        Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = [];
+        Dictionary<string, _3dxStoreItem> pathToItemMapping = [];
 
         public string ServerUrl { get; }
         public string WebDavServerUrl { get; }
         public _3dxCookies Cookies { get; }
         public int QueryThreads { get; }
-        private uint MaxMetadataSizeInBytes;
+        private readonly uint MaxMetadataSizeInBytes;
         public EventHandler<ProgressEventArgs>? Progress { get; }
         public EventHandler<ProgressEventArgs>? RefreshFailed { get; set; }
 
@@ -382,16 +382,13 @@ namespace libVFS.WebDAV.Stores
             var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
             requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
 
-            if (pathToCollectionMapping.ContainsKey(requestedPath))
+            if (pathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
             {
-                var collection = pathToCollectionMapping[requestedPath];
-
                 return Task.FromResult<IStoreItem?>(collection);
             }
 
-            if (pathToItemMapping.ContainsKey(requestedPath))
+            if (pathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item))
             {
-                var item = pathToItemMapping[requestedPath];
                 return Task.FromResult<IStoreItem?>(item);
             }
 

@@ -196,7 +196,7 @@ namespace lib3dx
 
                                 return newFolder;
                             })
-                            ?.ToList() ?? new List<_3dxFolder>();
+                            ?.ToList() ?? [];
 
             return result;
         }
@@ -249,7 +249,7 @@ namespace lib3dx
                                 return newItem;
                             })
                             .Where(item => item != null)
-                            .ToList() ?? new List<_3dxItem?>();
+                            .ToList() ?? [];
 
             //get all documents, because they are effectively folders
             var documentDetails = GetDocuments(documentsToRetrieve, folder);
@@ -471,7 +471,7 @@ namespace lib3dx
                             fileRevision,
                             size);
             })
-            .ToList() ?? new List<_3dxFile>();
+            .ToList() ?? [];
 
 
             newDocument.Files = files;

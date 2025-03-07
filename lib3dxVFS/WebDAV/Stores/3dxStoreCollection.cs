@@ -112,8 +112,8 @@ namespace lib3dxVFS.WebDAV.Stores
             throw new NotImplementedException();
         }
 
-        public static PropertyManager<_3dxStoreCollection> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreCollection>(new DavProperty<_3dxStoreCollection>[]
-        {
+        public static PropertyManager<_3dxStoreCollection> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreCollection>(
+        [
             // RFC-2518 properties
             new DavCreationDate<_3dxStoreCollection>
             {
@@ -131,7 +131,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavGetResourceType<_3dxStoreCollection>
             {
-                Getter = (context, collection) => new[] { s_xDavCollection }
+                Getter = (context, collection) => [s_xDavCollection]
             },
 
             // Default locking property handling via the LockingManager
@@ -197,7 +197,7 @@ namespace lib3dxVFS.WebDAV.Stores
             //    Getter = (context, collection) => FileAttributes.Directory,
             //    Setter = (context, collection, value) => DavStatusCode.NotModified
             //}
-            });
+            ]);
 
     }
 }

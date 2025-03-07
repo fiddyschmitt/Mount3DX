@@ -22,7 +22,7 @@ namespace lib3dxVFS.WebDAV.Stubs
 
         public string RemoteEndPoint => "";
 
-        public IEnumerable<string> Headers => Array.Empty<string>();
+        public IEnumerable<string> Headers => [];
 
         public Stream Stream { get; } = new MemoryStream();
 
