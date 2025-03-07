@@ -24,7 +24,7 @@ namespace lib3dx
             //Fall back to Selenium
             if (!result.Success)
             {
-                GetSessionCookiesUsingSelenium(loginUrl);
+                result = GetSessionCookiesUsingSelenium(loginUrl);
             }
 
             return result;
