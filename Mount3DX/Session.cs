@@ -45,7 +45,7 @@ namespace Mount3DX
                 InitialisationProgress?.Invoke(this, new ProgressEventArgs()
                 {
                     Nature = ProgressEventArgs.EnumNature.Neutral,
-                    Message = "Please log in to 3DX using the browser that was opened..."
+                    Message = "Signing into 3DX..."
                 });
 
                 Log.WriteLine("Acquiring cookies.");
@@ -79,7 +79,7 @@ namespace Mount3DX
                     InitialisationProgress?.Invoke(this, new ProgressEventArgs()
                     {
                         Nature = ProgressEventArgs.EnumNature.Neutral,
-                        Message = "Please log in to 3DX using the browser that was opened..."
+                        Message = "Signing into 3DX..."
                     });
 
                     Log.WriteLine("Server did not respond to ping. Acquiring new cookies.");
