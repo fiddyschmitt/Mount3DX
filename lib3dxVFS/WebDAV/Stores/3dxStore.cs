@@ -33,19 +33,17 @@ namespace libVFS.WebDAV.Stores
         Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = [];
         Dictionary<string, _3dxStoreItem> pathToItemMapping = [];
 
-        public string ServerUrl { get; }
         public string WebDavServerUrl { get; }
-        public _3dxCookies Cookies { get; }
+        public _3dxServer _3dxServer { get; }
         public int QueryThreads { get; }
         private readonly uint MaxMetadataSizeInBytes;
         public EventHandler<ProgressEventArgs>? Progress { get; }
         public EventHandler<ProgressEventArgs>? RefreshFailed { get; set; }
 
-        public _3dxStore(string serverUrl, string webDavServerUrl, _3dxCookies cookies, int queryThreads, uint maxMetadataSizeInBytes, EventHandler<ProgressEventArgs>? progress)
+        public _3dxStore(_3dxServer _3dxServer, string webDavServerUrl, int queryThreads, uint maxMetadataSizeInBytes, EventHandler<ProgressEventArgs>? progress)
         {
-            ServerUrl = serverUrl;
             WebDavServerUrl = webDavServerUrl;
-            Cookies = cookies;
+            this._3dxServer = _3dxServer;
             QueryThreads = queryThreads;
             MaxMetadataSizeInBytes = maxMetadataSizeInBytes;
             Progress = progress;
@@ -107,10 +105,8 @@ namespace libVFS.WebDAV.Stores
                 {
                     try
                     {
-                        var _3dxServer = new _3dxServer(ServerUrl, Cookies);
-
                         var allDocuments = _3dxServer
-                                                .GetAllDocuments(docsRoot, Cookies, QueryThreads, Progress);
+                                                .GetAllDocuments(docsRoot, QueryThreads, Progress);
 
                         //var abc = allDocuments.SerializeToJson();
                         //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
@@ -252,14 +248,14 @@ namespace libVFS.WebDAV.Stores
                 {
                     pathToCollectionMapping = new[] { rootFolder }
                                                 .Recurse(folder => folder.Subfolders)
-                                                .Select(folder => new _3dxStoreCollection(LockingManager, folder, ServerUrl, Cookies))
+                                                .Select(folder => new _3dxStoreCollection(_3dxServer, LockingManager, folder))
                                                 .ToDictionary(folder => folder.FullPath, folder => folder);
 
                     pathToItemMapping = new[] { rootFolder }
                                                 .Recurse(folder => folder.Subfolders)
                                                 .OfType<_3dxDocument>()
                                                 .SelectMany(document => document.Files)
-                                                .Select(file => new _3dxStoreItem(LockingManager, file, false, ServerUrl, Cookies))
+                                                .Select(file => new _3dxStoreItem(_3dxServer, LockingManager, file, false))
                                                 .ToDictionary(folder => folder.FullPath, folder => folder);
 
                     var folderUrlsToCheck = new List<string>();

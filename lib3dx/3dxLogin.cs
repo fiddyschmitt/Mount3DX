@@ -16,22 +16,7 @@ namespace lib3dx
 {
     public static class _3dxLogin
     {
-        public static (bool Success, _3dxCookies? Cookies) GetSessionCookies(string loginUrl)
-        {
-            //Try to log in using Single Sign-On
-            var result = GetSessionCookiesUsingHttpClient(loginUrl);
-
-            //Fall back to Selenium
-            if (!result.Success)
-            {
-                result = GetSessionCookiesUsingSelenium(loginUrl);
-            }
-
-            return result;
-        }
-
-
-        public static (bool Success, _3dxCookies? Cookies) GetSessionCookiesUsingSelenium(string loginUrl)
+        public static bool LogInUsingSelenium(string loginUrl, HttpClient client, CookieContainer cookieContainer)
         {
             IWebDriver? driver = null;
 
@@ -42,70 +27,46 @@ namespace lib3dx
                 var wait = new WebDriverWait(driver, TimeSpan.FromMinutes(2));
 
                 //get the cookies for the 3dspace service
-
                 driver.Navigate().GoToUrl(loginUrl);
 
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("SERVERID") != null);
-                var serverId = driver.Manage().Cookies.GetCookieNamed("SERVERID")?.Value;
-
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("JSESSIONID") != null);
-                var jessionId = driver.Manage().Cookies.GetCookieNamed("JSESSIONID")?.Value;
 
-                var _3dSpaceCookie = new _3dxCookie()
-                {
-                    BaseUrl = loginUrl,
-                    Cookie = $"SERVERID={serverId}; JSESSIONID={jessionId}"
-                };
+                driver
+                    .Manage()
+                    .Cookies
+                    .AllCookies
+                    .ToList()
+                    .ForEach(cookie =>
+                    {
+                        cookieContainer.Add(cookie.ToCookie());
+                    });
 
-
-                //we now need to discover the search service
-                var discoverServicesUrl = loginUrl.UrlCombine("resources/AppsMngt/api/v1/services");
-                var servicesJson = libCommon.Utilities.WebUtility.HttpGet(discoverServicesUrl, _3dSpaceCookie.Cookie);
-
-                var searchService = (JObject
-                                        .Parse(servicesJson)?["platforms"]?[0]?["services"]
-                                        ?.Select(service => new
-                                        {
-                                            Id = service["id"]?.ToString(),
-                                            Name = service["name"]?.ToString(),
-                                            Url = service["url"]?.ToString()
-                                        })
-                                        .FirstOrDefault(service => service.Name == "3DSearch")) ?? throw new Exception("Could not discover 3DSearch service.");
-
-                if (string.IsNullOrEmpty(searchService.Url))
-                {
-                    throw new Exception("Could not discover URL for 3DSearch service.");
-                }
 
                 //now get the cookies for the search service
+                var searchServiceUrl = DiscoverSearchServiceUrl(loginUrl, client);
 
-                driver.Navigate().GoToUrl(searchService.Url);
+                driver.Navigate().GoToUrl(searchServiceUrl);
 
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("SERVERID") != null);
-                serverId = driver.Manage().Cookies.GetCookieNamed("SERVERID")?.Value;
-
                 wait.Until(d => d.Manage().Cookies.GetCookieNamed("JSESSIONID") != null);
-                jessionId = driver.Manage().Cookies.GetCookieNamed("JSESSIONID")?.Value;
 
-                var _3dSearchCookie = new _3dxCookie()
-                {
-                    BaseUrl = searchService.Url,
-                    Cookie = $"SERVERID={serverId}; JSESSIONID={jessionId}"
-                };
+                driver
+                    .Manage()
+                    .Cookies
+                    .AllCookies
+                    .ToList()
+                    .ForEach(cookie =>
+                    {
+                        cookieContainer.Add(cookie.ToCookie());
+                    });
 
-
-                var result = new _3dxCookies()
-                {
-                    _3DSpace = _3dSpaceCookie,
-                    _3DSearch = _3dSearchCookie,
-                };
-
-                return (true, result);
+                return true;
             }
             catch (Exception ex)
             {
-                Log.WriteLine($"Error in GetSessionCookies:{Environment.NewLine}{ex}");
-                return (false, null);
+                Log.WriteLine($"Error in {nameof(LogInUsingSelenium)}:{Environment.NewLine}{ex}");
+                return false;
             }
             finally
             {
@@ -161,7 +122,7 @@ namespace lib3dx
             return null;
         }
 
-        public static (bool Success, _3dxCookies? Cookies) GetSessionCookiesUsingHttpClient(string loginUrl)
+        public static bool LogInUsingHttpClient(string loginUrl, HttpClient client, HttpClientHandler clientHandler)
         {
             try
             {
@@ -184,13 +145,10 @@ namespace lib3dx
                                 ))
                                 .Where(cert => cert.IssuerName.Name.Contains("Hardware Issuing CA"))
                                 .ToArray();
-                handler.ClientCertificates.AddRange(certs);
+                clientHandler.ClientCertificates.AddRange(certs);
 
 
-
-
-
-                var client = new HttpClient(handler);
+                
 
                 //go to the login page
                 var request = new HttpRequestMessage(HttpMethod.Get, loginUrl);
@@ -315,70 +273,58 @@ namespace lib3dx
 
 
 
-
-
-
-                //we now need to discover the search service
-                request = new HttpRequestMessage(HttpMethod.Get, loginUrl.UrlCombine("resources/AppsMngt/api/v1/services"));
-
-                response = client.Send(request);
-                response.EnsureSuccessStatusCode();
-                var servicesJson = response.Content.ReadAsStringAsync().Result;
-
-                var searchService = (JObject
-                                        .Parse(servicesJson)?["platforms"]?[0]?["services"]?
-                                        .Select(service => new
-                                        {
-                                            Id = service["id"]?.ToString(),
-                                            Name = service["name"]?.ToString(),
-                                            Url = service["url"]?.ToString()
-                                        })
-                                        .FirstOrDefault(service => service.Name == "3DSearch")) ?? throw new Exception("Could not discover 3DSearch service.");
-
-                if (string.IsNullOrEmpty(searchService.Url))
-                {
-                    throw new Exception("Could not discover URL for 3DSearch service.");
-                }
-
-                //visit the search service to acquire cookies
-                request = new HttpRequestMessage(HttpMethod.Get, searchService.Url);
-
-                response = client.Send(request);
-                //response.EnsureSuccessStatusCode();
-
-                //var allCookiesStr = cookies.GetAllCookies().SerializeToJson();
-
-
-                var result = new _3dxCookies()
-                {
-                    _3DSpace = new _3dxCookie()
-                    {
-                        BaseUrl = loginUrl,
-                        Cookie = cookies
-                                    .GetAllCookies()
-                                    .Where(cookie => string.Equals(cookie.Domain, new Uri(loginUrl)?.Host))
-                                    .Where(cookie => cookie.Name == "JSESSIONID" || cookie.Name == "SERVERID")
-                                    .Select(cookie => $"{cookie.Name}={cookie.Value}")
-                                    .ToString("; ")
-                    },
-                    _3DSearch = new _3dxCookie()
-                    {
-                        BaseUrl = searchService.Url,
-                        Cookie = cookies
-                                    .GetAllCookies()
-                                    .Where(cookie => string.Equals(cookie.Domain, new Uri(searchService.Url)?.Host))
-                                    .Where(cookie => cookie.Name == "JSESSIONID" || cookie.Name == "SERVERID")
-                                    .Select(cookie => $"{cookie.Name}={cookie.Value}")
-                                    .ToString("; ")
-                    }
-                };
-
-                return (true, result);
+                return true;
             }
             catch (Exception)
             {
-                return (false, null);
+                return false;
             }
+        }
+
+        public static string DiscoverSearchServiceUrl(string loginUrl, HttpClient client)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, loginUrl.UrlCombine("resources/AppsMngt/api/v1/services"));
+
+            var response = client.Send(request);
+            response.EnsureSuccessStatusCode();
+            var servicesJson = response.Content.ReadAsStringAsync().Result;
+
+            var searchService = (JObject
+                                    .Parse(servicesJson)?["platforms"]?[0]?["services"]?
+                                    .Select(service => new
+                                    {
+                                        Id = service["id"]?.ToString(),
+                                        Name = service["name"]?.ToString(),
+                                        Url = service["url"]?.ToString()
+                                    })
+                                    .FirstOrDefault(service => service.Name == "3DSearch")) ?? throw new Exception("Could not discover 3DSearch service.");
+
+            if (string.IsNullOrEmpty(searchService.Url))
+            {
+                throw new Exception("Could not discover URL for 3DSearch service.");
+            }
+
+            return searchService.Url;
+        }
+
+        public static System.Net.Cookie ToCookie(this OpenQA.Selenium.Cookie seleniumCookie)
+        {
+            var result = new System.Net.Cookie(
+                            seleniumCookie.Name,
+                            seleniumCookie.Value,
+                            seleniumCookie.Path,
+                            seleniumCookie.Domain)
+            {
+                Secure = seleniumCookie.Secure,
+                HttpOnly = seleniumCookie.IsHttpOnly
+            };
+
+            if (seleniumCookie.Expiry.HasValue)
+            {
+                result.Expires = seleniumCookie.Expiry.Value;
+            }
+
+            return result;
         }
     }
 }

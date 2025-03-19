@@ -14,6 +14,8 @@ namespace Mount3DX
 {
     public partial class Form1 : Form
     {
+        _3dxServer? _3dxServer;
+
         public Form1()
         {
             InitializeComponent();
@@ -177,7 +179,12 @@ namespace Mount3DX
                 SaveSettings();
                 LoadSettings();
 
-                session = new Session(settings, FileAttributesLimitInBytes);
+                if (_3dxServer == null || _3dxServer.ServerUrl != settings._3dx.ServerUrl)
+                {
+                    _3dxServer = new _3dxServer(settings._3dx.ServerUrl);
+                }
+
+                session = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
 
                 session.InitialisationProgress += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
@@ -268,11 +275,8 @@ namespace Mount3DX
         private void Scratch()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            var (Success, Cookies) = _3dxLogin.GetSessionCookies(settings._3dx.ServerUrl);
-
-            if (Cookies == null) return;
-
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl, Cookies);
+            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl);
+            _3dxServer.LogIn();
 
             var root = new _3dxFolder(
                                 "root",

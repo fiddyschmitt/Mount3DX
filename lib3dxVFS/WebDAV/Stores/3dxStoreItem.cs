@@ -19,13 +19,13 @@ namespace lib3dxVFS.WebDAV.Stores
     {
         public readonly _3dxFile _fileInfo;
 
-        public _3dxStoreItem(ILockingManager lockingManager, _3dxFile fileInfo, bool isWritable, string serverUrl, _3dxCookies cookies)
+        public _3dxStoreItem(_3dxServer _3dxServer, ILockingManager lockingManager, _3dxFile fileInfo, bool isWritable)
         {
+            this._3dxServer = _3dxServer;
+
             LockingManager = lockingManager;
             _fileInfo = fileInfo;
             IsWritable = isWritable;
-            ServerUrl = serverUrl;
-            Cookies = cookies;
         }
 
         public static PropertyManager<_3dxStoreItem> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreItem>(
@@ -100,8 +100,7 @@ namespace lib3dxVFS.WebDAV.Stores
         ]);
 
         public bool IsWritable { get; }
-        public string ServerUrl { get; }
-        public _3dxCookies Cookies { get; }
+        public _3dxServer _3dxServer { get; }
 
         public string Name => _fileInfo.Name;
         public string UniqueKey => _fileInfo.ObjectId;
@@ -110,7 +109,7 @@ namespace lib3dxVFS.WebDAV.Stores
         {
             //var result = Task.FromResult((Stream)_fileInfo.OpenRead());
             //var result = Task.FromResult((Stream)new MemoryStream());
-            var fileInMemory = _fileInfo.Download(ServerUrl, Cookies);
+            var fileInMemory = _fileInfo.Download(_3dxServer);
 
             if (fileInMemory.CanSeek)
             {

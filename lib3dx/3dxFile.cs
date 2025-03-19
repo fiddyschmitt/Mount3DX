@@ -24,14 +24,14 @@ namespace lib3dx
             Size = size;
         }
 
-        public Stream Download(string serverUrl, _3dxCookies cookies)
+        public Stream Download(_3dxServer _3dxServer)
         {
             try
             {
                 Log.WriteLine("Downloading file");
 
                 //get download token
-                var objectUrl = serverUrl.UrlCombine(@$"resources/v1/application/CSRF");
+                var objectUrl = _3dxServer.ServerUrl.UrlCombine(@$"resources/v1/application/CSRF");
 
                 var request = new HttpRequestMessage()
                 {
@@ -39,15 +39,13 @@ namespace lib3dx
                     Method = HttpMethod.Get
                 };
 
-                var httpClient = new HttpClient();
-                request.Headers.Add("Cookie", cookies._3DSpace.Cookie);
 
-                var downloadTokenJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                var downloadTokenJson = _3dxServer.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
                 var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
 
 
                 //get the download url
-                var downloadLocationQueryUrl = serverUrl.UrlCombine($"resources/v1/modeler/documents/{DocumentObjectId}/files/{ObjectId}/DownloadTicket");
+                var downloadLocationQueryUrl = _3dxServer.ServerUrl.UrlCombine($"resources/v1/modeler/documents/{DocumentObjectId}/files/{ObjectId}/DownloadTicket");
                 request = new HttpRequestMessage()
                 {
                     RequestUri = new Uri(downloadLocationQueryUrl),
@@ -55,10 +53,8 @@ namespace lib3dx
                 };
                 request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
 
-                httpClient = new HttpClient();
-                request.Headers.Add("Cookie", cookies._3DSpace.Cookie);
 
-                var downloadLocationQueryJson = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                var downloadLocationQueryJson = _3dxServer.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
                 var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
 
                 Stream result;
@@ -76,17 +72,11 @@ namespace lib3dx
                     }
 
                     //download the file
-                    httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
 
                     //settings to allow large files to be downloaded
-                    httpClient.Timeout = TimeSpan.FromMinutes(30);  //default is 1 minute, 40 seconds
                     var opt = HttpCompletionOption.ResponseHeadersRead; //to avoid: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647.
 
-                    var response = httpClient.GetAsync(downloadUrl, opt).Result;
-
-                    //todo: Consider returning response.Content.ReadAsStream(), instead of MemoryStream being the intermediary. Might need to be seekable though;
-                    //result = new MemoryStream();
-                    //response.Content.CopyTo(result, null, CancellationToken.None);
+                    var response = _3dxServer.HttpClient.GetAsync(downloadUrl, opt).Result;
 
                     result = response.Content.ReadAsStream();
                 }

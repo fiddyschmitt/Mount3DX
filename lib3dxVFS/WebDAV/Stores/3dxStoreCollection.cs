@@ -19,12 +19,12 @@ namespace lib3dxVFS.WebDAV.Stores
     {
         private static readonly XElement s_xDavCollection = new(WebDavNamespaces.DavNs + "collection");
 
-        public _3dxStoreCollection(ILockingManager lockingManager, _3dxFolder folderInfo, string serverUrl, _3dxCookies cookies)
+        public _3dxStoreCollection(_3dxServer _3dxServer, ILockingManager lockingManager, _3dxFolder folderInfo)
         {
-            this.LockingManager = lockingManager;
+            this._3dxServer = _3dxServer;
+
+            LockingManager = lockingManager;
             FolderInfo = folderInfo;
-            ServerUrl = serverUrl;
-            Cookies = cookies;
         }
 
         public bool IsWritable => false;
@@ -41,8 +41,7 @@ namespace lib3dxVFS.WebDAV.Stores
         public ILockingManager LockingManager { get; }
 
         public _3dxFolder FolderInfo { get; }
-        public string ServerUrl { get; }
-        public _3dxCookies Cookies { get; }
+        public _3dxServer _3dxServer { get; }
 
         public Task<StoreItemResult> CopyAsync(IStoreCollection destination, string name, bool overwrite, IHttpContext httpContext)
         {
@@ -76,7 +75,7 @@ namespace lib3dxVFS.WebDAV.Stores
                 // Add all directories
                 foreach (var subDirectory in FolderInfo.Subfolders)
                 {
-                    yield return new _3dxStoreCollection(LockingManager, subDirectory, ServerUrl, Cookies);
+                    yield return new _3dxStoreCollection(_3dxServer, LockingManager, subDirectory);
                 }
 
                 // Add all files
@@ -84,7 +83,7 @@ namespace lib3dxVFS.WebDAV.Stores
                 {
                     foreach (var file in doc.Files)
                     {
-                        yield return new _3dxStoreItem(LockingManager, file, IsWritable, ServerUrl, Cookies);
+                        yield return new _3dxStoreItem(_3dxServer, LockingManager, file, IsWritable);
                     }
                 }
             }

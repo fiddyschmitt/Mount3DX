@@ -10,21 +10,69 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Web;
-using WebUtility = libCommon.Utilities.WebUtility;
 
 namespace lib3dx
 {
     public class _3dxServer
     {
+        public HttpClient HttpClient;
+        public HttpClientHandler ClientHandler;
+
         CancellationTokenSource CancelPingTask = new();
         Task? PingTask;
 
+        public string ServerUrl { get; protected set; }
+        string? SearchServiceUrl;
+
         public event EventHandler<ProgressEventArgs>? KeepAliveFailed;
 
-        public _3dxServer(string serverUrl, _3dxCookies cookies)
+        public _3dxServer(string serverUrl)
         {
             ServerUrl = serverUrl;
-            Cookies = cookies;
+
+            (HttpClient, ClientHandler) = CreateHttpClient();
+        }
+
+        static (HttpClient Client, HttpClientHandler Handler) CreateHttpClient()
+        {
+            var clientHandler = new HttpClientHandler()
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+            };
+
+            var client = new HttpClient(clientHandler);
+
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("br"));
+
+            //settings to allow large files to be downloaded
+            client.Timeout = TimeSpan.FromMinutes(30);  //default is 1 minute, 40 seconds
+
+            return (client, clientHandler);
+        }
+
+        public bool LogIn()
+        {
+            //We need to clear the cookies here otherwise the previous call to Ping() interferes with the login process
+            (HttpClient, ClientHandler) = CreateHttpClient();
+
+            //Try to log in using Single Sign-On
+            var result = _3dxLogin.LogInUsingHttpClient(ServerUrl, HttpClient, ClientHandler);
+
+            //Fall back to Selenium
+            if (!result)
+            {
+                result = _3dxLogin.LogInUsingSelenium(ServerUrl, HttpClient, ClientHandler.CookieContainer);
+            }
+
+            if (result)
+            {
+                //find the Search Service
+                SearchServiceUrl = _3dxLogin.DiscoverSearchServiceUrl(ServerUrl, HttpClient);
+            }
+
+            return result;
         }
 
         public void StartKeepAlive(int keepAliveIntervalMinutes)
@@ -45,7 +93,7 @@ namespace lib3dx
 
                     for (attempt = 1; attempt <= maxAttempts && !CancelPingTask.IsCancellationRequested; attempt++)
                     {
-                        pingSuccessful = Ping(Cookies, CancelPingTask.Token);
+                        pingSuccessful = Ping(CancelPingTask.Token);
 
                         if (pingSuccessful) break;
 
@@ -94,36 +142,25 @@ namespace lib3dx
         }
 
 
-        public static bool Ping(_3dxCookies cookies, CancellationToken cancellationToken)
+        public bool Ping(CancellationToken cancellationToken)
         {
             var tests = new[] {
-                new
-                {
-                    TestUrl = cookies._3DSpace.BaseUrl.UrlCombine("resources/v1/modeler/documents/ids"),
-                    Cookies = cookies._3DSpace
-                },
-                new
-                {
-                    TestUrl = cookies._3DSearch.BaseUrl.UrlCombine("search"),
-                    Cookies = cookies._3DSearch
-                }
+                            ServerUrl.UrlCombine("resources/v1/modeler/documents/ids"),
+                            SearchServiceUrl?.UrlCombine("search") ?? ""
             };
 
             var allCookiesWork = tests
-                                    .All(test =>
+                                    .All(testUrl =>
                                     {
                                         var cookieWorks = false;
 
                                         try
                                         {
-                                            var httpClient = new HttpClient();
-                                            
-                                            var request = new HttpRequestMessage(HttpMethod.Get, test.TestUrl);
-                                            request.Headers.TryAddWithoutValidation("Cookie", test.Cookies.Cookie);
+                                            var request = new HttpRequestMessage(HttpMethod.Get, testUrl);
 
                                             try
                                             {
-                                                var response = httpClient.Send(request, cancellationToken);
+                                                var response = HttpClient.Send(request, cancellationToken);
                                                 var responseStr = response.Content.ReadAsStringAsync(cancellationToken).Result;
                                                 if (responseStr.Contains("An unexpected error has occurred") || responseStr.Contains("FS_INVALID_QUERY__NO_QUERY"))
                                                 {
@@ -149,7 +186,11 @@ namespace lib3dx
         public string GetSecurityContext()
         {
             var securityContextUrl = ServerUrl.UrlCombine("resources/modeler/pno/person?current=true&select=preferredcredentials");
-            var securityContextJsonStr = WebUtility.HttpGet(securityContextUrl, Cookies._3DSpace.Cookie);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, securityContextUrl);
+            var response = HttpClient.Send(request);
+            response.EnsureSuccessStatusCode();
+            var securityContextJsonStr = response.Content.ReadAsStringAsync().Result;
             var securityContextJson = JObject.Parse(securityContextJsonStr);
 
             var role = securityContextJson["preferredcredentials"]?["role"]?["name"]?.ToString();
@@ -174,10 +215,8 @@ namespace lib3dx
             };
             request.Headers.Add("SecurityContext", securityContext);
 
-            var client = new HttpClient();
-            request.Headers.Add("Cookie", Cookies._3DSpace.Cookie);
 
-            var rootFolderJsonStr = client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var rootFolderJsonStr = HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["folders"]
                             ?.Select(folder =>
@@ -214,13 +253,9 @@ namespace lib3dx
             };
             request.Headers.Add("SecurityContext", securityContext);
 
-            var httpClient = WebUtility.NewHttpClientWithCompression();
-
-            request.Headers.Add("Cookie", Cookies._3DSpace.Cookie);
-
             var documentsToRetrieve = new List<string>();
 
-            var rootFolderJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var rootFolderJsonStr = HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["content"]
                             ?.Select(item =>
@@ -272,11 +307,8 @@ namespace lib3dx
                 Content = new StringContent($"$ids={idsCombined}", Encoding.UTF8, "application/x-www-form-urlencoded"),
             };
 
-            var httpClient = WebUtility.NewHttpClientWithCompression();
 
-            request.Headers.Add("Cookie", Cookies._3DSpace.Cookie);
-
-            var documentDetailsJsonStr = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var documentDetailsJsonStr = HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 
             var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
 
@@ -288,9 +320,9 @@ namespace lib3dx
         }
 
 
-        public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, _3dxCookies cookies, int queryThreads, EventHandler<ProgressEventArgs>? progress)
+        public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {
-            var firstPageStr = GetDocumentPage(cookies, 0, 1, null);
+            var firstPageStr = GetDocumentPage(0, 1, null);
             var firstPageJson = JObject.Parse(firstPageStr) ?? throw new Exception("Could not parse JSON retrieved from first search");
 
             var totalDocsStr = (firstPageJson["infos"]?["nmatches"]?.ToString()) ?? throw new Exception("Could not find nmatches field in JSON");
@@ -327,7 +359,7 @@ namespace lib3dx
                                 {
                                     try
                                     {
-                                        docPageStr = GetDocumentPage(cookies, page, pageSize, searchId);
+                                        docPageStr = GetDocumentPage(page, pageSize, searchId);
                                         var docPageJson = JObject.Parse(docPageStr);
                                         resultObj = docPageJson["results"];
 
@@ -363,7 +395,7 @@ namespace lib3dx
                                     Log.WriteLine($"Successfully retrieved page {page} after {attempt} {"attempt".Pluralize(attempt)}");
                                 }
 
-                                
+
                                 var documentIds = resultObj
                                                     .Select(result =>
                                                     {
@@ -479,9 +511,14 @@ namespace lib3dx
             return newDocument;
         }
 
-        public static string GetDocumentPage(_3dxCookies cookies, int pageNumber, int pageSize, string? searchId)
+        public string GetDocumentPage(int pageNumber, int pageSize, string? searchId)
         {
-            var searchUrl = cookies._3DSearch.BaseUrl.UrlCombine("search?xrequestedwith=xmlhttprequest");
+            if (SearchServiceUrl == null)
+            {
+                throw new Exception($"Search Service URL not yet retrieved.");
+            }
+
+            var searchUrl = SearchServiceUrl.UrlCombine("search?xrequestedwith=xmlhttprequest");
 
             var requestJson = $$"""
                     {
@@ -526,18 +563,11 @@ namespace lib3dx
                 Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
             };
 
-            var httpClient = WebUtility.NewHttpClientWithCompression();
-
-            request.Headers.Add("Cookie", cookies._3DSearch.Cookie);
-
-            var response = httpClient.SendAsync(request).Result;
+            var response = HttpClient.Send(request);
             response.EnsureSuccessStatusCode();
             var searchResultsJsonStr = response.Content.ReadAsStringAsync().Result;
 
             return searchResultsJsonStr;
         }
-
-        public string ServerUrl { get; }
-        public _3dxCookies Cookies { get; }
     }
 }

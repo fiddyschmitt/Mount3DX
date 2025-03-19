@@ -47,7 +47,7 @@ namespace lib3dx
         }
         */
 
-        public static List<_3dxFolder> GetSubFolders(_3dxFolder folder, string serverUrl, string cookies)
+        public static List<_3dxFolder> GetSubFolders(_3dxFolder folder, string serverUrl, _3dxServer server)
         {
             var objectUrl = serverUrl.UrlCombine(@$"common/emxUIStructureFancyTreeGetData.jsp?objectId={folder.ObjectId}&commandName=TMCProjectStructure&reinit=");
 
@@ -59,11 +59,7 @@ namespace lib3dx
 
             request.Headers.Add("Accept-Language", "en-US,en;q=0.5");   //required for some reason
 
-            var httpClient = libCommon.Utilities.WebUtility.NewHttpClientWithCompression();
-
-            request.Headers.Add("Cookie", cookies);
-
-            var jsonString = httpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var jsonString = server.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
 
             var result = JArray
                             .Parse(jsonString)
@@ -78,7 +74,7 @@ namespace lib3dx
                                 Title = o.Title[..o.Title.LastIndexOf('(')],
                             })
                             .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.Now, DateTime.Now, DateTime.Now))
-                            .ToList();
+                            .ToList() ?? [];
 
             return result;
         }

@@ -18,7 +18,7 @@ namespace Mount3DX
     {
         private readonly Settings Settings;
         private readonly uint MaxMetadataSizeInBytes;
-        _3dxServer? _3dxServer;
+        _3dxServer _3dxServer;
         _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
         public string ComputedUNC { get; protected set; }
@@ -27,10 +27,9 @@ namespace Mount3DX
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
         public event EventHandler<ProgressEventArgs>? SessionError;
 
-        public static _3dxCookies? Cookies { get; set; }
-
-        public Session(Settings settings, uint maxMetadataSizeInBytes)
+        public Session(_3dxServer _3dxServer, Settings settings, uint maxMetadataSizeInBytes)
         {
+            this._3dxServer = _3dxServer;
             Settings = settings;
             MaxMetadataSizeInBytes = maxMetadataSizeInBytes;
             ComputedUNC = settings.Vfs.GetComputedUNC();
@@ -40,64 +39,37 @@ namespace Mount3DX
         {
             Log.WriteLine("Session starting");
 
-            if (Cookies == null)
+            var isLoggedIn = _3dxServer.Ping(CancellationToken.None);
+
+            if (isLoggedIn)
             {
+                Log.WriteLine("Currently logged in.");
+            }
+            else
+            {
+                //the cookies didn't work. Let's log in again
                 InitialisationProgress?.Invoke(this, new ProgressEventArgs()
                 {
                     Nature = ProgressEventArgs.EnumNature.Neutral,
                     Message = "Signing into 3DX..."
                 });
 
-                Log.WriteLine("Acquiring cookies.");
-                var cookiesResult = _3dxLogin.GetSessionCookies(Settings._3dx.ServerUrl);
+                Log.WriteLine("Server did not respond to ping. Logging in.");
+                var loginResult = _3dxServer.LogIn();
 
-                if (cookiesResult.Success)
+                if (loginResult)
                 {
-                    Log.WriteLine("Cookies acquired successfully.");
-                    Cookies = cookiesResult.Cookies;
+                    Log.WriteLine("Logged in successfully.");
+                    isLoggedIn = true;
                 }
                 else
                 {
-                    Log.WriteLine("Cookies not acquired successfully.");
+                    Log.WriteLine("Login unsuccessful.");
                 }
-            }
-            else
-            {
-                Log.WriteLine("Cookies present. Pinging server.");
 
-                //see if the cookies work
-                _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
-                var currentCookiesWork = _3dxServer.Ping(Cookies, CancellationToken.None);
-
-                if (currentCookiesWork)
-                {
-                    Log.WriteLine("Cookies are still valid.");
-                }
-                else
-                {
-                    //the cookies didn't work. Let's log in again
-                    InitialisationProgress?.Invoke(this, new ProgressEventArgs()
-                    {
-                        Nature = ProgressEventArgs.EnumNature.Neutral,
-                        Message = "Signing into 3DX..."
-                    });
-
-                    Log.WriteLine("Server did not respond to ping. Acquiring new cookies.");
-                    var cookiesResult = _3dxLogin.GetSessionCookies(Settings._3dx.ServerUrl);
-
-                    if (cookiesResult.Success)
-                    {
-                        Log.WriteLine("Cookies acquired successfully.");
-                        Cookies = cookiesResult.Cookies;
-                    }
-                    else
-                    {
-                        Log.WriteLine("Cookies not acquired successfully.");
-                    }
-                }
             }
 
-            if (Cookies == null)
+            if (!isLoggedIn)
             {
                 Log.WriteLine("Could not acquire cookies. Displaying error message.");
 
@@ -106,15 +78,15 @@ namespace Mount3DX
                 InitialisationFinished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
-                    Message = "Cookies could not be acquired. Please check the URL."
+                    Message = "Login unsuccessful. Please check the URL."
                 });
 
                 return;
             }
 
             Log.WriteLine("Pinging server.");
-            _3dxServer = new _3dxServer(Settings._3dx.ServerUrl, Cookies);
-            var pingSuccessful = _3dxServer.Ping(Cookies, CancellationToken.None);
+
+            var pingSuccessful = _3dxServer.Ping(CancellationToken.None);
 
             if (pingSuccessful)
             {
@@ -154,9 +126,8 @@ namespace Mount3DX
                 Log.WriteLine($"Initialising {nameof(_3dxStore)}.");
 
                 _3dxStore = new _3dxStore(
-                    Settings._3dx.ServerUrl,
+                    _3dxServer,
                     Settings.Vfs.WebDavServerUrl,
-                    Cookies,
                     Settings._3dx.QueryThreads,
                     MaxMetadataSizeInBytes,
                     InitialisationProgress);
