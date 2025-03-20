@@ -1,6 +1,7 @@
 ﻿using libCommon;
 using libCommon.Events;
 using libCommon.Utilities;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
@@ -292,6 +293,29 @@ namespace lib3dx
             result.AddRange(documentDetails);
 
             return result!;
+        }
+
+        public string GetMetadata(string documentId, string securityContext)
+        {
+            var metadataUrl = ServerUrl.UrlCombine("resources/v1/collabServices/attributes/op/read");
+            var request = new HttpRequestMessage(HttpMethod.Post, metadataUrl);
+            request.Headers.Add("SecurityContext", securityContext);
+
+            var reqContentJson = $$"""
+                {"lIds":[],"relIDs":[],"busIDs":["{{documentId}}"],"plmparameters":"false","attributes":"true","navigateToMain":"true","readonly":"true","debug_properties":""}
+                """;
+            request.Content = new StringContent(reqContentJson, Encoding.UTF8, "application/json");
+
+
+
+            var response = HttpClient.Send(request);
+            response.EnsureSuccessStatusCode();
+
+            var result = response.Content.ReadAsStringAsync().Result;
+
+            result = JsonConvert.SerializeObject(JsonConvert.DeserializeObject(result), Formatting.Indented);
+
+            return result;
         }
 
         public List<_3dxDocument?> GetDocuments(List<string> documentIds, _3dxFolder parent)
