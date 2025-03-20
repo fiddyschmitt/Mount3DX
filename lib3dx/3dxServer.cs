@@ -71,6 +71,11 @@ namespace lib3dx
             {
                 //find the Search Service
                 SearchServiceUrl = _3dxLogin.DiscoverSearchServiceUrl(ServerUrl, HttpClient);
+
+                //Pinging the server retrieves the Search Service cookies
+                var pingSuccessful = Ping(CancellationToken.None);
+
+                result &= pingSuccessful;
             }
 
             return result;
