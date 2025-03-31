@@ -64,6 +64,9 @@ namespace lib3dx
             //Fall back to Selenium
             if (!result)
             {
+                //We need to clear the cookies here otherwise the previous call to LogInUsingHttpClient() interferes with the login process
+                (HttpClient, ClientHandler) = CreateHttpClient();
+
                 result = _3dxLogin.LogInUsingSelenium(ServerUrl, HttpClient, ClientHandler.CookieContainer);
             }
 
