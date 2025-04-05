@@ -340,7 +340,8 @@ namespace lib3dx
             };
 
 
-            var documentDetailsJsonStr = HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var response = HttpClient.Send(request);
+            var documentDetailsJsonStr = response.Content.ReadAsStringAsync().Result;
 
             var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
 
