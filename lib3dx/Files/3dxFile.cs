@@ -9,22 +9,20 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace lib3dx
+namespace lib3dx.Files
 {
-    public class _3dxFile : _3dxItem
+    public class _3dxFile : _3dxDownloadableFile
     {
         readonly string DocumentObjectId;
         public string FileRevision;
-        public ulong Size;
 
-        public _3dxFile(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc, string documentObjectId, string fileRevision, ulong size) : base(objectId, name, parent, creationTimeUtc, lastWriteTimeUtc, lastAccessTimeUtc)
+        public _3dxFile(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc, string documentObjectId, string fileRevision, ulong size) : base(objectId, name, parent, creationTimeUtc, lastWriteTimeUtc, lastAccessTimeUtc, size)
         {
             DocumentObjectId = documentObjectId;
             FileRevision = fileRevision;
-            Size = size;
         }
 
-        public Stream Download(_3dxServer _3dxServer)
+        public override Stream Download(_3dxServer _3dxServer)
         {
             try
             {

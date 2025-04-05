@@ -1,4 +1,5 @@
-﻿using System;
+﻿using lib3dx.Files;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +9,7 @@ namespace lib3dx
 {
     public class _3dxDocument : _3dxFolder
     {
-        public List<_3dxFile> Files = [];
+        public List<_3dxDownloadableFile> Files = [];
         public string DocumentType;
         public string Revision { get; set; }
 

@@ -4,6 +4,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using lib3dx;
+using lib3dx.Files;
 using NWebDav.Server;
 using NWebDav.Server.Helpers;
 using NWebDav.Server.Http;
@@ -17,9 +18,9 @@ namespace lib3dxVFS.WebDAV.Stores
     [DebuggerDisplay("{_fileInfo.FullPath}")]
     public sealed class _3dxStoreItem : IDiskStoreItem
     {
-        public readonly _3dxFile _fileInfo;
+        public readonly _3dxDownloadableFile _fileInfo;
 
-        public _3dxStoreItem(_3dxServer _3dxServer, ILockingManager lockingManager, _3dxFile fileInfo, bool isWritable)
+        public _3dxStoreItem(_3dxServer _3dxServer, ILockingManager lockingManager, _3dxDownloadableFile fileInfo, bool isWritable)
         {
             this._3dxServer = _3dxServer;
 

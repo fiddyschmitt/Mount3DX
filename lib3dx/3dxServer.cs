@@ -1,4 +1,5 @@
-﻿using libCommon;
+﻿using lib3dx.Files;
+using libCommon;
 using libCommon.Events;
 using libCommon.Utilities;
 using Newtonsoft.Json;
@@ -545,10 +546,36 @@ namespace lib3dx
                             fileRevision,
                             size);
             })
+            .OfType<_3dxDownloadableFile>()
             .ToList() ?? [];
 
+            _3dxDownloadableFile docUrlFile = new _3dxDocUrlFile(
+                                        Guid.NewGuid().ToString(),
+                                        $"_link.url",
+                                        newDocument,
+                                        newDocument.CreationTimeUtc,
+                                        newDocument.LastWriteTimeUtc,
+                                        newDocument.LastAccessTimeUtc,
+                                        newDocument.ObjectId,
+                                        1);
 
-            newDocument.Files = files;
+            _3dxDownloadableFile docMetadataFile = new _3dxDocMetadataFile(
+                                        Guid.NewGuid().ToString(),
+                                        "_metadata.json",
+                                        newDocument,
+                                        newDocument.CreationTimeUtc,
+                                        newDocument.LastWriteTimeUtc,
+                                        newDocument.LastAccessTimeUtc,
+                                        newDocument.ObjectId,
+                                        1);
+
+            files.Add(docUrlFile);
+            files.Add(docMetadataFile);
+
+
+            newDocument.Files = files
+                                    .OfType<_3dxDownloadableFile>()
+                                    .ToList();
 
             return newDocument;
         }
