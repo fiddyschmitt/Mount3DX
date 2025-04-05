@@ -382,81 +382,90 @@ namespace lib3dx
                             .WithDegreeOfParallelism(queryThreads)
                             .SelectMany(page =>
                             {
-                                string docPageStr;
-                                JToken? resultObj = null;
-
-                                int attempt;
-                                int maxAttempts = 5;
-
-                                for (attempt = 1; attempt <= maxAttempts; attempt++)
+                                try
                                 {
-                                    try
-                                    {
-                                        docPageStr = GetDocumentPage(page, pageSize, searchId);
-                                        var docPageJson = JObject.Parse(docPageStr);
-                                        resultObj = docPageJson["results"];
+                                    string docPageStr;
+                                    JToken? resultObj = null;
 
-                                        if (resultObj != null)
+                                    int attempt;
+                                    int maxAttempts = 5;
+
+                                    for (attempt = 1; attempt <= maxAttempts; attempt++)
+                                    {
+                                        try
                                         {
-                                            break;
+                                            docPageStr = GetDocumentPage(page, pageSize, searchId);
+                                            var docPageJson = JObject.Parse(docPageStr);
+                                            resultObj = docPageJson["results"];
+
+                                            if (resultObj != null)
+                                            {
+                                                break;
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Log.WriteLine($"Could not retrieve results for page {page}, during attempt {attempt}. {ex.Message}");
                                         }
                                     }
-                                    catch (Exception ex)
+
+                                    if (resultObj == null)
                                     {
-                                        Log.WriteLine($"Could not retrieve results for page {page}, during attempt {attempt}. {ex.Message}");
+                                        var couldNotRetrievePage = $"Could not retrieve results for page {page}. Attempted {attempt} {"time".Pluralize(attempt)}.";
+                                        Log.WriteLine(couldNotRetrievePage);
+
+                                        /*
+                                        progress?.Invoke(null, new ProgressEventArgs()
+                                        {
+                                            Message = couldNotRetrievePage,
+                                            Nature = ProgressEventArgs.EnumNature.Bad
+                                        });
+                                        */
+
+                                        throw new Exception(couldNotRetrievePage);
                                     }
-                                }
 
-                                if (resultObj == null)
-                                {
-                                    var couldNotRetrievePage = $"Could not retrieve results for page {page}. Attempted {attempt} {"time".Pluralize(attempt)}.";
-                                    Log.WriteLine(couldNotRetrievePage);
+                                    if (attempt > 1)
+                                    {
+                                        Log.WriteLine($"Successfully retrieved page {page} after {attempt} {"attempt".Pluralize(attempt)}");
+                                    }
 
-                                    /*
+
+                                    var documentIds = resultObj
+                                                        .Select(result =>
+                                                        {
+                                                            var attributes = result["attributes"];
+
+                                                            var resourceIdAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("resourceid") ?? false);
+
+                                                            var resourceId = resourceIdAttribute?["value"]?.ToString();
+
+                                                            return resourceId ?? "";
+                                                        })
+                                                        .Where(documentId => !string.IsNullOrEmpty(documentId))
+                                                        .ToList();
+
+                                    var documents = GetDocuments(documentIds, parent)
+                                                        .Where(doc => doc != null)  //todo - find which are null and why
+                                                        .ToList();
+
+                                    Interlocked.Increment(ref pagesRetrieved);
+                                    Interlocked.Add(ref documentsDiscovered, documents.Count);
+
                                     progress?.Invoke(null, new ProgressEventArgs()
                                     {
-                                        Message = couldNotRetrievePage,
-                                        Nature = ProgressEventArgs.EnumNature.Bad
+                                        Message = $"Retrieved {pagesRetrieved:N0}/{totalPages:N0} pages. {documentsDiscovered:N0} documents discovered.",
+                                        Nature = ProgressEventArgs.EnumNature.Neutral
                                     });
-                                    */
 
-                                    throw new Exception(couldNotRetrievePage);
+                                    return documents;
                                 }
-
-                                if (attempt > 1)
+                                catch (Exception ex)
                                 {
-                                    Log.WriteLine($"Successfully retrieved page {page} after {attempt} {"attempt".Pluralize(attempt)}");
+                                    Log.WriteLine($"Error on page {page:N0}:");
+                                    Log.WriteLine($"{ex}");
+                                    throw;
                                 }
-
-
-                                var documentIds = resultObj
-                                                    .Select(result =>
-                                                    {
-                                                        var attributes = result["attributes"];
-
-                                                        var resourceIdAttribute = attributes?.FirstOrDefault(attr => attr["name"]?.ToString().Equals("resourceid") ?? false);
-
-                                                        var resourceId = resourceIdAttribute?["value"]?.ToString();
-
-                                                        return resourceId ?? "";
-                                                    })
-                                                    .Where(documentId => !string.IsNullOrEmpty(documentId))
-                                                    .ToList();
-
-                                var documents = GetDocuments(documentIds, parent)
-                                                    .Where(doc => doc != null)  //todo - find which are null and why
-                                                    .ToList();
-
-                                Interlocked.Increment(ref pagesRetrieved);
-                                Interlocked.Add(ref documentsDiscovered, documents.Count);
-
-                                progress?.Invoke(null, new ProgressEventArgs()
-                                {
-                                    Message = $"Retrieved {pagesRetrieved:N0}/{totalPages:N0} pages. {documentsDiscovered:N0} documents discovered.",
-                                    Nature = ProgressEventArgs.EnumNature.Neutral
-                                });
-
-                                return documents;
                             })
                             .ToList();
 
