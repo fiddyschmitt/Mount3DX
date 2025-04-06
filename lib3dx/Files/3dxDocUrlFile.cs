@@ -8,9 +8,8 @@ using System.Net.Http.Headers;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using lib3dx.Files;
 
-namespace lib3dx
+namespace lib3dx.Files
 {
     public class _3dxDocUrlFile : _3dxDownloadableFile
     {
