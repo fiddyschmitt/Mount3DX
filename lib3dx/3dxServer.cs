@@ -24,14 +24,20 @@ namespace lib3dx
         Task? PingTask;
 
         public string ServerUrl { get; protected set; }
+        
+        public bool GenerateDocumentLinkFile { get; }
+
+        public bool GenerateDocumentMetadataFile { get; }
+
         string? SearchServiceUrl;
 
         public event EventHandler<ProgressEventArgs>? KeepAliveFailed;
 
-        public _3dxServer(string serverUrl)
+        public _3dxServer(string serverUrl, bool generateDocumentLinkFile, bool generateDocumentMetadataFile)
         {
             ServerUrl = serverUrl;
-
+            GenerateDocumentLinkFile = generateDocumentLinkFile;
+            GenerateDocumentMetadataFile = generateDocumentMetadataFile;
             (HttpClient, ClientHandler) = CreateHttpClient();
         }
 
@@ -473,7 +479,7 @@ namespace lib3dx
             return result!;
         }
 
-        public static _3dxDocument? JTokenToDocument(JToken o, _3dxFolder parent)
+        public _3dxDocument? JTokenToDocument(JToken o, _3dxFolder parent)
         {
             var title = o["dataelements"]?["title"]?.ToString();
 
@@ -549,28 +555,34 @@ namespace lib3dx
             .OfType<_3dxDownloadableFile>()
             .ToList() ?? [];
 
-            _3dxDownloadableFile docUrlFile = new _3dxDocUrlFile(
-                                        Guid.NewGuid().ToString(),
-                                        $"_link.url",
-                                        newDocument,
-                                        newDocument.CreationTimeUtc,
-                                        newDocument.LastWriteTimeUtc,
-                                        newDocument.LastAccessTimeUtc,
-                                        newDocument.ObjectId,
-                                        1);
+            if (GenerateDocumentLinkFile)
+            {
+                _3dxDownloadableFile docLinkFile = new _3dxDocUrlFile(
+                                            Guid.NewGuid().ToString(),
+                                            $"_link.url",
+                                            newDocument,
+                                            newDocument.CreationTimeUtc,
+                                            newDocument.LastWriteTimeUtc,
+                                            newDocument.LastAccessTimeUtc,
+                                            newDocument.ObjectId,
+                                            1);
+                files.Add(docLinkFile);
+            }
 
-            _3dxDownloadableFile docMetadataFile = new _3dxDocMetadataFile(
-                                        Guid.NewGuid().ToString(),
-                                        "_metadata.json",
-                                        newDocument,
-                                        newDocument.CreationTimeUtc,
-                                        newDocument.LastWriteTimeUtc,
-                                        newDocument.LastAccessTimeUtc,
-                                        newDocument.ObjectId,
-                                        1);
+            if (GenerateDocumentMetadataFile)
+            {
+                _3dxDownloadableFile docMetadataFile = new _3dxDocMetadataFile(
+                                            Guid.NewGuid().ToString(),
+                                            "_metadata.json",
+                                            newDocument,
+                                            newDocument.CreationTimeUtc,
+                                            newDocument.LastWriteTimeUtc,
+                                            newDocument.LastAccessTimeUtc,
+                                            newDocument.ObjectId,
+                                            1);
 
-            files.Add(docUrlFile);
-            files.Add(docMetadataFile);
+                files.Add(docMetadataFile);
+            }
 
 
             newDocument.Files = files

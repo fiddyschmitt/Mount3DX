@@ -20,6 +20,14 @@ namespace Mount3DX
         public int RefreshIntervalMinutes = 30;
         public int QueryThreads = 8;
         public int KeepAliveIntervalMinutes = 5;
+
+        public ExtraFiles GenerateExtraFiles = new();
+    }
+
+    public class ExtraFiles
+    {
+        public bool DocumentLink = true;
+        public bool DocumentMetadata = true;
     }
 
     public class VfsSettings

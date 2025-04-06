@@ -181,7 +181,10 @@ namespace Mount3DX
 
                 if (_3dxServer == null || _3dxServer.ServerUrl != settings._3dx.ServerUrl)
                 {
-                    _3dxServer = new _3dxServer(settings._3dx.ServerUrl);
+                    _3dxServer = new _3dxServer(
+                        settings._3dx.ServerUrl, 
+                        settings._3dx.GenerateExtraFiles.DocumentLink,
+                        settings._3dx.GenerateExtraFiles.DocumentMetadata);
                 }
 
                 session = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
@@ -275,7 +278,11 @@ namespace Mount3DX
         private void Scratch()
 #pragma warning restore IDE0051 // Remove unused private members
         {
-            var _3dxServer = new _3dxServer(settings._3dx.ServerUrl);
+            var _3dxServer = new _3dxServer(
+                                    settings._3dx.ServerUrl,
+                                    settings._3dx.GenerateExtraFiles.DocumentLink,
+                                    settings._3dx.GenerateExtraFiles.DocumentMetadata);
+
             _3dxServer.LogIn();
 
             var root = new _3dxFolder(
