@@ -312,6 +312,16 @@ namespace lib3dx
 
         public string GetMetadata(string documentId, string securityContext)
         {
+            var jsonObj = GetMetadataJSON(documentId, securityContext);
+
+            var result = JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
+
+            return result;
+        }
+
+
+        public JObject GetMetadataJSON(string documentId, string securityContext)
+        {
             var metadataUrl = ServerUrl.UrlCombine("resources/v1/collabServices/attributes/op/read");
             var request = new HttpRequestMessage(HttpMethod.Post, metadataUrl);
             request.Headers.Add("SecurityContext", securityContext);
@@ -321,15 +331,12 @@ namespace lib3dx
                 """;
             request.Content = new StringContent(reqContentJson, Encoding.UTF8, "application/json");
 
-
-
             var response = HttpClient.Send(request);
             response.EnsureSuccessStatusCode();
 
-            var result = response.Content.ReadAsStringAsync().Result;
+            var jsonStr = response.Content.ReadAsStringAsync().Result;
 
-            result = JsonConvert.SerializeObject(JsonConvert.DeserializeObject(result), Formatting.Indented);
-
+            var result = JObject.Parse(jsonStr);
             return result;
         }
 
@@ -357,6 +364,28 @@ namespace lib3dx
                                 .ToList();
 
             return documents;
+        }
+
+        public JToken GetDocument(string documentId)
+        {
+            var getDocumentDetails = ServerUrl.UrlCombine($"resources/v1/modeler/documents/ids");
+
+            var idsCombined = documentId;
+
+            var request = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(getDocumentDetails),
+                Method = HttpMethod.Post,
+                Content = new StringContent($"$ids={idsCombined}", Encoding.UTF8, "application/x-www-form-urlencoded"),
+            };
+
+
+            var response = HttpClient.Send(request);
+            var documentDetailsJsonStr = response.Content.ReadAsStringAsync().Result;
+
+            var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
+
+            return dataField;
         }
 
 

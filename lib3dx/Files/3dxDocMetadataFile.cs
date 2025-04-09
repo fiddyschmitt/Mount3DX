@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace lib3dx.Files
 {
@@ -27,8 +28,18 @@ namespace lib3dx.Files
                 Log.WriteLine("Downloading metadata file");
 
                 var secContext = _3dxServer.GetSecurityContext();
-                var metadataJson = _3dxServer.GetMetadata(DocumentObjectId, secContext);
-                var result = new MemoryStream(Encoding.UTF8.GetBytes(metadataJson));
+                var metadataJsonObj = _3dxServer.GetMetadataJSON(DocumentObjectId, secContext);
+
+                var docInfoObj = _3dxServer.GetDocument(DocumentObjectId);
+
+                var obj = new JObject
+                {
+                    ["resources/v1/collabServices/attributes/op/read"] = metadataJsonObj,
+                    ["resources/v1/modeler/documents/ids"] = docInfoObj
+                };
+
+                var resultStr = JsonConvert.SerializeObject(obj, Formatting.Indented);
+                var result = new MemoryStream(Encoding.UTF8.GetBytes(resultStr));
                 return result;
             }
             catch (Exception ex)
