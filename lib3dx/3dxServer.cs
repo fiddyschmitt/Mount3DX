@@ -185,7 +185,7 @@ namespace lib3dx
                                             }
                                             catch (Exception ex)
                                             {
-                                                Log.WriteLine($"Error while pinging sever:{Environment.NewLine}{ex}");
+                                                Log.WriteLine($"Error while pinging sever:{Environment.NewLine}{ex.Message}");
                                             }
                                         }
                                         catch (Exception ex)
