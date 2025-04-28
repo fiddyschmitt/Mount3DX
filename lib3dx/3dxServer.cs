@@ -24,7 +24,7 @@ namespace lib3dx
         Task? PingTask;
 
         public string ServerUrl { get; protected set; }
-        
+
         public bool GenerateDocumentLinkFile { get; }
 
         public bool GenerateDocumentMetadataFile { get; }
@@ -498,8 +498,19 @@ namespace lib3dx
                                 }
                                 catch (Exception ex)
                                 {
-                                    Log.WriteLine($"Error on page {page:N0}:");
-                                    Log.WriteLine($"{ex}");
+                                    var pageError = new StringBuilder();
+                                    pageError.AppendLine($"Error on page {page:N0}:");
+
+                                    var currentException = ex;
+
+                                    while (currentException != null)
+                                    {
+                                        pageError.AppendLine($"{currentException.Message.Trim()}");
+                                        currentException = currentException.InnerException;
+                                    }
+
+                                    Log.WriteLine(pageError.ToString().Trim());
+
                                     throw;
                                 }
                             })
