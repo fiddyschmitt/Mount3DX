@@ -441,7 +441,7 @@ namespace lib3dx
                                         }
                                         catch (Exception ex)
                                         {
-                                            Log.WriteLine($"Could not retrieve results for page {page}, during attempt {attempt}. {ex.Message}");
+                                            Log.WriteLine($"Could not retrieve results for page {page}, during attempt {attempt}. {ex.Message}".Trim());
                                         }
                                     }
 
