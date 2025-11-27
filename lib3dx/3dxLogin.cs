@@ -203,11 +203,11 @@ namespace lib3dx
                                                         var scriptText = resp.Content.ReadAsStringAsync().Result;
                                                         return scriptText;
                                                     })
-                                                    .FirstOrDefault(scriptText => scriptText.Contains("Tn_INTERNAL_SECURE_BADGE_AUTH"))?
-                                                    .Split(["Tn_INTERNAL_SECURE_BADGE_AUTH=\""], StringSplitOptions.None)?
+                                                    .FirstOrDefault(scriptText => scriptText.Contains("_INTERNAL_SECURE_BADGE_AUTH"))?
+                                                    .Split(["_INTERNAL_SECURE_BADGE_AUTH=\""], StringSplitOptions.None)?
                                                     .LastOrDefault()?
                                                     .Split(["\""], StringSplitOptions.None)
-                                                    .FirstOrDefault() ?? throw new Exception($"Could not retrieve Tn_INTERNAL_SECURE_BADGE_AUTH from script.");
+                                                    .FirstOrDefault() ?? throw new Exception($"Could not retrieve _INTERNAL_SECURE_BADGE_AUTH from script.");
 
                 var configUrl = gasBaseUrl.UrlCombine("configuration/internal");
                 request = new HttpRequestMessage(HttpMethod.Get, configUrl);
