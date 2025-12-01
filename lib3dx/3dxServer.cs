@@ -201,6 +201,7 @@ namespace lib3dx
 
         public string GetSecurityContext()
         {
+            //could also use: resources/pno/person/getsecuritycontext
             var securityContextUrl = ServerUrl.UrlCombine("resources/modeler/pno/person?current=true&select=preferredcredentials");
 
             var request = new HttpRequestMessage(HttpMethod.Get, securityContextUrl);
