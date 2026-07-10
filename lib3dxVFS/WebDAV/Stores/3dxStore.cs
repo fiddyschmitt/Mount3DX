@@ -56,7 +56,7 @@ namespace libVFS.WebDAV.Stores
                 Nature = ProgressEventArgs.EnumNature.Neutral
             });
 
-            RefreshDocumentsList();
+            RefreshDocumentsList(throwOnError: true);
 
 
             /*
@@ -71,7 +71,7 @@ namespace libVFS.WebDAV.Stores
             Progress = null;
         }
 
-        void RefreshDocumentsList()
+        void RefreshDocumentsList(bool throwOnError = false)
         {
             Log.WriteLine("Refreshing document list");
             var startTime = DateTime.Now;
@@ -356,6 +356,13 @@ namespace libVFS.WebDAV.Stores
             catch (Exception ex)
             {
                 Log.WriteLine($"Error while refreshing the document list:{Environment.NewLine}{ex}");
+
+                //During the initial load there are no RefreshFailed subscribers yet, so the failure
+                //must propagate to the caller or the session would report success with a broken store
+                if (throwOnError)
+                {
+                    throw;
+                }
 
                 RefreshFailed?.Invoke(this, new ProgressEventArgs()
                 {
