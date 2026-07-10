@@ -233,7 +233,9 @@ namespace lib3dx
             request.Headers.Add("SecurityContext", securityContext);
 
 
-            var rootFolderJsonStr = HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var response = HttpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var rootFolderJsonStr = response.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["folders"]
                             ?.Select(folder =>
@@ -272,7 +274,9 @@ namespace lib3dx
 
             var documentsToRetrieve = new List<string>();
 
-            var rootFolderJsonStr = HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var response = HttpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var rootFolderJsonStr = response.Content.ReadAsStringAsync().Result;
             var result = JObject
                             .Parse(rootFolderJsonStr)["content"]
                             ?.Select(item =>
@@ -356,6 +360,7 @@ namespace lib3dx
 
 
             var response = HttpClient.Send(request);
+            response.EnsureSuccessStatusCode();
             var documentDetailsJsonStr = response.Content.ReadAsStringAsync().Result;
 
             var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
@@ -382,6 +387,7 @@ namespace lib3dx
 
 
             var response = HttpClient.Send(request);
+            response.EnsureSuccessStatusCode();
             var documentDetailsJsonStr = response.Content.ReadAsStringAsync().Result;
 
             var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");

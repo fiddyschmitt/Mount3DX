@@ -38,7 +38,9 @@ namespace lib3dx.Files
                 };
 
 
-                var downloadTokenJson = _3dxServer.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                var tokenResponse = _3dxServer.HttpClient.SendAsync(request).Result;
+                tokenResponse.EnsureSuccessStatusCode();
+                var downloadTokenJson = tokenResponse.Content.ReadAsStringAsync().Result;
                 var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
 
 
@@ -52,7 +54,9 @@ namespace lib3dx.Files
                 request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
 
 
-                var downloadLocationQueryJson = _3dxServer.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                var ticketResponse = _3dxServer.HttpClient.SendAsync(request).Result;
+                ticketResponse.EnsureSuccessStatusCode();
+                var downloadLocationQueryJson = ticketResponse.Content.ReadAsStringAsync().Result;
                 var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.FirstOrDefault()?["dataelements"];
 
                 if (datalements == null)
@@ -73,6 +77,7 @@ namespace lib3dx.Files
                 var opt = HttpCompletionOption.ResponseHeadersRead; //to avoid: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647.
 
                 var response = _3dxServer.HttpClient.GetAsync(downloadUrl, opt).Result;
+                response.EnsureSuccessStatusCode();
 
                 var result = response.Content.ReadAsStream();
 

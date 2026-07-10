@@ -59,7 +59,9 @@ namespace lib3dx
 
             request.Headers.Add("Accept-Language", "en-US,en;q=0.5");   //required for some reason
 
-            var jsonString = server.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+            var response = server.HttpClient.SendAsync(request).Result;
+            response.EnsureSuccessStatusCode();
+            var jsonString = response.Content.ReadAsStringAsync().Result;
 
             var result = JArray
                             .Parse(jsonString)
