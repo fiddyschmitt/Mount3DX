@@ -64,10 +64,8 @@ namespace NWebDav.Server.Stores
             var fullPath = Path.GetFullPath(Path.Combine(BaseDirectory, requestedPath));
 
             // Make sure we're still inside the specified directory
-            /*
             if (fullPath != BaseDirectory && !fullPath.StartsWith(BaseDirectory + Path.DirectorySeparatorChar))
                 throw new SecurityException($"Uri '{uri}' is outside the '{BaseDirectory}' directory.");
-            */
 
             // Return the combined path
             return fullPath;
