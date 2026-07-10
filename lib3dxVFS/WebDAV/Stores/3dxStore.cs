@@ -172,9 +172,12 @@ namespace libVFS.WebDAV.Stores
                 }
 
                 //some documents have identical names. Give each an index number
-                var duplicateDocuments = new[] { rootFolder }
+                var documentsInTree = new[] { rootFolder }
                                                .Recurse(folder => folder.Subfolders)
                                                .OfType<_3dxDocument>()
+                                               .ToList();
+
+                var duplicateDocuments = documentsInTree
                                                .GroupBy(
                                                    folder => folder.FullPath.ToLower(),
                                                    folder => folder,
@@ -186,14 +189,21 @@ namespace libVFS.WebDAV.Stores
                                                .Where(grp => grp.Documents.Count > 1)
                                                .ToList();
 
+                //a renamed document must not collide with any other document either
+                var usedDocumentPaths = new HashSet<string>(documentsInTree.Select(doc => doc.FullPath), StringComparer.OrdinalIgnoreCase);
+
                 duplicateDocuments
                     .ForEach(grp =>
                     {
                         var i = 1;
                         foreach (var document in grp.Documents)
                         {
-                            document.Name += $" ({i}) ({document.DocumentType})";
-                            i++;
+                            var originalName = document.Name;
+                            do
+                            {
+                                document.Name = $"{originalName} ({i}) ({document.DocumentType})";
+                                i++;
+                            } while (!usedDocumentPaths.Add(document.FullPath));
                         }
                     });
 
@@ -222,13 +232,22 @@ namespace libVFS.WebDAV.Stores
                 documentsWithDuplicateFiles
                     .ForEach(doc =>
                     {
+                        //a renamed file must not collide with any other file in the same document either
+                        var usedFilePaths = new HashSet<string>(doc.Document.Files.Select(file => file.FullPath), StringComparer.OrdinalIgnoreCase);
+
                         foreach (var duplicateGroup in doc.DuplicateGroups)
                         {
                             var i = 1;
                             foreach (var file in duplicateGroup.Files)
                             {
-                                file.Name = $"{Path.GetFileNameWithoutExtension(file.Name)} ({i}){Path.GetExtension(file.Name)}";
-                                i++;
+                                var nameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
+                                var extension = Path.GetExtension(file.Name);
+
+                                do
+                                {
+                                    file.Name = $"{nameWithoutExtension} ({i}){extension}";
+                                    i++;
+                                } while (!usedFilePaths.Add(file.FullPath));
                             }
                         }
                     });
@@ -247,19 +266,35 @@ namespace libVFS.WebDAV.Stores
                 var candidate = new StoreSnapshot();
                 while (true)
                 {
+                    //build the mappings tolerantly; a residual duplicate path shouldn't bring down the whole store
+                    var collectionMapping = new Dictionary<string, _3dxStoreCollection>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var collection in new[] { rootFolder }
+                                                .Recurse(folder => folder.Subfolders)
+                                                .Select(folder => new _3dxStoreCollection(_3dxServer, LockingManager, folder)))
+                    {
+                        if (!collectionMapping.TryAdd(collection.FullPath, collection))
+                        {
+                            Log.WriteLine($"Skipping folder with duplicate path: {collection.FullPath}");
+                        }
+                    }
+
+                    var itemMapping = new Dictionary<string, _3dxStoreItem>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var item in new[] { rootFolder }
+                                                .Recurse(folder => folder.Subfolders)
+                                                .OfType<_3dxDocument>()
+                                                .SelectMany(document => document.Files)
+                                                .Select(file => new _3dxStoreItem(_3dxServer, LockingManager, file, false)))
+                    {
+                        if (!itemMapping.TryAdd(item.FullPath, item))
+                        {
+                            Log.WriteLine($"Skipping file with duplicate path: {item.FullPath}");
+                        }
+                    }
+
                     candidate = new StoreSnapshot()
                     {
-                        PathToCollectionMapping = new[] { rootFolder }
-                                                    .Recurse(folder => folder.Subfolders)
-                                                    .Select(folder => new _3dxStoreCollection(_3dxServer, LockingManager, folder))
-                                                    .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase),
-
-                        PathToItemMapping = new[] { rootFolder }
-                                                    .Recurse(folder => folder.Subfolders)
-                                                    .OfType<_3dxDocument>()
-                                                    .SelectMany(document => document.Files)
-                                                    .Select(file => new _3dxStoreItem(_3dxServer, LockingManager, file, false))
-                                                    .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase)
+                        PathToCollectionMapping = collectionMapping,
+                        PathToItemMapping = itemMapping
                     };
 
                     var folderUrlsToCheck = new List<string>();
@@ -348,6 +383,18 @@ namespace libVFS.WebDAV.Stores
                                                     })
                                                     .ToList();
 
+                        //two chunks can produce the same "first ... last" label; make the names unique
+                        var usedFolderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var newVirtualFolder in newTopLevelFolders)
+                        {
+                            var originalName = newVirtualFolder.Name;
+                            var i = 1;
+                            while (!usedFolderNames.Add(newVirtualFolder.Name))
+                            {
+                                newVirtualFolder.Name = $"{originalName} ({i})";
+                                i++;
+                            }
+                        }
 
                         rootFolder.Subfolders = newTopLevelFolders;
                     }
