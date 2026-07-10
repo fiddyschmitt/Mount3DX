@@ -28,6 +28,9 @@ namespace lib3dxVFS.WebDAV.Stores
             LockingManager = lockingManager;
             _fileInfo = fileInfo;
             IsWritable = isWritable;
+
+            //computing FullPath walks the parent chain, so cache it; the tree is not mutated once published
+            FullPath = fileInfo.FullPath;
         }
 
         public static PropertyManager<_3dxStoreItem> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreItem>(
@@ -103,7 +106,7 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public string Name => _fileInfo.Name;
         public string UniqueKey => _fileInfo.ObjectId;
-        public string FullPath => _fileInfo.FullPath;
+        public string FullPath { get; }
         public Task<Stream> GetReadableStreamAsync(IHttpContext httpContext)
         {
             //var result = Task.FromResult((Stream)_fileInfo.OpenRead());
@@ -153,14 +156,14 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public override int GetHashCode()
         {
-            return StringComparer.OrdinalIgnoreCase.GetHashCode(_fileInfo.FullPath);
+            return StringComparer.OrdinalIgnoreCase.GetHashCode(FullPath);
         }
 
         public override bool Equals(object? obj)
         {
             if (obj is not _3dxStoreItem storeItem)
                 return false;
-            return storeItem._fileInfo.FullPath.Equals(_fileInfo.FullPath, StringComparison.OrdinalIgnoreCase);
+            return storeItem.FullPath.Equals(FullPath, StringComparison.OrdinalIgnoreCase);
         }
 
         private string DetermineContentType()

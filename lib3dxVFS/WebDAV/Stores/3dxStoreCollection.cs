@@ -25,11 +25,14 @@ namespace lib3dxVFS.WebDAV.Stores
 
             LockingManager = lockingManager;
             FolderInfo = folderInfo;
+
+            //computing FullPath walks the parent chain, so cache it; the tree is not mutated once published
+            FullPath = folderInfo.FullPath;
         }
 
         public bool IsWritable => false;
 
-        public string FullPath => FolderInfo.FullPath;
+        public string FullPath { get; }
 
         public InfiniteDepthMode InfiniteDepthMode => InfiniteDepthMode.Rejected;
 
