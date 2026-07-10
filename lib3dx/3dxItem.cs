@@ -12,9 +12,9 @@ namespace lib3dx
         public string ObjectId { get; set; }
         public string Name { get; set; }
         public _3dxItem? Parent { get; set; }
-        public DateTime CreationTimeUtc { get; set; } = new DateTime(2027, 1, 1);
-        public DateTime LastWriteTimeUtc { get; set; } = new DateTime(2027, 1, 1);
-        public DateTime LastAccessTimeUtc { get; set; } = new DateTime(2027, 1, 1);
+        public DateTime CreationTimeUtc { get; set; }
+        public DateTime LastWriteTimeUtc { get; set; }
+        public DateTime LastAccessTimeUtc { get; set; }
 
         public _3dxItem(string objectId, string name, _3dxItem? parent, DateTime creationTimeUtc, DateTime lastWriteTimeUtc, DateTime lastAccessTimeUtc)
         {
