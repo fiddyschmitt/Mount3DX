@@ -52,10 +52,12 @@ namespace Mount3DX
             try
             {
                 using var key = Registry.LocalMachine.OpenSubKey(webclientSettingsKey);
-                if (key != null)
+                var valueData = key?.GetValue("FileAttributesLimitInBytes");
+
+                //if the value is absent (or an unexpected kind), keep the default
+                if (valueData is int intValue)
                 {
-                    var valueData = key.GetValue("FileAttributesLimitInBytes") ?? $"{FileAttributesLimitInBytes}";
-                    FileAttributesLimitInBytes = unchecked((uint)(int)valueData);
+                    FileAttributesLimitInBytes = unchecked((uint)intValue);
                 }
             }
             catch (Exception ex)
