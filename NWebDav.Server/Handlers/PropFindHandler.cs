@@ -170,17 +170,8 @@ namespace NWebDav.Server.Handlers
                 xMultiStatus.Add(xResponse);
             }
 
-            //cachedResponses.Add((request.Url, request.GetDepth()), xDocument);
-
-            //var requestedPath = UriHelper.GetDecodedPath(request.Url)[1..].Replace('/', Path.DirectorySeparatorChar);
-            //requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
-            //var outputFilename = Path.Combine(@"C:\Temp\2024-02-22 - propfinds", requestedPath) + ".txt";
-            //File.WriteAllText(outputFilename, xDocument.ToString());
-
             // Stream the document
             await response.SendResponseAsync(DavStatusCode.MultiStatus, xDocument).ConfigureAwait(false);
-
-
 
             // Finished writing
             return true;

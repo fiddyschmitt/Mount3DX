@@ -26,9 +26,6 @@ namespace NWebDav.Server.Stores
 
         public Task<IStoreItem> GetItemAsync(Uri uri, IHttpContext httpContext)
         {
-            //s_log.Log(LogLevel.Error, () => $"GetItemAsync() {uri}");
-            Console.WriteLine($"GetItemAsync() {uri}");
-
             // Determine the path from the uri
             var path = GetPathFromUri(uri);
 
