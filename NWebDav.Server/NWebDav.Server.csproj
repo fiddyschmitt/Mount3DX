@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <!-- Read request XML bodies with XDocument.LoadAsync; Kestrel disallows synchronous IO by default -->
+    <DefineConstants>$(DefineConstants);USE_ASYNC_READ</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
