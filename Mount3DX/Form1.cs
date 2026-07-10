@@ -37,7 +37,7 @@ namespace Mount3DX
             lblRunningStatus.Text = string.Empty;
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
-            LogWebClientSetrtings();
+            LogWebClientSettings();
             LoadWebclientSettings();
         }
 
@@ -64,7 +64,7 @@ namespace Mount3DX
             }
         }
 
-        private static void LogWebClientSetrtings()
+        private static void LogWebClientSettings()
         {
             var webclientSettingsKey = @"SYSTEM\CurrentControlSet\Services\WebClient\Parameters";
 
@@ -150,7 +150,10 @@ namespace Mount3DX
                     File.WriteAllText(settingsFilename, settingsJson);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while saving settings: {ex.Message}");
+            }
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)

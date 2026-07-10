@@ -195,19 +195,28 @@ namespace Mount3DX
             {
                 webdavHost?.Stop();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while stopping the WebDAV host: {ex.Message}");
+            }
 
             try
             {
                 _3dxServer?.StopKeepAlive();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while stopping the keep-alive task: {ex.Message}");
+            }
 
             try
             {
                 _3dxStore?.StopRefresh();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while stopping the refresh task: {ex.Message}");
+            }
 
             Log.WriteLine($"Session stopped.");
         }

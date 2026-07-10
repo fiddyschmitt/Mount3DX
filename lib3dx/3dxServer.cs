@@ -574,7 +574,7 @@ namespace lib3dx
 
             var files = o["relateddata"]?["files"]?.Select(file =>
             {
-                var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved"); ;
+                var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved");
                 var name = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
                 var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 

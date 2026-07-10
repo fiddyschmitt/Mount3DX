@@ -16,7 +16,7 @@ namespace libCommon.Comparers
         public int Compare(string? x, string? y)
         {
             var result = StrCmpLogicalW(x ?? "", y ?? "");
-            return result;;
+            return result;
         }
     }
 }
