@@ -29,10 +29,9 @@ namespace libVFS.WebDAV.Stores
     {
         readonly ILockingManager LockingManager = new NoLocking();
 
-        _3dxFolder? rootFolder;
-        //Windows paths are case-insensitive, so lookups must be too
-        Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string, _3dxStoreItem> pathToItemMapping = new(StringComparer.OrdinalIgnoreCase);
+        //A complete view of the document tree. Refreshes build a full replacement and publish it
+        //with a single reference assignment, so in-flight requests always see a consistent tree.
+        volatile StoreSnapshot snapshot = new();
 
         public string WebDavServerUrl { get; }
         public _3dxServer _3dxServer { get; }
@@ -78,7 +77,7 @@ namespace libVFS.WebDAV.Stores
 
             try
             {
-                rootFolder = new _3dxFolder(
+                var rootFolder = new _3dxFolder(
                                     Guid.NewGuid().ToString(),
                                     "",
                                     null,
@@ -245,19 +244,23 @@ namespace libVFS.WebDAV.Stores
                                                 .ToList();
 
                 var numberFoldersToUse = 1;
+                var candidate = new StoreSnapshot();
                 while (true)
                 {
-                    pathToCollectionMapping = new[] { rootFolder }
-                                                .Recurse(folder => folder.Subfolders)
-                                                .Select(folder => new _3dxStoreCollection(_3dxServer, LockingManager, folder))
-                                                .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase);
+                    candidate = new StoreSnapshot()
+                    {
+                        PathToCollectionMapping = new[] { rootFolder }
+                                                    .Recurse(folder => folder.Subfolders)
+                                                    .Select(folder => new _3dxStoreCollection(_3dxServer, LockingManager, folder))
+                                                    .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase),
 
-                    pathToItemMapping = new[] { rootFolder }
-                                                .Recurse(folder => folder.Subfolders)
-                                                .OfType<_3dxDocument>()
-                                                .SelectMany(document => document.Files)
-                                                .Select(file => new _3dxStoreItem(_3dxServer, LockingManager, file, false))
-                                                .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase);
+                        PathToItemMapping = new[] { rootFolder }
+                                                    .Recurse(folder => folder.Subfolders)
+                                                    .OfType<_3dxDocument>()
+                                                    .SelectMany(document => document.Files)
+                                                    .Select(file => new _3dxStoreItem(_3dxServer, LockingManager, file, false))
+                                                    .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase)
+                    };
 
                     var folderUrlsToCheck = new List<string>();
                     if (numberFoldersToUse == 1)
@@ -276,9 +279,10 @@ namespace libVFS.WebDAV.Stores
                                             .Any(folder =>
                                             {
                                                 //Check how large the metadata is folder this folder
+                                                //(probe the candidate snapshot; it isn't published to live requests yet)
                                                 var propFindHandler = new PropFindHandler();
                                                 var fakeHttpContext = new FakeHttpContext(new Uri(folder), 1);
-                                                _ = propFindHandler.HandleRequestAsync(fakeHttpContext, this).Result;
+                                                _ = propFindHandler.HandleRequestAsync(fakeHttpContext, candidate).Result;
                                                 var folderMetadataLength = fakeHttpContext.Response.Stream.Length;
                                                 fakeHttpContext.Response.Stream.Close();
 
@@ -359,8 +363,11 @@ namespace libVFS.WebDAV.Stores
                     Log.WriteLine($"Had to use {numberFoldersToUse:N0} top-level folders to fit within the WebClient constraint of {MaxMetadataSizeInBytes:N0} bytes.");
                 }
 
+                //publish the new tree to live requests in one step
+                snapshot = candidate;
+
                 var duration = DateTime.Now - startTime;
-                Log.WriteLine($"Document list refreshed in {duration.FormatTimeSpan()}, with {attempt:N0} {"attempt".Pluralize(attempt)}. {pathToItemMapping.Count:N0} {"file".Pluralize(pathToItemMapping.Count)}.");
+                Log.WriteLine($"Document list refreshed in {duration.FormatTimeSpan()}, with {attempt:N0} {"attempt".Pluralize(attempt)}. {snapshot.PathToItemMapping.Count:N0} {"file".Pluralize(snapshot.PathToItemMapping.Count)}.");
             }
             catch (Exception ex)
             {
@@ -383,34 +390,12 @@ namespace libVFS.WebDAV.Stores
 
         public Task<IStoreCollection?> GetCollectionAsync(Uri uri, IHttpContext httpContext)
         {
-            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
-
-            if (pathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
-            {
-                return Task.FromResult<IStoreCollection?>(collection);
-            }
-
-            // The collection doesn't exist
-            return Task.FromResult<IStoreCollection?>(null);
+            return snapshot.GetCollectionAsync(uri, httpContext);
         }
 
         public Task<IStoreItem?> GetItemAsync(Uri uri, IHttpContext httpContext)
         {
-            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
-            requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
-
-            if (pathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
-            {
-                return Task.FromResult<IStoreItem?>(collection);
-            }
-
-            if (pathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item))
-            {
-                return Task.FromResult<IStoreItem?>(item);
-            }
-
-            // The item doesn't exist
-            return Task.FromResult<IStoreItem?>(null);
+            return snapshot.GetItemAsync(uri, httpContext);
         }
 
 
@@ -443,6 +428,47 @@ namespace libVFS.WebDAV.Stores
         {
             CancelRefreshTask.Cancel();
             RefreshTask?.Wait(1000);    //a timeout because it might be the RefreshTask which has told the session to stop
+        }
+    }
+
+    //An atomically-publishable view of the document tree. Also serves as the IStore used to
+    //probe candidate trees for the WebClient metadata size constraint before they go live.
+    class StoreSnapshot : IStore
+    {
+        //Windows paths are case-insensitive, so lookups must be too
+        public Dictionary<string, _3dxStoreCollection> PathToCollectionMapping { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, _3dxStoreItem> PathToItemMapping { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public Task<IStoreCollection?> GetCollectionAsync(Uri uri, IHttpContext httpContext)
+        {
+            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
+
+            if (PathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
+            {
+                return Task.FromResult<IStoreCollection?>(collection);
+            }
+
+            // The collection doesn't exist
+            return Task.FromResult<IStoreCollection?>(null);
+        }
+
+        public Task<IStoreItem?> GetItemAsync(Uri uri, IHttpContext httpContext)
+        {
+            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
+            requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
+
+            if (PathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
+            {
+                return Task.FromResult<IStoreItem?>(collection);
+            }
+
+            if (PathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item))
+            {
+                return Task.FromResult<IStoreItem?>(item);
+            }
+
+            // The item doesn't exist
+            return Task.FromResult<IStoreItem?>(null);
         }
     }
 }
