@@ -294,6 +294,15 @@ namespace libVFS.WebDAV.Stores
 
                     if (anyAreOversize)
                     {
+                        //If every top-level folder already holds a single item, we can't subdivide any
+                        //further. A single document whose own listing exceeds the limit would otherwise
+                        //make this loop run forever.
+                        if (numberFoldersToUse >= originalTopLevelFolders.Count)
+                        {
+                            Log.WriteLine($"Folder metadata still exceeds WebClient's maximum of {MaxMetadataSizeInBytes:N0} bytes with one item per folder. Continuing anyway; that folder may not display in Explorer.");
+                            break;
+                        }
+
                         numberFoldersToUse++;
                         var itemsPerFolder = (int)Math.Ceiling(originalTopLevelFolders.Count / (double)numberFoldersToUse);
 
