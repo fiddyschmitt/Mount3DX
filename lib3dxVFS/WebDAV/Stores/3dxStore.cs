@@ -364,13 +364,17 @@ namespace libVFS.WebDAV.Stores
             }
         }
 
-        public Task<IStoreCollection> GetCollectionAsync(Uri uri, IHttpContext httpContext)
+        public Task<IStoreCollection?> GetCollectionAsync(Uri uri, IHttpContext httpContext)
         {
             var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
 
-            var collection = pathToCollectionMapping[requestedPath];
+            if (pathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
+            {
+                return Task.FromResult<IStoreCollection?>(collection);
+            }
 
-            return Task.FromResult<IStoreCollection>(collection);
+            // The collection doesn't exist
+            return Task.FromResult<IStoreCollection?>(null);
         }
 
         public Task<IStoreItem?> GetItemAsync(Uri uri, IHttpContext httpContext)
