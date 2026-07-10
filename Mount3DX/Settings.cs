@@ -37,8 +37,12 @@ namespace Mount3DX
 
         public string GetComputedUNC()
         {
-            //http://localhost:11000   ->  \\localhost@11000\DavWWWRoot 
-            var result = $@"\\{WebDavServerUrl.Replace("http://", "").Replace(":", "@")}\DavWWWRoot";
+            //http://localhost:11000   ->  \\localhost@11000\DavWWWRoot
+            //https://localhost:11000  ->  \\localhost@SSL@11000\DavWWWRoot
+            var uri = new Uri(WebDavServerUrl);
+            var ssl = uri.Scheme == Uri.UriSchemeHttps ? "@SSL" : "";
+            var port = uri.IsDefaultPort ? "" : $"@{uri.Port}";
+            var result = $@"\\{uri.Host}{ssl}{port}\DavWWWRoot";
             return result;
         }
     }
