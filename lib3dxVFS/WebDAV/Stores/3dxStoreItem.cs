@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using lib3dx;
 using lib3dx.Files;
@@ -51,9 +52,6 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavGetEtag<_3dxStoreItem>
             {
-                // Calculating the Etag is an expensive operation,
-                // because we need to scan the entire file.
-                IsExpensive = true,
                 Getter = (context, item) => item.CalculateEtag()
             },
             new DavGetLastModified<_3dxStoreItem>
@@ -131,44 +129,20 @@ namespace lib3dxVFS.WebDAV.Stores
         {
             try
             {
-                // If the destination is also a disk-store, then we can use the FileCopy API
-                // (it's probably a bit more efficient than copying in C#)
-                if (destination is DiskStoreCollection diskCollection)
+                // Create the item in the destination collection
+                var result = await destination.CreateItemAsync(name, overwrite, httpContext).ConfigureAwait(false);
+
+                // Check if the item could be created
+                if (result.Item != null)
                 {
-                    // Check if the collection is writable
-                    if (!diskCollection.IsWritable)
-                        return new StoreItemResult(DavStatusCode.PreconditionFailed);
-
-                    var destinationPath = Path.Combine(diskCollection.FullPath, name);
-
-                    // Check if the file already exists
-                    var fileExists = File.Exists(destinationPath);
-                    if (fileExists && !overwrite)
-                        return new StoreItemResult(DavStatusCode.PreconditionFailed);
-
-                    // Copy the file
-                    File.Copy(_fileInfo.FullPath, destinationPath, true);
-
-                    // Return the appropriate status
-                    return new StoreItemResult(fileExists ? DavStatusCode.NoContent : DavStatusCode.Created);
+                    using var sourceStream = await GetReadableStreamAsync(httpContext).ConfigureAwait(false);
+                    var copyResult = await result.Item.UploadFromStreamAsync(httpContext, sourceStream).ConfigureAwait(false);
+                    if (copyResult != DavStatusCode.Ok)
+                        return new StoreItemResult(copyResult, result.Item);
                 }
-                else
-                {
-                    // Create the item in the destination collection
-                    var result = await destination.CreateItemAsync(name, overwrite, httpContext).ConfigureAwait(false);
 
-                    // Check if the item could be created
-                    if (result.Item != null)
-                    {
-                        using var sourceStream = await GetReadableStreamAsync(httpContext).ConfigureAwait(false);
-                        var copyResult = await result.Item.UploadFromStreamAsync(httpContext, sourceStream).ConfigureAwait(false);
-                        if (copyResult != DavStatusCode.Ok)
-                            return new StoreItemResult(copyResult, result.Item);
-                    }
-
-                    // Return result
-                    return new StoreItemResult(result.Result, result.Item);
-                }
+                // Return result
+                return new StoreItemResult(result.Result, result.Item);
             }
             catch
             {
@@ -196,9 +170,11 @@ namespace lib3dxVFS.WebDAV.Stores
 
         private string CalculateEtag()
         {
-            using var stream = File.OpenRead(_fileInfo.FullPath);
-            var hash = SHA256.Create().ComputeHash(stream);
-            return BitConverter.ToString(hash).Replace("-", string.Empty);
+            //The file only exists on the 3DX server, so derive the etag from
+            //metadata which changes whenever the content changes
+            var etagSource = $"{_fileInfo.ObjectId}:{_fileInfo.LastWriteTimeUtc.Ticks}:{_fileInfo.Size}";
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(etagSource));
+            return Convert.ToHexString(hash);
         }
     }
 }
