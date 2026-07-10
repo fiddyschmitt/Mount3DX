@@ -55,7 +55,20 @@ namespace libWebDAV
 
         public void Stop()
         {
-            runningHost?.StopAsync();
+            var host = runningHost;
+            runningHost = null;
+            if (host == null) return;
+
+            try
+            {
+                //wait for shutdown so the port is released before a potential restart.
+                //Run() disposes the host when it returns.
+                host.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+            }
+            catch (ObjectDisposedException)
+            {
+                //the host had already stopped and been disposed by Run()
+            }
         }
     }
 }
