@@ -120,7 +120,7 @@ namespace lib3dx
 
                     if (!pingSuccessful)
                     {
-                        Log.WriteLine($"Server can no longer be pinged. Attempted {attempt} {"time".Pluralize(attempt)}.");
+                        Log.WriteLine($"Server can no longer be pinged. Attempted {maxAttempts} {"time".Pluralize(maxAttempts)}.");
 
                         KeepAliveFailed?.Invoke(this, new ProgressEventArgs()
                         {
@@ -448,7 +448,7 @@ namespace lib3dx
 
                                     if (resultObj == null)
                                     {
-                                        var couldNotRetrievePage = $"Could not retrieve results for page {page}. Attempted {attempt} {"time".Pluralize(attempt)}.";
+                                        var couldNotRetrievePage = $"Could not retrieve results for page {page}. Attempted {maxAttempts} {"time".Pluralize(maxAttempts)}.";
                                         Log.WriteLine(couldNotRetrievePage);
 
                                         /*
