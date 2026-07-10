@@ -53,7 +53,7 @@ namespace lib3dx.Files
 
 
                 var downloadLocationQueryJson = _3dxServer.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-                var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
+                var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.FirstOrDefault()?["dataelements"];
 
                 if (datalements == null)
                 {
@@ -62,7 +62,7 @@ namespace lib3dx.Files
 
                 var downloadUrl = datalements["ticketURL"]?.ToString();
 
-                if (downloadToken == null)
+                if (downloadUrl == null)
                 {
                     throw new Exception($"Could not get Download URL for file with id {DocumentObjectId}. {FullPath}");
                 }
