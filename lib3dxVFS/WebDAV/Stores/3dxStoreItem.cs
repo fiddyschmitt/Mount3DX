@@ -153,14 +153,14 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public override int GetHashCode()
         {
-            return _fileInfo.FullPath.GetHashCode();
+            return StringComparer.OrdinalIgnoreCase.GetHashCode(_fileInfo.FullPath);
         }
 
         public override bool Equals(object? obj)
         {
             if (obj is not _3dxStoreItem storeItem)
                 return false;
-            return storeItem._fileInfo.FullPath.Equals(_fileInfo.FullPath, StringComparison.CurrentCultureIgnoreCase);
+            return storeItem._fileInfo.FullPath.Equals(_fileInfo.FullPath, StringComparison.OrdinalIgnoreCase);
         }
 
         private string DetermineContentType()
