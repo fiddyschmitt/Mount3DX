@@ -181,9 +181,6 @@ namespace Mount3DX
                 Log.WriteLine("WebDAV server finished");
             });
 
-            //NetworkDriveUtility.MapNetworkDrive(settings.Vfs.MapToDriveLetter, computedUNC);
-
-            //Process.Start("explorer.exe", settings.Vfs.MapToDriveLetter);
             Process.Start("explorer.exe", ComputedUNC);
 
             InitialisationFinished?.Invoke(this, new FinishedEventArgs()

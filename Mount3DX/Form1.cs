@@ -34,8 +34,6 @@ namespace Mount3DX
             InitLogging();
             LoadSettings();
 
-            //Scratch();
-
             lblRunningStatus.Text = string.Empty;
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
@@ -274,82 +272,6 @@ namespace Mount3DX
                 grp3dx.Enabled = true;
                 btnOpenVirtualDrive.Visible = false;
             }
-        }
-
-#pragma warning disable IDE0051 // Remove unused private members
-        private void Scratch()
-#pragma warning restore IDE0051 // Remove unused private members
-        {
-            var _3dxServer = new _3dxServer(
-                                    settings._3dx.ServerUrl,
-                                    settings._3dx.GenerateExtraFiles.DocumentLink,
-                                    settings._3dx.GenerateExtraFiles.DocumentMetadata);
-
-            _3dxServer.LogIn();
-
-            var root = new _3dxFolder(
-                                "root",
-                                "",
-                                null,
-                                DateTime.Now,
-                                DateTime.Now,
-                                DateTime.Now)
-            {
-                Subfolders = _3dxServer.GetRootFolders()
-            };
-
-            var securityContext = _3dxServer.GetSecurityContext();
-
-            var folderQueue = new ConcurrentQueue<_3dxFolder>();
-            root.Subfolders.ForEach(rt => folderQueue.Enqueue(rt));
-
-            int totalFolders = 0;
-            int totalDocs = 0;
-            int totalFiles = 0;
-
-            QueueUtility
-                    .Recurse2(folderQueue, folder =>
-                    {
-                        var itemsInFolder = _3dxServer.GetItemsInFolder(folder, securityContext);
-
-                        var documents = itemsInFolder
-                                            .OfType<_3dxDocument>()
-                                            .ToList();
-
-                        var files = documents
-                                        .Sum(doc => doc.Files.Count);
-
-                        folder.Subfolders = itemsInFolder
-                                            .Except(documents)
-                                            .OfType<_3dxFolder>()
-                                            .ToList();
-
-                        Interlocked.Add(ref totalFolders, folder.Subfolders.Count);
-                        Interlocked.Add(ref totalDocs, documents.Count);
-                        Interlocked.Add(ref totalFiles, files);
-
-                        //Debug.WriteLine($"{folder.FullPath}\tSubfolders: {folder.Subfolders.Count:N0}\tDocs: {documents.Count:N0}");
-                        Debug.WriteLine($"Total folders: {totalFolders:N0}\tTotal docs: {totalDocs:N0}\tTotal files: {totalFiles:N0}");
-
-                        return folder.Subfolders;
-
-                    }, settings._3dx.QueryThreads, CancellationToken.None);
-
-            /*
-            var itemTypes = _3dxServer
-                                .itemTypes
-                                .GroupBy(
-                                    itemType => itemType,
-                                    itemType => itemType,
-                                    (key, grp) => new
-                                    {
-                                        ItemType = key,
-                                        Count = grp.Count()
-                                    })
-                                .OrderByDescending(grp => grp.Count)
-                                .Select(grp => $"{grp.ItemType},{grp.Count}")
-                                .ToString(Environment.NewLine);
-            */
         }
 
         private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)

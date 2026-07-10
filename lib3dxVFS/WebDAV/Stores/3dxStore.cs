@@ -15,7 +15,6 @@ using System.Xml.Linq;
 using libCommon.Utilities;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using libVFS.VFS.Folders;
 using libCommon.Events;
 using System.Web;
 using lib3dxVFS.WebDAV.Locks;
@@ -57,15 +56,6 @@ namespace libVFS.WebDAV.Stores
 
             RefreshDocumentsList(throwOnError: true);
 
-
-            /*
-            progress?.Invoke(this, new ProgressEventArgs()
-            {
-                Message = $"Found {allDocuments:N0} documents",
-                Nature = ProgressEventArgs.EnumNature.Neutral
-            });
-            */
-
             //We don't want subsequent refreshes to appear on the GUI
             Progress = null;
         }
@@ -85,18 +75,6 @@ namespace libVFS.WebDAV.Stores
                                     DateTime.UtcNow,
                                     DateTime.UtcNow);
 
-                /*
-                var docsRoot = new _3dxFolder(
-                                    Guid.NewGuid().ToString(),
-                                    "Documents",
-                                    rootFolder,
-                                    DateTime.Now,
-                                    DateTime.Now,
-                                    DateTime.Now);
-
-                rootFolder.Subfolders.Add(docsRoot);
-                */
-
                 var docsRoot = rootFolder;
 
                 int attempt;
@@ -108,47 +86,10 @@ namespace libVFS.WebDAV.Stores
                         var allDocuments = _3dxServer
                                                 .GetAllDocuments(docsRoot, QueryThreads, Progress);
 
-                        //var abc = allDocuments.SerializeToJson();
-                        //File.WriteAllText(@$"C:\Users\rx831f\Desktop\Temp\2023-06-24\{take}.txt", abc);
-
                         docsRoot.Subfolders = allDocuments
                                                     .Cast<_3dxFolder>()
                                                     .OrderBy(folder => folder.Name)
                                                     .ToList();
-
-                        //Add one level of indirection: A folder for each document (without Rev number)
-                        //docsRoot.Subfolders = allDocuments
-                        //                        .GroupBy(
-                        //                            doc => doc.OriginalName,
-                        //                            doc => doc,
-                        //                            (k, grp) => new
-                        //                            {
-                        //                                FolderName = k,
-                        //                                Docs = grp.ToList()
-                        //                            })
-                        //                        .Select(grp =>
-                        //                        {
-                        //                            var genericFolderForDocument = new _3dxFolder(
-                        //                                                    Guid.NewGuid().ToString(),
-                        //                                                    grp.FolderName,
-                        //                                                    docsRoot,
-                        //                                                    grp.Docs.FirstOrDefault()?.CreationTimeUtc ?? DateTime.Now,
-                        //                                                    grp.Docs.FirstOrDefault()?.LastWriteTimeUtc ?? DateTime.Now,
-                        //                                                    grp.Docs.FirstOrDefault()?.LastAccessTimeUtc ?? DateTime.Now);
-
-                        //                            var subfolders = grp
-                        //                                                .Docs
-                        //                                                .Cast<_3dxFolder>()
-                        //                                                .ToList();
-
-                        //                            subfolders
-                        //                                .ForEach(subfolder => subfolder.Parent = genericFolderForDocument);
-
-                        //                            genericFolderForDocument.Subfolders.AddRange(subfolders);
-
-                        //                            return genericFolderForDocument;
-                        //                        })
-                        //                        .ToList();
 
                         break;
                     }
@@ -164,11 +105,6 @@ namespace libVFS.WebDAV.Stores
                             throw new Exception(exceptionStr);
                         }
                     }
-                }
-
-                if (attempt > 1)
-                {
-                    //Debugger.Break();
                 }
 
                 //some documents have identical names. Give each an index number
@@ -256,7 +192,6 @@ namespace libVFS.WebDAV.Stores
                 //This is controlled by HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WebClient\Parameters\FileAttributesLimitInBytes
                 //Let's create a folder structure which fits within that constraint.
 
-                //MaxMetadataSizeInBytes = 1_000_000;
                 var originalTopLevelFolders = rootFolder
                                                 .Subfolders
                                                 .OrderBy(folder => folder.Name, new ExplorerComparer())

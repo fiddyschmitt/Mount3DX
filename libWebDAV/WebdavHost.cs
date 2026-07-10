@@ -4,7 +4,6 @@ using NWebDav.Server.Logging;
 
 using Microsoft.Extensions.Hosting;
 using NWebDav.Server;
-using NWebDav.Sample.Kestrel;
 using LogLevel = NWebDav.Server.Logging.LogLevel;
 using LoggerFactory = NWebDav.Server.Logging.LoggerFactory;
 using NWebDav.Server.Stores;
