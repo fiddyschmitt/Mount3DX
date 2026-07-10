@@ -68,10 +68,17 @@ namespace lib3dx
                                 ObjectId = o["objectId"]?.ToString() ?? throw new Exception("objectId could not be retrieved"),
                                 Title = o["title"]?.ToString() ?? throw new Exception("title could not be retrieved")
                             })
-                            .Select(o => new
+                            .Select(o =>
                             {
-                                o.ObjectId,
-                                Title = o.Title[..o.Title.LastIndexOf('(')],
+                                //titles usually look like "Name (details)"; keep the full title if there's no bracketed suffix
+                                var bracketIndex = o.Title.LastIndexOf('(');
+                                var title = bracketIndex >= 0 ? o.Title[..bracketIndex] : o.Title;
+
+                                return new
+                                {
+                                    o.ObjectId,
+                                    Title = title,
+                                };
                             })
                             .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.Now, DateTime.Now, DateTime.Now))
                             .ToList() ?? [];
