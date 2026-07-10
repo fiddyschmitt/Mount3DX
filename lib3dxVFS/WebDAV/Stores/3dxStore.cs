@@ -30,8 +30,9 @@ namespace libVFS.WebDAV.Stores
         readonly ILockingManager LockingManager = new NoLocking();
 
         _3dxFolder? rootFolder;
-        Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = [];
-        Dictionary<string, _3dxStoreItem> pathToItemMapping = [];
+        //Windows paths are case-insensitive, so lookups must be too
+        Dictionary<string, _3dxStoreCollection> pathToCollectionMapping = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, _3dxStoreItem> pathToItemMapping = new(StringComparer.OrdinalIgnoreCase);
 
         public string WebDavServerUrl { get; }
         public _3dxServer _3dxServer { get; }
@@ -249,14 +250,14 @@ namespace libVFS.WebDAV.Stores
                     pathToCollectionMapping = new[] { rootFolder }
                                                 .Recurse(folder => folder.Subfolders)
                                                 .Select(folder => new _3dxStoreCollection(_3dxServer, LockingManager, folder))
-                                                .ToDictionary(folder => folder.FullPath, folder => folder);
+                                                .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase);
 
                     pathToItemMapping = new[] { rootFolder }
                                                 .Recurse(folder => folder.Subfolders)
                                                 .OfType<_3dxDocument>()
                                                 .SelectMany(document => document.Files)
                                                 .Select(file => new _3dxStoreItem(_3dxServer, LockingManager, file, false))
-                                                .ToDictionary(folder => folder.FullPath, folder => folder);
+                                                .ToDictionary(folder => folder.FullPath, folder => folder, StringComparer.OrdinalIgnoreCase);
 
                     var folderUrlsToCheck = new List<string>();
                     if (numberFoldersToUse == 1)
