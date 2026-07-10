@@ -36,10 +36,10 @@ namespace lib3dx.Files
             }
             catch (Exception ex)
             {
-                Log.WriteLine($"Error while downloading Doc URL file to MemoryStream:{Environment.NewLine}{ex}");
+                //rethrow so the WebDAV layer returns an error, rather than serving an empty file
+                Log.WriteLine($"Error while generating Doc URL file:{Environment.NewLine}{ex}");
+                throw;
             }
-
-            return Stream.Null;
         }
     }
 }

@@ -55,38 +55,35 @@ namespace lib3dx.Files
                 var downloadLocationQueryJson = _3dxServer.HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
                 var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.First()["dataelements"];
 
-                Stream result;
                 if (datalements == null)
                 {
-                    result = Stream.Null;
+                    throw new Exception($"Could not get a download ticket for file with id {ObjectId}. {FullPath}");
                 }
-                else
+
+                var downloadUrl = datalements["ticketURL"]?.ToString();
+
+                if (downloadToken == null)
                 {
-                    var downloadUrl = datalements["ticketURL"]?.ToString();
-
-                    if (downloadToken == null)
-                    {
-                        throw new Exception($"Could not get Download URL for file with id {DocumentObjectId}. {FullPath}");
-                    }
-
-                    //download the file
-
-                    //settings to allow large files to be downloaded
-                    var opt = HttpCompletionOption.ResponseHeadersRead; //to avoid: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647.
-
-                    var response = _3dxServer.HttpClient.GetAsync(downloadUrl, opt).Result;
-
-                    result = response.Content.ReadAsStream();
+                    throw new Exception($"Could not get Download URL for file with id {DocumentObjectId}. {FullPath}");
                 }
+
+                //download the file
+
+                //settings to allow large files to be downloaded
+                var opt = HttpCompletionOption.ResponseHeadersRead; //to avoid: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647.
+
+                var response = _3dxServer.HttpClient.GetAsync(downloadUrl, opt).Result;
+
+                var result = response.Content.ReadAsStream();
 
                 return result;
             }
             catch (Exception ex)
             {
-                Log.WriteLine($"Error while downloading file to MemoryStream:{Environment.NewLine}{ex}");
+                //rethrow so the WebDAV layer returns an error, rather than serving an empty file
+                Log.WriteLine($"Error while downloading file:{Environment.NewLine}{ex}");
+                throw;
             }
-
-            return (MemoryStream)Stream.Null;
         }
     }
 }
