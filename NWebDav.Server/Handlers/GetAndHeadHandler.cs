@@ -84,6 +84,33 @@ namespace NWebDav.Server.Handlers
                     response.SetHeaderValue("Content-Language", contentLanguage);
             }
 
+            // Do not return the actual item data if the ETag matches. Decided before opening
+            // the stream, because opening it may be expensive (e.g. a remote download).
+            if (etag != null && request.GetHeaderValue("If-None-Match") == etag)
+            {
+                response.SetHeaderValue("Content-Length", "0");
+                response.SetStatus(DavStatusCode.NotModified);
+                return true;
+            }
+
+            // The HEAD method doesn't require the item data, so answer it from the
+            // content-length property instead of opening the stream.
+            if (head)
+            {
+                if (propertyManager != null)
+                {
+                    var contentLength = await propertyManager.GetPropertyAsync(httpContext, entry, DavGetContentLength<IStoreItem>.PropertyName, true).ConfigureAwait(false);
+                    if (contentLength != null)
+                    {
+                        response.SetHeaderValue("Accept-Ranges", "bytes");
+                        response.SetHeaderValue("Content-Length", $"{contentLength}");
+                    }
+                }
+
+                response.SetStatus(DavStatusCode.Ok);
+                return true;
+            }
+
             // Stream the actual entry
             using var stream = await entry.GetReadableStreamAsync(httpContext).ConfigureAwait(false);
             if (stream != null && stream != Stream.Null)
@@ -137,17 +164,7 @@ namespace NWebDav.Server.Handlers
                     // If the content length is not supported, then we just skip it
                 }
 
-                // Do not return the actual item data if ETag matches
-                if (etag != null && request.GetHeaderValue("If-None-Match") == etag)
-                {
-                    response.SetHeaderValue("Content-Length", "0");
-                    response.SetStatus(DavStatusCode.NotModified);
-                    return true;
-                }
-
-                // HEAD method doesn't require the actual item data
-                if (!head)
-                    await CopyToAsync(stream, response.Stream, range?.Start ?? 0, range?.End).ConfigureAwait(false);
+                await CopyToAsync(stream, response.Stream, range?.Start ?? 0, range?.End).ConfigureAwait(false);
             }
             else
             {
