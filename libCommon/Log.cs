@@ -8,23 +8,21 @@ namespace libCommon
 {
     public static class Log
     {
+        static readonly object logLock = new();
+
         public static string? Filename { get; set; } = Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log");
 
         public static void WriteLine(string message)
         {
-            if (Filename == null) return;
+            var filename = Filename;
+            if (filename == null) return;
 
             var logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
-            lock (Filename)
+            lock (logLock)
             {
-                if (File.Exists(Filename))
-                {
-                    File.AppendAllText(Filename, logLine);
-                }
-                else
-                {
-                    File.WriteAllText(Filename, logLine);
-                }
+                //AppendAllText creates the file if needed. The file is deliberately
+                //opened per line so logs survive a crash.
+                File.AppendAllText(filename, logLine);
             }
         }
     }
