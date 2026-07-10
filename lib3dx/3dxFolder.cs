@@ -82,7 +82,7 @@ namespace lib3dx
                                     Title = title,
                                 };
                             })
-                            .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.Now, DateTime.Now, DateTime.Now))
+                            .Select(o => new _3dxFolder(o.ObjectId, o.Title, folder, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow))
                             .ToList() ?? [];
 
             return result;

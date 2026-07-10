@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -247,9 +248,9 @@ namespace lib3dx
                                         folder["id"]?.ToString() ?? throw new Exception("id could not be retrieved"),
                                         folder["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                         null,
-                                        DateTime.Parse(folder["created"]?.ToString() ?? throw new Exception("created could not be retrieved")),
-                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved")),
-                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"))
+                                        DateTime.Parse(folder["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.InvariantCulture),
+                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture),
+                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture)
                                         );
 
                                 return newFolder;
@@ -297,9 +298,9 @@ namespace lib3dx
                                                     id,
                                                     item["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                                     folder,
-                                                    DateTime.Parse(item["created"]?.ToString() ?? throw new Exception("created could not be retrieved")),
-                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved")),
-                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved")));
+                                                    DateTime.Parse(item["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.InvariantCulture),
+                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture),
+                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture));
                                 }
 
                                 return newItem;
@@ -543,8 +544,8 @@ namespace lib3dx
             var description = o["dataelements"]?["description"]?.ToString();
             var originalName = o["dataelements"]?["name"]?.ToString() ?? throw new Exception("name could not be retrieved");
 
-            _ = DateTime.TryParse(o["dataelements"]?["originated"]?.ToString(), out DateTime created);
-            _ = DateTime.TryParse(o["dataelements"]?["modified"]?.ToString(), out DateTime modified);
+            _ = DateTime.TryParse(o["dataelements"]?["originated"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime created);
+            _ = DateTime.TryParse(o["dataelements"]?["modified"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime modified);
             var accessed = modified;
 
             var derivedName = $"{name} Rev {revision}";
@@ -577,8 +578,8 @@ namespace lib3dx
                 var name = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
                 var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
-                _ = DateTime.TryParse(file["dataelements"]?["originated"]?.ToString(), out DateTime created);
-                _ = DateTime.TryParse(file["dataelements"]?["modified"]?.ToString(), out DateTime modified);
+                _ = DateTime.TryParse(file["dataelements"]?["originated"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime created);
+                _ = DateTime.TryParse(file["dataelements"]?["modified"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime modified);
                 var accessed = modified;
                 var size = 0UL;
 

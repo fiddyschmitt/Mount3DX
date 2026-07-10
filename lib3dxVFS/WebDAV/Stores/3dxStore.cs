@@ -81,9 +81,9 @@ namespace libVFS.WebDAV.Stores
                                     Guid.NewGuid().ToString(),
                                     "",
                                     null,
-                                    DateTime.Now,
-                                    DateTime.Now,
-                                    DateTime.Now);
+                                    DateTime.UtcNow,
+                                    DateTime.UtcNow,
+                                    DateTime.UtcNow);
 
                 /*
                 var docsRoot = new _3dxFolder(
@@ -331,9 +331,9 @@ namespace libVFS.WebDAV.Stores
                                                                             Guid.NewGuid().ToString(),
                                                                             newVirtualFolderName,
                                                                             rootFolder,
-                                                                            DateTime.Now,
-                                                                            DateTime.Now,
-                                                                            DateTime.Now);
+                                                                            DateTime.UtcNow,
+                                                                            DateTime.UtcNow,
+                                                                            DateTime.UtcNow);
 
                                                         var subfolders = chunk
                                                                             .OfType<_3dxFolder>()
