@@ -38,7 +38,7 @@ namespace lib3dxVFS.WebDAV.Stores
             // RFC-2518 properties
             new DavCreationDate<_3dxStoreItem>
             {
-                Getter = (context, item) => item._fileInfo.CreationTimeUtc,
+                Getter = (context, item) => WebDavDates.Clamp(item._fileInfo.CreationTimeUtc),
                 Setter = (context, item, value) => DavStatusCode.NotImplemented
             },
             new DavDisplayName<_3dxStoreItem>
@@ -59,7 +59,7 @@ namespace lib3dxVFS.WebDAV.Stores
             },
             new DavGetLastModified<_3dxStoreItem>
             {
-                Getter = (context, item) => item._fileInfo.LastWriteTimeUtc,
+                Getter = (context, item) => WebDavDates.Clamp(item._fileInfo.LastWriteTimeUtc),
                 Setter = (context, item, value) => DavStatusCode.NotImplemented
             },
             new DavGetResourceType<_3dxStoreItem>
