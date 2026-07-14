@@ -142,45 +142,29 @@ namespace Mount3DX
 
                 Log.WriteLine("Initialising WebDAV server");
                 webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
-                Log.WriteLine("WebDAV server initialised.");
+
+                //Start synchronously so we know the server is actually listening (and surface a
+                //bind failure such as the port already being in use) before opening Explorer.
+                Log.WriteLine("Starting WebDAV server");
+                webdavHost.Start();
+                Log.WriteLine("WebDAV server started.");
             }
             catch (Exception ex)
             {
-                Log.WriteLine($"Error while initialising WebDAV server:{Environment.NewLine}{ex}");
+                Log.WriteLine($"Error while starting WebDAV server:{Environment.NewLine}{ex}");
 
                 Stop();
 
                 InitialisationFinished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
-                    Message = $"Error while initialising WebDAV server: {ex.Message}"
+                    Message = $"Error while starting WebDAV server: {ex.Message}"
                 });
 
                 return;
             }
 
-            Task.Factory.StartNew(() =>
-            {
-                Log.WriteLine("Starting WebDAV server");
-
-                try
-                {
-                    webdavHost.Start();
-                }
-                catch (Exception ex)
-                {
-                    Log.WriteLine($"Error while starting {nameof(WebdavHost)}:{Environment.NewLine}{ex}");
-
-                    SessionError?.Invoke(this, new ProgressEventArgs()
-                    {
-                        Message = $"Error while starting {nameof(WebdavHost)}: {ex.Message}",
-                        Nature = ProgressEventArgs.EnumNature.Bad
-                    });
-                }
-
-                Log.WriteLine("WebDAV server finished");
-            });
-
+            //The server is now listening, so it is safe to open the virtual drive in Explorer
             Process.Start("explorer.exe", ComputedUNC);
 
             InitialisationFinished?.Invoke(this, new FinishedEventArgs()

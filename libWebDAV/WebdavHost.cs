@@ -50,7 +50,10 @@ namespace libWebDAV
                         })
                         .Build();
 
-            runningHost.Run();
+            //Start (not Run) so this returns once Kestrel is actually listening, and throws
+            //synchronously if the port cannot be bound. The host keeps running in the background
+            //until Stop() is called. Callers can then safely hand the URL to a client.
+            runningHost.Start();
         }
 
         public void Stop()
@@ -61,13 +64,16 @@ namespace libWebDAV
 
             try
             {
-                //wait for shutdown so the port is released before a potential restart.
-                //Run() disposes the host when it returns.
+                //wait for shutdown so the port is released before a potential restart
                 host.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
             }
             catch (ObjectDisposedException)
             {
-                //the host had already stopped and been disposed by Run()
+                //already stopped and disposed
+            }
+            finally
+            {
+                host.Dispose();
             }
         }
     }
