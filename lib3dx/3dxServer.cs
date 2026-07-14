@@ -527,6 +527,20 @@ namespace lib3dx
             return result!;
         }
 
+        //3DX may return timestamps as ISO-8601 or in a locale-specific format. Try invariant culture
+        //first (correct for ISO), then fall back to the current culture; a value we still can't parse
+        //stays as default(DateTime) and is clamped to a valid range when served.
+        static DateTime ParseServerDate(string? value)
+        {
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result)
+                || DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out result))
+            {
+                return result;
+            }
+
+            return default;
+        }
+
         public _3dxDocument? JTokenToDocument(JToken o, _3dxFolder parent)
         {
             var title = o["dataelements"]?["title"]?.ToString();
@@ -544,8 +558,8 @@ namespace lib3dx
             var description = o["dataelements"]?["description"]?.ToString();
             var originalName = o["dataelements"]?["name"]?.ToString() ?? throw new Exception("name could not be retrieved");
 
-            _ = DateTime.TryParse(o["dataelements"]?["originated"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime created);
-            _ = DateTime.TryParse(o["dataelements"]?["modified"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime modified);
+            var created = ParseServerDate(o["dataelements"]?["originated"]?.ToString());
+            var modified = ParseServerDate(o["dataelements"]?["modified"]?.ToString());
             var accessed = modified;
 
             var derivedName = $"{name} Rev {revision}";
@@ -578,8 +592,8 @@ namespace lib3dx
                 var name = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
                 var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
-                _ = DateTime.TryParse(file["dataelements"]?["originated"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime created);
-                _ = DateTime.TryParse(file["dataelements"]?["modified"]?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime modified);
+                var created = ParseServerDate(file["dataelements"]?["originated"]?.ToString());
+                var modified = ParseServerDate(file["dataelements"]?["modified"]?.ToString());
                 var accessed = modified;
                 var size = 0UL;
 
