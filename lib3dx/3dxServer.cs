@@ -248,9 +248,9 @@ namespace lib3dx
                                         folder["id"]?.ToString() ?? throw new Exception("id could not be retrieved"),
                                         folder["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                         null,
-                                        DateTime.Parse(folder["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.InvariantCulture),
-                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture),
-                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture)
+                                        DateTime.Parse(folder["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.CurrentCulture),
+                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture),
+                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture)
                                         );
 
                                 return newFolder;
@@ -298,9 +298,9 @@ namespace lib3dx
                                                     id,
                                                     item["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                                     folder,
-                                                    DateTime.Parse(item["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.InvariantCulture),
-                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture),
-                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.InvariantCulture));
+                                                    DateTime.Parse(item["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.CurrentCulture),
+                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture),
+                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture));
                                 }
 
                                 return newItem;
@@ -527,13 +527,16 @@ namespace lib3dx
             return result!;
         }
 
-        //3DX may return timestamps as ISO-8601 or in a locale-specific format. Try invariant culture
-        //first (correct for ISO), then fall back to the current culture; a value we still can't parse
-        //stays as default(DateTime) and is clamped to a valid range when served.
+        //3DX returns timestamps in a locale-specific format, and the shipped version parsed them with
+        //the current culture and was correct. Parse with the current culture first to preserve that,
+        //then fall back to invariant culture for ISO-8601 style values. (Parsing invariant-first
+        //transposed month and day for ambiguous day-first dates such as "03/07/2018": the US MM/DD
+        //interpretation parses successfully and so the current culture was never tried.) A value we
+        //still can't parse stays as default(DateTime) and is clamped to a valid range when served.
         static DateTime ParseServerDate(string? value)
         {
-            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result)
-                || DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out result))
+            if (DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out var result)
+                || DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out result))
             {
                 return result;
             }
