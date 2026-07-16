@@ -5,6 +5,3 @@ Mount your 3DX server as a drive letter, so you can browse and open documents wi
 
 # Download
 Releases can be found over in the [releases](https://github.com/fiddyschmitt/Mount3DX/releases) section.
-
-## Build
-Build using Visual Studio 2022.
