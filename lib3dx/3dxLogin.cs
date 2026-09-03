@@ -289,8 +289,9 @@ namespace lib3dx
             response.EnsureSuccessStatusCode();
             var servicesJson = response.Content.ReadAsStringAsync().Result;
 
+            //FirstOrDefault rather than [0]: indexing an empty JArray throws
             var searchService = (JObject
-                                    .Parse(servicesJson)?["platforms"]?[0]?["services"]?
+                                    .Parse(servicesJson)?["platforms"]?.FirstOrDefault()?["services"]?
                                     .Select(service => new
                                     {
                                         Id = service["id"]?.ToString(),

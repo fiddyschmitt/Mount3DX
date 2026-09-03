@@ -37,6 +37,28 @@ namespace Mount3DX
 
         public void Start()
         {
+            //Start runs on a bare background task, so anything that escapes here would be an
+            //unobserved exception and the UI would wait forever for InitialisationFinished
+            try
+            {
+                StartCore();
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while starting the session:{Environment.NewLine}{ex}");
+
+                Stop();
+
+                InitialisationFinished?.Invoke(this, new FinishedEventArgs()
+                {
+                    Success = false,
+                    Message = $"Error while starting: {ex.Message}"
+                });
+            }
+        }
+
+        void StartCore()
+        {
             Log.WriteLine("Session starting");
 
             var isLoggedIn = _3dxServer.Ping(CancellationToken.None);
