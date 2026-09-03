@@ -561,6 +561,11 @@ namespace lib3dx
             return default;
         }
 
+        //Path segments are limited to 255 characters; leave headroom for the " (n)" suffix that
+        //duplicate names receive, and keep the overall UNC path within reach of MAX_PATH
+        public const int MaxDocumentNameLength = 120;
+        public const int MaxFileNameLength = 150;
+
         public _3dxDocument? JTokenToDocument(JToken o, _3dxFolder parent)
         {
             var title = o["dataelements"]?["title"]?.ToString();
@@ -591,7 +596,7 @@ namespace lib3dx
             derivedName = FileUtility.ReplaceInvalidChars(derivedName);
 
             derivedName = derivedName.TrimEnd('.').Trim();
-            derivedName = derivedName[..Math.Min(120, derivedName.Length)];
+            derivedName = derivedName[..Math.Min(MaxDocumentNameLength, derivedName.Length)];
             derivedName = derivedName.TrimEnd('.').Trim();
 
             var newDocument = new _3dxDocument(
@@ -609,8 +614,12 @@ namespace lib3dx
             var files = o["relateddata"]?["files"]?.Select(file =>
             {
                 var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved");
-                var name = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
+                var rawName = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
                 var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
+
+                //the title is whatever the uploader called it; it may contain characters that are
+                //invalid in a Windows path, or be longer than a path segment allows
+                var name = FileUtility.MakeSafeFileName(rawName, MaxFileNameLength);
 
                 var created = ParseServerDate(file["dataelements"]?["originated"]?.ToString());
                 var modified = ParseServerDate(file["dataelements"]?["modified"]?.ToString());

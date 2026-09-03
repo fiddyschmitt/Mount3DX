@@ -27,5 +27,28 @@ namespace libCommon.Utilities
         {
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
         }
+
+        //Turn an arbitrary name from the server into something Windows and the WebDAV redirector
+        //will accept as a single path segment: no invalid characters, no trailing dots or spaces,
+        //and within the length limit. The file variant keeps the extension when truncating.
+        public static string MakeSafeFileName(string name, int maxLength)
+        {
+            var result = ReplaceInvalidChars(name)
+                            .TruncateFilename(maxLength)
+                            .TrimEnd('.', ' ')
+                            .Trim();
+
+            return result.Length == 0 ? "_" : result;
+        }
+
+        public static string MakeSafeFolderName(string name, int maxLength)
+        {
+            var result = ReplaceInvalidChars(name)
+                            .Truncate(maxLength)
+                            .TrimEnd('.', ' ')
+                            .Trim();
+
+            return result.Length == 0 ? "_" : result;
+        }
     }
 }

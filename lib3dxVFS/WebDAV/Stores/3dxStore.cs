@@ -294,7 +294,10 @@ namespace libVFS.WebDAV.Stores
                                                         }
                                                         else
                                                         {
-                                                            newVirtualFolderName = $"{firstDocName} ... {lastDocName}";
+                                                            //OriginalName is the raw 3DX name, which may contain characters
+                                                            //that are invalid in a path (the document's own Name was sanitised,
+                                                            //but reads better here without its "Rev" suffix)
+                                                            newVirtualFolderName = $"{FileUtility.MakeSafeFolderName(firstDocName, 60)} ... {FileUtility.MakeSafeFolderName(lastDocName, 60)}";
                                                         }
 
                                                         var newVirtualFolder = new _3dxFolder(

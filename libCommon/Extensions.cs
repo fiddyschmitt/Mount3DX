@@ -36,8 +36,19 @@ namespace libCommon
 
         public static string TruncateFilename(this string? value, int maxLength)
         {
-            var extension = Path.GetExtension(value) ?? "";
-            var truncatedFilename = Path.GetFileNameWithoutExtension(value)?.Truncate(maxLength - extension.Length).Trim() + extension;
+            value ??= "";
+
+            var extension = Path.GetExtension(value);
+
+            //an "extension" that would swallow most of the budget isn't really one (e.g. a name
+            //that merely contains a dot); truncate the whole name instead
+            if (extension.Length > maxLength / 2)
+            {
+                extension = "";
+            }
+
+            var stem = extension.Length > 0 ? Path.GetFileNameWithoutExtension(value) : value;
+            var truncatedFilename = stem.Truncate(maxLength - extension.Length).Trim() + extension;
 
             return truncatedFilename;
         }
