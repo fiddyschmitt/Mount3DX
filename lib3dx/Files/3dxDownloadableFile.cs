@@ -13,7 +13,9 @@ namespace lib3dx.Files
             Size = size;
         }
 
-        public ulong Size { get; }
+        //Served as getcontentlength and used for Content-Length, so it must match what Download()
+        //produces. Derived classes whose content is generated override this with the real length.
+        public virtual ulong Size { get; }
 
         public abstract Stream Download(_3dxServer _3dxServer);
     }

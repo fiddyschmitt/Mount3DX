@@ -66,6 +66,9 @@ namespace lib3dx
             //We need to clear the cookies here otherwise the previous call to Ping() interferes with the login process
             (HttpClient, ClientHandler) = CreateHttpClient();
 
+            //a new login may carry different preferred credentials
+            lock (securityContextLock) { securityContext = null; }
+
             //Try to log in using Single Sign-On
             var result = _3dxLogin.LogInUsingHttpClient(ServerUrl, HttpClient, ClientHandler);
 
@@ -200,23 +203,35 @@ namespace lib3dx
             return allCookiesWork;
         }
 
+        //The security context is fixed for a logged-in user, so fetch it once per login rather than
+        //on every metadata request
+        readonly object securityContextLock = new();
+        string? securityContext;
+
         public string GetSecurityContext()
         {
-            //could also use: resources/pno/person/getsecuritycontext
-            var securityContextUrl = ServerUrl.UrlCombine("resources/modeler/pno/person?current=true&select=preferredcredentials");
+            lock (securityContextLock)
+            {
+                if (securityContext == null)
+                {
+                    //could also use: resources/pno/person/getsecuritycontext
+                    var securityContextUrl = ServerUrl.UrlCombine("resources/modeler/pno/person?current=true&select=preferredcredentials");
 
-            var request = new HttpRequestMessage(HttpMethod.Get, securityContextUrl);
-            var response = HttpClient.Send(request);
-            response.EnsureSuccessStatusCode();
-            var securityContextJsonStr = response.Content.ReadAsStringAsync().Result;
-            var securityContextJson = JObject.Parse(securityContextJsonStr);
+                    var request = new HttpRequestMessage(HttpMethod.Get, securityContextUrl);
+                    var response = HttpClient.Send(request);
+                    response.EnsureSuccessStatusCode();
+                    var securityContextJsonStr = response.Content.ReadAsStringAsync().Result;
+                    var securityContextJson = JObject.Parse(securityContextJsonStr);
 
-            var role = securityContextJson["preferredcredentials"]?["role"]?["name"]?.ToString();
-            var org = securityContextJson["preferredcredentials"]?["organization"]?["name"]?.ToString();
-            var collabspace = securityContextJson["preferredcredentials"]?["collabspace"]?["name"]?.ToString();
+                    var role = securityContextJson["preferredcredentials"]?["role"]?["name"]?.ToString();
+                    var org = securityContextJson["preferredcredentials"]?["organization"]?["name"]?.ToString();
+                    var collabspace = securityContextJson["preferredcredentials"]?["collabspace"]?["name"]?.ToString();
 
-            var result = $"{role}.{org}.{collabspace}";
-            return result;
+                    securityContext = $"{role}.{org}.{collabspace}";
+                }
+
+                return securityContext;
+            }
         }
 
         public List<_3dxFolder> GetRootFolders()
@@ -630,7 +645,7 @@ namespace lib3dx
                                             newDocument.LastWriteTimeUtc,
                                             newDocument.LastAccessTimeUtc,
                                             newDocument.ObjectId,
-                                            1);
+                                            ServerUrl);
                 files.Add(docLinkFile);
             }
 
@@ -644,7 +659,7 @@ namespace lib3dx
                                             newDocument.LastWriteTimeUtc,
                                             newDocument.LastAccessTimeUtc,
                                             newDocument.ObjectId,
-                                            1);
+                                            this);
 
                 files.Add(docMetadataFile);
             }
