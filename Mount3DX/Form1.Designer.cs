@@ -30,6 +30,7 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             grp3dx = new GroupBox();
+            chkExtraFiles = new CheckBox();
             label4 = new Label();
             txtRefreshIntervalMinutes = new NumericUpDown();
             label1 = new Label();
@@ -46,6 +47,7 @@
             // grp3dx
             // 
             grp3dx.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            grp3dx.Controls.Add(chkExtraFiles);
             grp3dx.Controls.Add(label4);
             grp3dx.Controls.Add(txtRefreshIntervalMinutes);
             grp3dx.Controls.Add(label1);
@@ -53,11 +55,23 @@
             grp3dx.Controls.Add(label2);
             grp3dx.Location = new Point(12, 12);
             grp3dx.Name = "grp3dx";
-            grp3dx.Size = new Size(654, 111);
+            grp3dx.Size = new Size(654, 140);
             grp3dx.TabIndex = 1;
             grp3dx.TabStop = false;
             grp3dx.Text = "3DX settings";
-            // 
+            //
+            // chkExtraFiles
+            //
+            chkExtraFiles.AutoSize = true;
+            chkExtraFiles.Checked = true;
+            chkExtraFiles.CheckState = CheckState.Checked;
+            chkExtraFiles.Location = new Point(176, 86);
+            chkExtraFiles.Name = "chkExtraFiles";
+            chkExtraFiles.Size = new Size(341, 19);
+            chkExtraFiles.TabIndex = 12;
+            chkExtraFiles.Text = "Include a _link.url and _metadata.json file in each document folder";
+            chkExtraFiles.UseVisualStyleBackColor = true;
+            //
             // label4
             // 
             label4.AutoSize = true;
@@ -105,7 +119,7 @@
             // btnStart
             // 
             btnStart.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnStart.Location = new Point(12, 144);
+            btnStart.Location = new Point(12, 173);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(75, 23);
             btnStart.TabIndex = 0;
@@ -118,7 +132,7 @@
             lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
             lblRunningStatus.BackColor = SystemColors.Control;
-            lblRunningStatus.Location = new Point(93, 145);
+            lblRunningStatus.Location = new Point(93, 174);
             lblRunningStatus.Name = "lblRunningStatus";
             lblRunningStatus.Padding = new Padding(3);
             lblRunningStatus.Size = new Size(103, 21);
@@ -128,7 +142,7 @@
             // btnOpenVirtualDrive
             // 
             btnOpenVirtualDrive.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnOpenVirtualDrive.Location = new Point(246, 144);
+            btnOpenVirtualDrive.Location = new Point(246, 173);
             btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
             btnOpenVirtualDrive.Size = new Size(205, 23);
             btnOpenVirtualDrive.TabIndex = 4;
@@ -141,7 +155,7 @@
             // 
             lblVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lblVersion.AutoSize = true;
-            lblVersion.Location = new Point(630, 148);
+            lblVersion.Location = new Point(630, 177);
             lblVersion.Name = "lblVersion";
             lblVersion.Size = new Size(30, 15);
             lblVersion.TabIndex = 5;
@@ -151,7 +165,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(678, 180);
+            ClientSize = new Size(678, 209);
             Controls.Add(lblVersion);
             Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
@@ -181,5 +195,6 @@
         private NumericUpDown txtRefreshIntervalMinutes;
         private Label label1;
         private Label lblVersion;
+        private CheckBox chkExtraFiles;
     }
 }

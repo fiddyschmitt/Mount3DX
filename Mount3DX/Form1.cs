@@ -127,6 +127,9 @@ namespace Mount3DX
             txt3dxServerUrl.Text = settings._3dx.ServerUrl;
 
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
+
+            //one checkbox drives both generated files; settings.json keeps the two separate flags
+            chkExtraFiles.Checked = settings._3dx.GenerateExtraFiles.DocumentLink || settings._3dx.GenerateExtraFiles.DocumentMetadata;
         }
 
         private void SaveSettings()
@@ -136,6 +139,9 @@ namespace Mount3DX
                 settings._3dx.ServerUrl = txt3dxServerUrl.Text;
 
                 settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
+
+                settings._3dx.GenerateExtraFiles.DocumentLink = chkExtraFiles.Checked;
+                settings._3dx.GenerateExtraFiles.DocumentMetadata = chkExtraFiles.Checked;
 
                 var settingsJson = settings.SerializeToJson();
 
