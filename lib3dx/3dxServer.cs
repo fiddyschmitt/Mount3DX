@@ -26,9 +26,11 @@ namespace lib3dx
 
         public string ServerUrl { get; protected set; }
 
-        public bool GenerateDocumentLinkFile { get; }
+        //Settable because the server object outlives a session (to keep its cookies), while these
+        //settings may change between sessions
+        public bool GenerateDocumentLinkFile { get; set; }
 
-        public bool GenerateDocumentMetadataFile { get; }
+        public bool GenerateDocumentMetadataFile { get; set; }
 
         string? SearchServiceUrl;
 

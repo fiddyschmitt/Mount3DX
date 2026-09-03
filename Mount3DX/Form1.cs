@@ -185,10 +185,15 @@ namespace Mount3DX
                 if (_3dxServer == null || _3dxServer.ServerUrl != settings._3dx.ServerUrl)
                 {
                     _3dxServer = new _3dxServer(
-                        settings._3dx.ServerUrl, 
+                        settings._3dx.ServerUrl,
                         settings._3dx.GenerateExtraFiles.DocumentLink,
                         settings._3dx.GenerateExtraFiles.DocumentMetadata);
                 }
+
+                //The server object is kept between sessions so its cookies survive, so apply any
+                //settings that may have changed since it was created
+                _3dxServer.GenerateDocumentLinkFile = settings._3dx.GenerateExtraFiles.DocumentLink;
+                _3dxServer.GenerateDocumentMetadataFile = settings._3dx.GenerateExtraFiles.DocumentMetadata;
 
                 session = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
 
