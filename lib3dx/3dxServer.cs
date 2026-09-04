@@ -289,9 +289,9 @@ namespace lib3dx
                                         folder["id"]?.ToString() ?? throw new Exception("id could not be retrieved"),
                                         folder["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                         null,
-                                        DateTime.Parse(folder["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.CurrentCulture),
-                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture),
-                                        DateTime.Parse(folder["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture)
+                                        ParseServerDate(folder["created"]?.ToString()),
+                                        ParseServerDate(folder["modified"]?.ToString()),
+                                        ParseServerDate(folder["modified"]?.ToString())
                                         );
 
                                 return newFolder;
@@ -339,9 +339,9 @@ namespace lib3dx
                                                     id,
                                                     item["name"]?.ToString() ?? throw new Exception("name could not be retrieved"),
                                                     folder,
-                                                    DateTime.Parse(item["created"]?.ToString() ?? throw new Exception("created could not be retrieved"), CultureInfo.CurrentCulture),
-                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture),
-                                                    DateTime.Parse(item["modified"]?.ToString() ?? throw new Exception("modified could not be retrieved"), CultureInfo.CurrentCulture));
+                                                    ParseServerDate(item["created"]?.ToString()),
+                                                    ParseServerDate(item["modified"]?.ToString()),
+                                                    ParseServerDate(item["modified"]?.ToString()));
                                 }
 
                                 return newItem;
