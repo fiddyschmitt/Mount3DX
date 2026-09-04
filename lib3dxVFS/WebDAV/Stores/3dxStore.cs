@@ -505,7 +505,8 @@ namespace libVFS.WebDAV.Stores
                 return Task.FromResult<IStoreItem?>(collection);
             }
 
-            if (PathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item))
+            //generated files are only reachable while their setting is on
+            if (PathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item) && item._3dxServer.IsServed(item._fileInfo))
             {
                 return Task.FromResult<IStoreItem?>(item);
             }

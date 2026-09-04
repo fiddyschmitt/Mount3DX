@@ -81,7 +81,7 @@ namespace lib3dxVFS.WebDAV.Stores
             if (FolderInfo is _3dxDocument doc)
             {
                 var file = doc.Files.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-                if (file != null)
+                if (file != null && _3dxServer.IsServed(file))
                 {
                     return Task.FromResult<IStoreItem?>(new _3dxStoreItem(_3dxServer, LockingManager, file, IsWritable));
                 }
@@ -100,11 +100,13 @@ namespace lib3dxVFS.WebDAV.Stores
                     yield return new _3dxStoreCollection(_3dxServer, LockingManager, subDirectory);
                 }
 
-                // Add all files
+                // Add all files (the generated ones only while their setting is on)
                 if (FolderInfo is _3dxDocument doc)
                 {
                     foreach (var file in doc.Files)
                     {
+                        if (!_3dxServer.IsServed(file)) continue;
+
                         yield return new _3dxStoreItem(_3dxServer, LockingManager, file, IsWritable);
                     }
                 }

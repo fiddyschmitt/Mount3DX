@@ -26,21 +26,32 @@ namespace lib3dx
 
         public string ServerUrl { get; protected set; }
 
-        //Settable because the server object outlives a session (to keep its cookies), while these
-        //settings may change between sessions
-        public bool GenerateDocumentLinkFile { get; set; }
+        //Whether the generated _link.url / _metadata.json entries are listed and served. They are
+        //always present in the document tree; the WebDAV layer consults these flags on every
+        //listing and lookup, so changing them takes effect immediately, without a rebuild.
+        public bool ServeDocumentLinkFile { get; set; }
 
-        public bool GenerateDocumentMetadataFile { get; set; }
+        public bool ServeDocumentMetadataFile { get; set; }
+
+        public bool IsServed(_3dxDownloadableFile file)
+        {
+            return file switch
+            {
+                _3dxDocUrlFile => ServeDocumentLinkFile,
+                _3dxDocMetadataFile => ServeDocumentMetadataFile,
+                _ => true
+            };
+        }
 
         string? SearchServiceUrl;
 
         public event EventHandler<ProgressEventArgs>? KeepAliveFailed;
 
-        public _3dxServer(string serverUrl, bool generateDocumentLinkFile, bool generateDocumentMetadataFile)
+        public _3dxServer(string serverUrl, bool serveDocumentLinkFile, bool serveDocumentMetadataFile)
         {
             ServerUrl = serverUrl;
-            GenerateDocumentLinkFile = generateDocumentLinkFile;
-            GenerateDocumentMetadataFile = generateDocumentMetadataFile;
+            ServeDocumentLinkFile = serveDocumentLinkFile;
+            ServeDocumentMetadataFile = serveDocumentMetadataFile;
             (HttpClient, ClientHandler) = CreateHttpClient();
         }
 
@@ -686,33 +697,27 @@ namespace lib3dx
             .OfType<_3dxDownloadableFile>()
             .ToList() ?? [];
 
-            if (GenerateDocumentLinkFile)
-            {
-                _3dxDownloadableFile docLinkFile = new _3dxDocUrlFile(
-                                            Guid.NewGuid().ToString(),
-                                            $"_link.url",
-                                            newDocument,
-                                            newDocument.CreationTimeUtc,
-                                            newDocument.LastWriteTimeUtc,
-                                            newDocument.LastAccessTimeUtc,
-                                            newDocument.ObjectId,
-                                            ServerUrl);
-                files.Add(docLinkFile);
-            }
+            //The generated files are always part of the tree. Whether they are listed and served
+            //is decided at request time from ServeDocumentLinkFile / ServeDocumentMetadataFile
+            //(see IsServed), so toggling them doesn't need a rebuild.
+            files.Add(new _3dxDocUrlFile(
+                            Guid.NewGuid().ToString(),
+                            "_link.url",
+                            newDocument,
+                            newDocument.CreationTimeUtc,
+                            newDocument.LastWriteTimeUtc,
+                            newDocument.LastAccessTimeUtc,
+                            newDocument.ObjectId,
+                            ServerUrl));
 
-            if (GenerateDocumentMetadataFile)
-            {
-                _3dxDownloadableFile docMetadataFile = new _3dxDocMetadataFile(
-                                            Guid.NewGuid().ToString(),
-                                            "_metadata.json",
-                                            newDocument,
-                                            newDocument.CreationTimeUtc,
-                                            newDocument.LastWriteTimeUtc,
-                                            newDocument.LastAccessTimeUtc,
-                                            newDocument.ObjectId);
-
-                files.Add(docMetadataFile);
-            }
+            files.Add(new _3dxDocMetadataFile(
+                            Guid.NewGuid().ToString(),
+                            "_metadata.json",
+                            newDocument,
+                            newDocument.CreationTimeUtc,
+                            newDocument.LastWriteTimeUtc,
+                            newDocument.LastAccessTimeUtc,
+                            newDocument.ObjectId));
 
 
             newDocument.Files = files

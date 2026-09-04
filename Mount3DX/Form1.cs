@@ -219,8 +219,8 @@ namespace Mount3DX
 
                 //The server object is kept between sessions so its cookies survive, so apply any
                 //settings that may have changed since it was created
-                _3dxServer.GenerateDocumentLinkFile = settings._3dx.GenerateExtraFiles.DocumentLink;
-                _3dxServer.GenerateDocumentMetadataFile = settings._3dx.GenerateExtraFiles.DocumentMetadata;
+                _3dxServer.ServeDocumentLinkFile = settings._3dx.GenerateExtraFiles.DocumentLink;
+                _3dxServer.ServeDocumentMetadataFile = settings._3dx.GenerateExtraFiles.DocumentMetadata;
 
                 var newSession = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
                 session = newSession;
@@ -346,6 +346,18 @@ namespace Mount3DX
             };
 
             lblRunningStatus.Text = message;
+        }
+
+        private void ChkExtraFiles_CheckedChanged(object sender, EventArgs e)
+        {
+            //The generated files are always in the tree; the WebDAV layer checks these flags on
+            //every listing, so this applies to the running session without a rebuild. (Explorer
+            //may show its cached listing for up to a minute; F5 refreshes it.)
+            if (_3dxServer != null)
+            {
+                _3dxServer.ServeDocumentLinkFile = chkExtraFiles.Checked;
+                _3dxServer.ServeDocumentMetadataFile = chkExtraFiles.Checked;
+            }
         }
 
         private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)
