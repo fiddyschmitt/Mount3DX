@@ -184,6 +184,10 @@ namespace Mount3DX
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             SaveSettings();
+
+            //release the WebDAV port and stop the background loops cleanly rather than relying
+            //on process exit to tear them down
+            session?.Stop();
         }
 
         Session? session = null;
@@ -225,14 +229,14 @@ namespace Mount3DX
                 //mid-way), so its late events must not be applied to a newer session
                 bool IsCurrent() => ReferenceEquals(newSession, session);
 
-                newSession.InitialisationProgress += (sender, args) => Invoke(new MethodInvoker(() =>
+                newSession.InitialisationProgress += (sender, args) => SafeInvoke(() =>
                 {
                     if (!IsCurrent()) return;
 
                     ShowStatus(args.Nature, args.Message);
-                }));
+                });
 
-                newSession.InitialisationFinished += (sender, args) => Invoke(new MethodInvoker(() =>
+                newSession.InitialisationFinished += (sender, args) => SafeInvoke(() =>
                 {
                     if (!IsCurrent()) return;
 
@@ -255,9 +259,9 @@ namespace Mount3DX
 
                     btnStart.Enabled = true;
                     Cursor = Cursors.Default;
-                }));
+                });
 
-                newSession.SessionStatus += (sender, args) => Invoke(new MethodInvoker(() =>
+                newSession.SessionStatus += (sender, args) => SafeInvoke(() =>
                 {
                     if (!IsCurrent()) return;
 
@@ -270,36 +274,65 @@ namespace Mount3DX
                     {
                         ShowStatus(args.Nature, args.Message);
                     }
-                }));
+                });
 
-                newSession.SessionError += (sender, args) => Invoke(new MethodInvoker(() =>
+                newSession.SessionError += (sender, args) => SafeInvoke(() =>
                 {
                     if (!IsCurrent()) return;
 
-                    newSession.Stop();
-
-                    btnStart.Text = "Start";
-                    grp3dx.Enabled = true;
-
                     var sessionDuration = DateTime.Now - startTime;
+                    var message = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
+                    Log.WriteLine(message);
 
-                    ShowStatus(ProgressEventArgs.EnumNature.Bad, $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}");
-                    btnOpenVirtualDrive.Visible = false;
-
-                    Log.WriteLine(lblRunningStatus.Text);
-                }));
+                    StopSession(newSession, ProgressEventArgs.EnumNature.Bad, message);
+                });
 
                 Task.Factory.StartNew(newSession.Start);
             }
             else
             {
                 Log.WriteLine($"Stop button clicked");
-                session?.Stop();
 
-                btnStart.Text = "Start";
-                grp3dx.Enabled = true;
-                btnOpenVirtualDrive.Visible = false;
+                if (session != null)
+                {
+                    StopSession(session, ProgressEventArgs.EnumNature.Neutral, "Stopped");
+                }
             }
+        }
+
+        //Session events arrive on background threads, possibly after the form has closed
+        void SafeInvoke(Action action)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            try
+            {
+                Invoke(action);
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }   //handle destroyed between the check and the call
+        }
+
+        //Stopping waits for the WebDAV host and the background loops (several seconds in the worst
+        //case), so do it off the UI thread and keep the button disabled meanwhile
+        void StopSession(Session stoppingSession, ProgressEventArgs.EnumNature finalNature, string finalMessage)
+        {
+            btnStart.Enabled = false;
+            btnOpenVirtualDrive.Visible = false;
+            ShowStatus(ProgressEventArgs.EnumNature.Neutral, "Stopping...");
+
+            Task.Run(() =>
+            {
+                stoppingSession.Stop();
+
+                SafeInvoke(() =>
+                {
+                    btnStart.Text = "Start";
+                    btnStart.Enabled = true;
+                    grp3dx.Enabled = true;
+                    ShowStatus(finalNature, finalMessage);
+                });
+            });
         }
 
         void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)
