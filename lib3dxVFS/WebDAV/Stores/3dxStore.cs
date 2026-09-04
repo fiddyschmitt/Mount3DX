@@ -159,7 +159,7 @@ namespace libVFS.WebDAV.Stores
                         }
                     });
 
-                //some files have identical names. Make them unique by adding the rev number
+                //some files have identical names. Make them unique by adding an index number
                 var documentsWithDuplicateFiles = new[] { rootFolder }
                                     .Recurse(folder => folder.Subfolders)
                                     .OfType<_3dxDocument>()
