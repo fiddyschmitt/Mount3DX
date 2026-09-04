@@ -106,9 +106,18 @@ namespace Mount3DX
 
         private static void InitLogging()
         {
-            if (Log.Filename != null)
+            //each run starts a fresh log
+            try
             {
-                File.Delete(Log.Filename);
+                if (Log.Filename != null)
+                {
+                    File.Delete(Log.Filename);
+                }
+            }
+            catch (Exception ex)
+            {
+                //a log that can't be cleared (read-only folder, file in use) mustn't stop the app
+                System.Diagnostics.Debug.WriteLine($"Could not delete log file {Log.Filename}: {ex.Message}");
             }
         }
 

@@ -10,7 +10,9 @@ namespace libCommon
     {
         static readonly object logLock = new();
 
-        public static string? Filename { get; set; } = Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log");
+        //Next to the executable (like settings.json), not in the working directory, which depends
+        //on how the app was launched
+        public static string? Filename { get; set; } = Path.Combine(AppContext.BaseDirectory, Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log"));
 
         public static void WriteLine(string message)
         {
@@ -18,11 +20,21 @@ namespace libCommon
             if (filename == null) return;
 
             var logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
-            lock (logLock)
+
+            try
             {
-                //AppendAllText creates the file if needed. The file is deliberately
-                //opened per line so logs survive a crash.
-                File.AppendAllText(filename, logLine);
+                lock (logLock)
+                {
+                    //AppendAllText creates the file if needed. The file is deliberately
+                    //opened per line so logs survive a crash.
+                    File.AppendAllText(filename, logLine);
+                }
+            }
+            catch (Exception ex)
+            {
+                //Logging is called from every thread in the app and must never take it down
+                //(for example when the install folder is read-only)
+                System.Diagnostics.Debug.WriteLine($"Could not write to log file {filename}: {ex.Message}");
             }
         }
     }
