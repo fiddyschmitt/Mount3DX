@@ -709,8 +709,7 @@ namespace lib3dx
                                             newDocument.CreationTimeUtc,
                                             newDocument.LastWriteTimeUtc,
                                             newDocument.LastAccessTimeUtc,
-                                            newDocument.ObjectId,
-                                            this);
+                                            newDocument.ObjectId);
 
                 files.Add(docMetadataFile);
             }
