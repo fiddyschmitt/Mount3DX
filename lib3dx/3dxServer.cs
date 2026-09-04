@@ -357,16 +357,6 @@ namespace lib3dx
             return result!;
         }
 
-        public string GetMetadata(string documentId, string securityContext)
-        {
-            var jsonObj = GetMetadataJSON(documentId, securityContext);
-
-            var result = JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
-
-            return result;
-        }
-
-
         public JObject GetMetadataJSON(string documentId, string securityContext)
         {
             var metadataUrl = ServerUrl.UrlCombine("resources/v1/collabServices/attributes/op/read");
@@ -622,7 +612,6 @@ namespace lib3dx
             var revision = o["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
             var documentType = o["dataelements"]?["typeNLS"]?.ToString() ?? throw new Exception("typeNLS could not be retrieved");
-            var description = o["dataelements"]?["description"]?.ToString();
             var originalName = o["dataelements"]?["name"]?.ToString() ?? throw new Exception("name could not be retrieved");
 
             var created = ParseServerDate(o["dataelements"]?["originated"]?.ToString());
@@ -659,7 +648,6 @@ namespace lib3dx
                 {
                     var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved");
                     var rawName = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
-                    var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
                     //the title is whatever the uploader called it; it may contain characters that are
                     //invalid in a Windows path, or be longer than a path segment allows
@@ -686,7 +674,6 @@ namespace lib3dx
                                 modified,
                                 accessed,
                                 documentObjectId,
-                                fileRevision,
                                 size);
                 }
                 catch (Exception ex)
