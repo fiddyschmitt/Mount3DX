@@ -31,10 +31,10 @@ namespace Mount3DX
             lblVersion.Left = grp3dx.Right - lblVersion.Width;
             MinimumSize = Size;
 
+            lblRunningStatus.Text = string.Empty;
+
             InitLogging();
             LoadSettings();
-
-            lblRunningStatus.Text = string.Empty;
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
             LogWebClientSettings();
@@ -120,8 +120,18 @@ namespace Mount3DX
             settings = new Settings();
             if (File.Exists(settingsFilename))
             {
-                var settingsJson = File.ReadAllText(settingsFilename);
-                settings = settingsJson?.DeserializeJson<Settings>() ?? new Settings();
+                try
+                {
+                    var settingsJson = File.ReadAllText(settingsFilename);
+                    settings = settingsJson?.DeserializeJson<Settings>() ?? new Settings();
+                }
+                catch (Exception ex)
+                {
+                    //a hand-edited file with a typo must not stop the app from starting
+                    Log.WriteLine($"Could not read {settingsFilename}; using default settings. {ex.Message}");
+                    ShowStatus(ProgressEventArgs.EnumNature.Warning, $"Could not read settings.json; using defaults. {ex.Message}");
+                    settings = new Settings();
+                }
             }
 
             txt3dxServerUrl.Text = settings._3dx.ServerUrl;
