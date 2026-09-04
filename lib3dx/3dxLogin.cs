@@ -82,22 +82,34 @@ namespace lib3dx
         {
             var browser = GetDefaultBrowser();
 
-            if (browser == "firefox")
+            //Each driver runs a helper process that opens a console window unless told not to.
+            //Hide it for every browser, not just Firefox.
+            switch (browser)
             {
-                var service = FirefoxDriverService.CreateDefaultService();
-                service.HideCommandPromptWindow = true;
+                case "firefox":
+                    {
+                        var service = FirefoxDriverService.CreateDefaultService();
+                        service.HideCommandPromptWindow = true;
+                        return new FirefoxDriver(service, new FirefoxOptions());
+                    }
 
-                var options = new FirefoxOptions();
-                var result = new FirefoxDriver(service, options);
-                return result;
+                case "chrome":
+                    {
+                        var service = ChromeDriverService.CreateDefaultService();
+                        service.HideCommandPromptWindow = true;
+                        return new ChromeDriver(service, new ChromeOptions());
+                    }
+
+                case "edge":
+                    {
+                        var service = EdgeDriverService.CreateDefaultService();
+                        service.HideCommandPromptWindow = true;
+                        return new EdgeDriver(service, new EdgeOptions());
+                    }
+
+                default:
+                    throw new Exception("Unsupported browser.");
             }
-
-            return browser switch
-            {
-                "chrome" => new ChromeDriver(),
-                "edge" => new EdgeDriver(),
-                _ => throw new Exception("Unsupported browser."),
-            };
         }
 
         static string? GetDefaultBrowser()
