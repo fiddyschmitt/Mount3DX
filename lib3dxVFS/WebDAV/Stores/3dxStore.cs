@@ -99,7 +99,9 @@ namespace libVFS.WebDAV.Stores
                     }
                     catch (Exception ex)
                     {
-                        if (attempt == maxAttempts)
+                        //an InvalidOperationException is a state error (e.g. no search service
+                        //URL) that retrying won't fix
+                        if (attempt == maxAttempts || ex is InvalidOperationException)
                         {
                             var exceptionStr = $"Could not retrieve documents after {attempt} {"attempt".Pluralize(attempt)}.";
                             if (!ex.Message.Contains("A task was canceled"))
@@ -107,6 +109,16 @@ namespace libVFS.WebDAV.Stores
                                 exceptionStr += $" {ex.Message}";
                             }
                             throw new Exception(exceptionStr);
+                        }
+
+                        //Back off before trying again (each page has already retried internally),
+                        //and stop altogether if the session is being stopped meanwhile
+                        var backoff = TimeSpan.FromSeconds(10 * attempt);
+                        Log.WriteLine($"Attempt {attempt} to retrieve documents failed; retrying in {backoff.TotalSeconds:N0} seconds. {ex.Message}");
+
+                        if (CancelRefreshTask.Token.WaitHandle.WaitOne(backoff))
+                        {
+                            throw new OperationCanceledException("The refresh was cancelled.");
                         }
                     }
                 }
@@ -369,6 +381,10 @@ namespace libVFS.WebDAV.Stores
                         Nature = ProgressEventArgs.EnumNature.Good
                     });
                 }
+            }
+            catch (OperationCanceledException) when (!throwOnError)
+            {
+                Log.WriteLine("Document list refresh cancelled.");
             }
             catch (Exception ex)
             {

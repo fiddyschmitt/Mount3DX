@@ -468,6 +468,12 @@ namespace lib3dx
                                         {
                                             Log.WriteLine($"Could not retrieve results for page {page}, during attempt {attempt}. {ex.Message}".Trim());
                                         }
+
+                                        //give a struggling server some room rather than hammering it
+                                        if (attempt < maxAttempts)
+                                        {
+                                            Thread.Sleep(TimeSpan.FromSeconds(2 * attempt));
+                                        }
                                     }
 
                                     if (resultObj == null)
@@ -687,7 +693,8 @@ namespace lib3dx
         {
             if (SearchServiceUrl == null)
             {
-                throw new Exception($"Search Service URL not yet retrieved.");
+                //InvalidOperationException: a programming/state error that retrying won't fix
+                throw new InvalidOperationException($"Search Service URL not yet retrieved.");
             }
 
             var searchUrl = SearchServiceUrl.UrlCombine("search?xrequestedwith=xmlhttprequest");
