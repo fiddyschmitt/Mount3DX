@@ -111,28 +111,8 @@ namespace Mount3DX
                 return;
             }
 
-            Log.WriteLine("Pinging server.");
-
-            var pingSuccessful = _3dxServer.Ping(CancellationToken.None);
-
-            if (pingSuccessful)
-            {
-                Log.WriteLine("Server responded to ping.");
-            }
-            else
-            {
-                Log.WriteLine("Server did not respond to ping. Displaying error message.");
-
-                Stop();
-
-                InitialisationFinished?.Invoke(this, new FinishedEventArgs()
-                {
-                    Success = false,
-                    Message = "The 3DX server could not be contacted. Please check the URL."
-                });
-
-                return;
-            }
+            //Being logged in already implies a successful ping: either the one above, or the one
+            //LogIn() finishes with. No need for a third round trip.
 
             if (Settings._3dx.KeepAliveIntervalMinutes > 0)
             {

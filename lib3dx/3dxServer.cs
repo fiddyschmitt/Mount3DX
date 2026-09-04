@@ -166,10 +166,13 @@ namespace lib3dx
 
         public bool Ping(CancellationToken cancellationToken)
         {
-            var tests = new[] {
-                            ServerUrl.UrlCombine("resources/v1/modeler/documents/ids"),
-                            SearchServiceUrl?.UrlCombine("search") ?? ""
-            };
+            //The search service URL is only discovered by a login, so before one there is nothing
+            //to test there (an empty URL merely logged a spurious error on every fresh start)
+            var tests = new List<string> { ServerUrl.UrlCombine("resources/v1/modeler/documents/ids") };
+            if (SearchServiceUrl != null)
+            {
+                tests.Add(SearchServiceUrl.UrlCombine("search"));
+            }
 
             var allCookiesWork = tests
                                     .All(testUrl =>
@@ -191,12 +194,12 @@ namespace lib3dx
                                             }
                                             catch (Exception ex)
                                             {
-                                                Log.WriteLine($"Error while pinging sever:{Environment.NewLine}{ex.Message}");
+                                                Log.WriteLine($"Error while pinging server:{Environment.NewLine}{ex.Message}");
                                             }
                                         }
                                         catch (Exception ex)
                                         {
-                                            Log.WriteLine($"Error while creating HttpClient to ping the sever:{Environment.NewLine}{ex}");
+                                            Log.WriteLine($"Error while creating request to ping the server:{Environment.NewLine}{ex}");
                                         }
 
                                         return cookieWorks;
