@@ -171,9 +171,7 @@ namespace Mount3DX
 
         private void BtnStart_Click(object sender, EventArgs e)
         {
-            lblRunningStatus.BackColor = DefaultBackColor;
-            lblRunningStatus.ForeColor = Color.Black;
-            lblRunningStatus.Text = "";
+            ShowStatus(ProgressEventArgs.EnumNature.Neutral, "");
 
             grp3dx.Enabled = false;
 
@@ -201,55 +199,38 @@ namespace Mount3DX
                 _3dxServer.GenerateDocumentLinkFile = settings._3dx.GenerateExtraFiles.DocumentLink;
                 _3dxServer.GenerateDocumentMetadataFile = settings._3dx.GenerateExtraFiles.DocumentMetadata;
 
-                session = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
+                var newSession = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
+                session = newSession;
 
-                session.InitialisationProgress += (sender, args) => Invoke(new MethodInvoker(() =>
+                //A stopped session may still have a refresh in flight (it cannot be interrupted
+                //mid-way), so its late events must not be applied to a newer session
+                bool IsCurrent() => ReferenceEquals(newSession, session);
+
+                newSession.InitialisationProgress += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
-                    switch (args.Nature)
-                    {
-                        case ProgressEventArgs.EnumNature.Good:
-                            lblRunningStatus.BackColor = Color.LimeGreen;
-                            lblRunningStatus.ForeColor = Color.Black;
-                            break;
+                    if (!IsCurrent()) return;
 
-                        case ProgressEventArgs.EnumNature.Neutral:
-                            lblRunningStatus.BackColor = DefaultBackColor;
-                            lblRunningStatus.ForeColor = Color.Black;
-                            break;
-
-                        case ProgressEventArgs.EnumNature.Bad:
-                            lblRunningStatus.BackColor = Color.Red;
-                            lblRunningStatus.ForeColor = Color.White;
-                            break;
-                    }
-
-                    lblRunningStatus.Text = args.Message;
+                    ShowStatus(args.Nature, args.Message);
                 }));
 
-                session.InitialisationFinished += (sender, args) => Invoke(new MethodInvoker(() =>
+                newSession.InitialisationFinished += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
+                    if (!IsCurrent()) return;
+
                     if (args.Success)
                     {
                         Log.WriteLine("Session started successfully.");
 
                         btnStart.Text = "Stop";
-
-                        lblRunningStatus.BackColor = Color.LimeGreen;
-                        lblRunningStatus.ForeColor = Color.Black;
-                        lblRunningStatus.Text = "Running";
-
+                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
                         btnOpenVirtualDrive.Visible = true;
                     }
                     else
                     {
                         Log.WriteLine($"Session failed to start: {args.Message}");
 
-                        lblRunningStatus.BackColor = Color.Red;
-                        lblRunningStatus.ForeColor = Color.White;
-                        lblRunningStatus.Text = args.Message;
-
+                        ShowStatus(ProgressEventArgs.EnumNature.Bad, args.Message);
                         btnOpenVirtualDrive.Visible = false;
-
                         grp3dx.Enabled = true;
                     }
 
@@ -257,25 +238,39 @@ namespace Mount3DX
                     Cursor = Cursors.Default;
                 }));
 
-                session.SessionError += (sender, args) => Invoke(new MethodInvoker(() =>
+                newSession.SessionStatus += (sender, args) => Invoke(new MethodInvoker(() =>
                 {
-                    session?.Stop();
+                    if (!IsCurrent()) return;
+
+                    if (args.Nature == ProgressEventArgs.EnumNature.Good)
+                    {
+                        //recovered; back to the normal running state
+                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
+                    }
+                    else
+                    {
+                        ShowStatus(args.Nature, args.Message);
+                    }
+                }));
+
+                newSession.SessionError += (sender, args) => Invoke(new MethodInvoker(() =>
+                {
+                    if (!IsCurrent()) return;
+
+                    newSession.Stop();
 
                     btnStart.Text = "Start";
                     grp3dx.Enabled = true;
 
                     var sessionDuration = DateTime.Now - startTime;
 
-                    lblRunningStatus.BackColor = Color.Red;
-                    lblRunningStatus.ForeColor = Color.White;
-                    lblRunningStatus.Text = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
-
+                    ShowStatus(ProgressEventArgs.EnumNature.Bad, $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}");
                     btnOpenVirtualDrive.Visible = false;
 
                     Log.WriteLine(lblRunningStatus.Text);
                 }));
 
-                Task.Factory.StartNew(session.Start);
+                Task.Factory.StartNew(newSession.Start);
             }
             else
             {
@@ -286,6 +281,19 @@ namespace Mount3DX
                 grp3dx.Enabled = true;
                 btnOpenVirtualDrive.Visible = false;
             }
+        }
+
+        void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)
+        {
+            (lblRunningStatus.BackColor, lblRunningStatus.ForeColor) = nature switch
+            {
+                ProgressEventArgs.EnumNature.Good => (Color.LimeGreen, Color.Black),
+                ProgressEventArgs.EnumNature.Warning => (Color.Orange, Color.Black),
+                ProgressEventArgs.EnumNature.Bad => (Color.Red, Color.White),
+                _ => (DefaultBackColor, Color.Black),
+            };
+
+            lblRunningStatus.Text = message;
         }
 
         private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)

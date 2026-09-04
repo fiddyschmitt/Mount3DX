@@ -25,7 +25,12 @@ namespace Mount3DX
 
         public event EventHandler<ProgressEventArgs>? InitialisationProgress;
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
+        //Fatal: the session has to stop
         public event EventHandler<ProgressEventArgs>? SessionError;
+
+        //Non-fatal: a background refresh failed (the previous document list is still being served)
+        //or has since recovered
+        public event EventHandler<ProgressEventArgs>? SessionStatus;
 
         public Session(_3dxServer _3dxServer, Settings settings, uint maxMetadataSizeInBytes)
         {
@@ -158,7 +163,7 @@ namespace Mount3DX
 
                 if (Settings._3dx.RefreshIntervalMinutes > 0)
                 {
-                    _3dxStore.RefreshFailed += SessionError;
+                    _3dxStore.RefreshStatus += (sender, args) => SessionStatus?.Invoke(this, args);
                     _3dxStore.StartRefresh(Settings._3dx.RefreshIntervalMinutes);
                 }
 

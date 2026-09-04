@@ -15,6 +15,7 @@ namespace libCommon.Events
         {
             Good,
             Neutral,
+            Warning,    //something went wrong but the session carries on
             Bad
         }
     }

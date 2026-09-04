@@ -37,7 +37,11 @@ namespace libVFS.WebDAV.Stores
         public int QueryThreads { get; }
         private readonly uint MaxMetadataSizeInBytes;
         public EventHandler<ProgressEventArgs>? Progress { get; }
-        public EventHandler<ProgressEventArgs>? RefreshFailed { get; set; }
+
+        //Raised by background refreshes: Warning when a refresh fails (the previously published
+        //document list is kept and stays available) and Good when a later refresh succeeds again.
+        public event EventHandler<ProgressEventArgs>? RefreshStatus;
+        bool lastRefreshFailed;
 
         public _3dxStore(_3dxServer _3dxServer, string webDavServerUrl, int queryThreads, uint maxMetadataSizeInBytes, EventHandler<ProgressEventArgs>? progress)
         {
@@ -353,22 +357,35 @@ namespace libVFS.WebDAV.Stores
 
                 var duration = DateTime.Now - startTime;
                 Log.WriteLine($"Document list refreshed in {duration.FormatTimeSpan()}, with {attempt:N0} {"attempt".Pluralize(attempt)}. {snapshot.PathToItemMapping.Count:N0} {"file".Pluralize(snapshot.PathToItemMapping.Count)}.");
+
+                if (lastRefreshFailed)
+                {
+                    lastRefreshFailed = false;
+                    RefreshStatus?.Invoke(this, new ProgressEventArgs()
+                    {
+                        Message = "Document list refreshed successfully.",
+                        Nature = ProgressEventArgs.EnumNature.Good
+                    });
+                }
             }
             catch (Exception ex)
             {
                 Log.WriteLine($"Error while refreshing the document list:{Environment.NewLine}{ex}");
 
-                //During the initial load there are no RefreshFailed subscribers yet, so the failure
-                //must propagate to the caller or the session would report success with a broken store
+                //During the initial load there is no list to fall back on, so the failure must
+                //propagate to the caller or the session would report success with a broken store
                 if (throwOnError)
                 {
                     throw;
                 }
 
-                RefreshFailed?.Invoke(this, new ProgressEventArgs()
+                //A later refresh failing is not fatal: the snapshot published by the last good
+                //refresh is still being served, and the next interval will try again
+                lastRefreshFailed = true;
+                RefreshStatus?.Invoke(this, new ProgressEventArgs()
                 {
-                    Message = $"Error while refreshing document list: {ex.Message}",
-                    Nature = ProgressEventArgs.EnumNature.Bad
+                    Message = $"Could not refresh the document list; the previous list is still being served. {ex.Message}",
+                    Nature = ProgressEventArgs.EnumNature.Warning
                 });
             }
         }
