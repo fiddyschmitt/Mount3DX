@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
@@ -24,9 +25,25 @@ namespace lib3dx.Files
 
         public override Stream Download(_3dxServer _3dxServer)
         {
+            //When the size is known from the document metadata, present the download as a seekable
+            //stream so the WebDAV layer can send Content-Length and honour Range requests without
+            //transferring the whole file. When it isn't, stream whatever the server sends.
+            if (Size > 0)
+            {
+                return new RangedDownloadStream(offset => OpenDownloadAsync(_3dxServer, offset), (long)Size, FullPath);
+            }
+
+            var response = OpenDownloadAsync(_3dxServer, 0).GetAwaiter().GetResult();
+            return response.Content.ReadAsStream();
+        }
+
+        //Performs the three-step 3DX download (CSRF token, download ticket, then the file itself)
+        //and returns the response with only its headers read, so the body can be streamed.
+        async Task<HttpResponseMessage> OpenDownloadAsync(_3dxServer _3dxServer, long offset)
+        {
             try
             {
-                Log.WriteLine("Downloading file");
+                Log.WriteLine(offset == 0 ? $"Downloading file {FullPath}" : $"Downloading file {FullPath} from byte {offset:N0}");
 
                 //get download token
                 var objectUrl = _3dxServer.ServerUrl.UrlCombine(@$"resources/v1/application/CSRF");
@@ -37,10 +54,9 @@ namespace lib3dx.Files
                     Method = HttpMethod.Get
                 };
 
-
-                var tokenResponse = _3dxServer.HttpClient.SendAsync(request).Result;
+                var tokenResponse = await _3dxServer.HttpClient.SendAsync(request).ConfigureAwait(false);
                 tokenResponse.EnsureSuccessStatusCode();
-                var downloadTokenJson = tokenResponse.Content.ReadAsStringAsync().Result;
+                var downloadTokenJson = await tokenResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var downloadToken = (JObject.Parse(downloadTokenJson)?["csrf"]?["value"]?.ToString()) ?? throw new Exception($"Could not get Download Token for file with id {DocumentObjectId}. {FullPath}");
 
 
@@ -53,10 +69,9 @@ namespace lib3dx.Files
                 };
                 request.Headers.Add("ENO_CSRF_TOKEN", downloadToken);
 
-
-                var ticketResponse = _3dxServer.HttpClient.SendAsync(request).Result;
+                var ticketResponse = await _3dxServer.HttpClient.SendAsync(request).ConfigureAwait(false);
                 ticketResponse.EnsureSuccessStatusCode();
-                var downloadLocationQueryJson = ticketResponse.Content.ReadAsStringAsync().Result;
+                var downloadLocationQueryJson = await ticketResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var datalements = JObject.Parse(downloadLocationQueryJson)["data"]?.FirstOrDefault()?["dataelements"];
 
                 if (datalements == null)
@@ -72,16 +87,18 @@ namespace lib3dx.Files
                 }
 
                 //download the file
+                request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+                if (offset > 0)
+                {
+                    request.Headers.Range = new RangeHeaderValue(offset, null);
+                }
 
-                //settings to allow large files to be downloaded
-                var opt = HttpCompletionOption.ResponseHeadersRead; //to avoid: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647.
-
-                var response = _3dxServer.HttpClient.GetAsync(downloadUrl, opt).Result;
+                //ResponseHeadersRead so large files are streamed rather than buffered
+                //(avoids: Cannot write more bytes to the buffer than the configured maximum buffer size: 2147483647)
+                var response = await _3dxServer.HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var result = response.Content.ReadAsStream();
-
-                return result;
+                return response;
             }
             catch (Exception ex)
             {
