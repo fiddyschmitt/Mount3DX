@@ -21,7 +21,7 @@ namespace lib3dx
         public HttpClient HttpClient;
         public HttpClientHandler ClientHandler;
 
-        CancellationTokenSource CancelPingTask = new();
+        CancellationTokenSource? CancelPingTask;
         Task? PingTask;
 
         public string ServerUrl { get; protected set; }
@@ -63,10 +63,20 @@ namespace lib3dx
             return (client, clientHandler);
         }
 
+        //Swap in a fresh client (and therefore a fresh cookie jar) and dispose the old one. A request
+        //still in flight on the old client (a stale refresh from a stopped session) fails, which
+        //that session treats as a warning.
+        void ReplaceHttpClient()
+        {
+            var oldClient = HttpClient;
+            (HttpClient, ClientHandler) = CreateHttpClient();
+            oldClient.Dispose();    //disposes its handler too
+        }
+
         public bool LogIn()
         {
             //We need to clear the cookies here otherwise the previous call to Ping() interferes with the login process
-            (HttpClient, ClientHandler) = CreateHttpClient();
+            ReplaceHttpClient();
 
             //a new login may carry different preferred credentials
             lock (securityContextLock) { securityContext = null; }
@@ -78,7 +88,7 @@ namespace lib3dx
             if (!result)
             {
                 //We need to clear the cookies here otherwise the previous call to LogInUsingHttpClient() interferes with the login process
-                (HttpClient, ClientHandler) = CreateHttpClient();
+                ReplaceHttpClient();
 
                 result = _3dxLogin.LogInUsingSelenium(ServerUrl, HttpClient, ClientHandler.CookieContainer);
             }
@@ -100,29 +110,34 @@ namespace lib3dx
         public void StartKeepAlive(int keepAliveIntervalMinutes)
         {
             var keepAliveInterval = TimeSpan.FromMinutes(keepAliveIntervalMinutes);
-            CancelPingTask = new();
+            var cts = new CancellationTokenSource();
+            CancelPingTask = cts;
 
+            //LongRunning: this loop blocks for the life of the session, so it gets its own thread
+            //rather than occupying a thread-pool thread
             PingTask = Task.Factory.StartNew(() =>
             {
                 var startTime = DateTime.Now;
+                var token = cts.Token;
 
-                while (!CancelPingTask.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
                     int attempt;
                     int maxAttempts = 5;
 
                     var pingSuccessful = false;
 
-                    for (attempt = 1; attempt <= maxAttempts && !CancelPingTask.IsCancellationRequested; attempt++)
+                    for (attempt = 1; attempt <= maxAttempts && !token.IsCancellationRequested; attempt++)
                     {
-                        pingSuccessful = Ping(CancelPingTask.Token);
+                        pingSuccessful = Ping(token);
 
                         if (pingSuccessful) break;
 
-                        try { Task.Delay(TimeSpan.FromSeconds(60), CancelPingTask.Token).Wait(); } catch { }
+                        //wait before the next attempt; returns early (true) if cancelled
+                        if (token.WaitHandle.WaitOne(TimeSpan.FromSeconds(60))) break;
                     }
 
-                    if (CancelPingTask.IsCancellationRequested) break;
+                    if (token.IsCancellationRequested) break;
 
                     if (!pingSuccessful)
                     {
@@ -137,30 +152,36 @@ namespace lib3dx
                         break;
                     }
 
-                    if (attempt > 1)
-                    {
-                        //Debugger.Break();
-                    }
-
-                    try { Task.Delay(keepAliveInterval, CancelPingTask.Token).Wait(); } catch { }
-
-                    if (CancelPingTask.IsCancellationRequested) break;
+                    if (token.WaitHandle.WaitOne(keepAliveInterval)) break;
                 }
 
-                if (!CancelPingTask.IsCancellationRequested)
+                if (!token.IsCancellationRequested)
                 {
                     var duration = DateTime.Now - startTime;
                     Log.WriteLine($"KeepAlive finished abruptly after {duration.FormatTimeSpan()}");
                 }
-            });
+            }, TaskCreationOptions.LongRunning);
 
             Log.WriteLine($"Started KeepAlive at interval of {keepAliveIntervalMinutes:N0} minutes.");
         }
 
         public void StopKeepAlive()
         {
-            CancelPingTask.Cancel();
-            PingTask?.Wait(1000);   //a timeout because it might be the PingTask which has told the session to stop
+            var task = PingTask;
+            var cts = CancelPingTask;
+            if (task == null || cts == null) return;    //not started, or already stopped
+
+            PingTask = null;
+            CancelPingTask = null;
+
+            cts.Cancel();
+
+            //a timeout because it might be the PingTask which has told the session to stop
+            if (task.Wait(1000))
+            {
+                //only dispose once the loop has definitely finished with it
+                cts.Dispose();
+            }
         }
 
 

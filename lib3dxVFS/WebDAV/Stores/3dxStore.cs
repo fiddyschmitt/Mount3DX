@@ -64,7 +64,7 @@ namespace libVFS.WebDAV.Stores
             Progress = null;
         }
 
-        void RefreshDocumentsList(bool throwOnError = false)
+        void RefreshDocumentsList(bool throwOnError = false, CancellationToken cancellationToken = default)
         {
             Log.WriteLine("Refreshing document list");
             var startTime = DateTime.Now;
@@ -116,7 +116,7 @@ namespace libVFS.WebDAV.Stores
                         var backoff = TimeSpan.FromSeconds(10 * attempt);
                         Log.WriteLine($"Attempt {attempt} to retrieve documents failed; retrying in {backoff.TotalSeconds:N0} seconds. {ex.Message}");
 
-                        if (CancelRefreshTask.Token.WaitHandle.WaitOne(backoff))
+                        if (cancellationToken.WaitHandle.WaitOne(backoff))
                         {
                             throw new OperationCanceledException("The refresh was cancelled.");
                         }
@@ -419,35 +419,49 @@ namespace libVFS.WebDAV.Stores
         }
 
 
-        CancellationTokenSource CancelRefreshTask = new();
+        CancellationTokenSource? CancelRefreshTask;
         Task? RefreshTask;
 
-        public void StartRefresh(int keepAliveIntervalMinutes)
+        public void StartRefresh(int refreshIntervalMinutes)
         {
-            var keepAliveInterval = TimeSpan.FromMinutes(keepAliveIntervalMinutes);
-            CancelRefreshTask = new();
+            var refreshInterval = TimeSpan.FromMinutes(refreshIntervalMinutes);
+            var cts = new CancellationTokenSource();
+            CancelRefreshTask = cts;
 
+            //LongRunning: this loop blocks for the life of the session, so it gets its own thread
+            //rather than occupying a thread-pool thread
             RefreshTask = Task.Factory.StartNew(() =>
             {
-                while (!CancelRefreshTask.IsCancellationRequested)
+                var token = cts.Token;
+
+                //WaitOne returns true when cancelled
+                while (!token.WaitHandle.WaitOne(refreshInterval))
                 {
-                    try { Task.Delay(keepAliveInterval, CancelRefreshTask.Token).Wait(); } catch { }
-
-                    if (CancelRefreshTask.IsCancellationRequested) break;
-
-                    RefreshDocumentsList();
-
-                    if (CancelRefreshTask.IsCancellationRequested) break;
+                    RefreshDocumentsList(cancellationToken: token);
                 }
-            });
+            }, TaskCreationOptions.LongRunning);
 
-            Log.WriteLine($"Started Document Refresh task at interval of {keepAliveIntervalMinutes:N0} minutes.");
+            Log.WriteLine($"Started Document Refresh task at interval of {refreshIntervalMinutes:N0} minutes.");
         }
 
         public void StopRefresh()
         {
-            CancelRefreshTask.Cancel();
-            RefreshTask?.Wait(1000);    //a timeout because it might be the RefreshTask which has told the session to stop
+            var task = RefreshTask;
+            var cts = CancelRefreshTask;
+            if (task == null || cts == null) return;    //not started, or already stopped
+
+            RefreshTask = null;
+            CancelRefreshTask = null;
+
+            cts.Cancel();
+
+            //a timeout because a refresh in progress can't be interrupted, and it might be the
+            //RefreshTask itself which has told the session to stop
+            if (task.Wait(1000))
+            {
+                //only dispose once the loop has definitely finished with it
+                cts.Dispose();
+            }
         }
     }
 
