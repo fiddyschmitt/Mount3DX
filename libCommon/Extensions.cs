@@ -89,25 +89,41 @@ namespace libCommon
 
         public static IEnumerable<T> Recurse<T>(this IEnumerable<T> source, Func<T, IEnumerable<T>> childSelector, bool depthFirst = false)
         {
-            List<T> queue = new(source);
-
-            while (queue.Count > 0)
+            //This walks the whole document tree several times per refresh. A List used as a queue
+            //shifts every remaining element on each RemoveAt(0), which made it O(n²); use real
+            //queue/stack structures instead.
+            if (depthFirst)
             {
-                var item = queue[0];
-                queue.RemoveAt(0);
+                //pre-order: push children in reverse so the first child is visited first
+                var stack = new Stack<T>(source.Reverse());
 
-                var children = childSelector(item);
-
-                if (depthFirst)
+                while (stack.Count > 0)
                 {
-                    queue.InsertRange(0, children);
-                }
-                else
-                {
-                    queue.AddRange(children);
-                }
+                    var item = stack.Pop();
 
-                yield return item;
+                    foreach (var child in childSelector(item).Reverse())
+                    {
+                        stack.Push(child);
+                    }
+
+                    yield return item;
+                }
+            }
+            else
+            {
+                var queue = new Queue<T>(source);
+
+                while (queue.Count > 0)
+                {
+                    var item = queue.Dequeue();
+
+                    foreach (var child in childSelector(item))
+                    {
+                        queue.Enqueue(child);
+                    }
+
+                    yield return item;
+                }
             }
         }
 
