@@ -46,29 +46,49 @@ namespace lib3dxVFS.WebDAV.Stores
         public _3dxFolder FolderInfo { get; }
         public _3dxServer _3dxServer { get; }
 
+        //The store is read-only. Every mutating method answers Forbidden rather than throwing:
+        //an exception became a 500, which Explorer shows as a generic error, whereas 403 is
+        //reported as "access denied".
+
         public Task<StoreItemResult> CopyAsync(IStoreCollection destination, string name, bool overwrite, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(new StoreItemResult(DavStatusCode.Forbidden));
         }
 
         public Task<StoreCollectionResult> CreateCollectionAsync(string name, bool overwrite, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(new StoreCollectionResult(DavStatusCode.Forbidden));
         }
 
         public Task<StoreItemResult> CreateItemAsync(string name, bool overwrite, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(new StoreItemResult(DavStatusCode.Forbidden));
         }
 
         public Task<DavStatusCode> DeleteItemAsync(string name, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(DavStatusCode.Forbidden);
         }
 
-        public Task<IStoreItem> GetItemAsync(string name, IHttpContext httpContext)
+        public Task<IStoreItem?> GetItemAsync(string name, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            //used by the DELETE and MOVE handlers to find their target before refusing it
+            var subfolder = FolderInfo.Subfolders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (subfolder != null)
+            {
+                return Task.FromResult<IStoreItem?>(new _3dxStoreCollection(_3dxServer, LockingManager, subfolder));
+            }
+
+            if (FolderInfo is _3dxDocument doc)
+            {
+                var file = doc.Files.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                if (file != null)
+                {
+                    return Task.FromResult<IStoreItem?>(new _3dxStoreItem(_3dxServer, LockingManager, file, IsWritable));
+                }
+            }
+
+            return Task.FromResult<IStoreItem?>(null);
         }
 
         public Task<IEnumerable<IStoreItem>> GetItemsAsync(IHttpContext httpContext)
@@ -96,22 +116,23 @@ namespace lib3dxVFS.WebDAV.Stores
 
         public Task<Stream> GetReadableStreamAsync(IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            //a GET on a folder has no body; the handler answers 204 for Stream.Null
+            return Task.FromResult(Stream.Null);
         }
 
         public Task<StoreItemResult> MoveItemAsync(string sourceName, IStoreCollection destination, string destinationName, bool overwrite, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(new StoreItemResult(DavStatusCode.Forbidden));
         }
 
         public bool SupportsFastMove(IStoreCollection destination, string destinationName, bool overwrite, IHttpContext httpContext)
         {
-            throw new NotImplementedException();
+            return false;
         }
 
         public Task<DavStatusCode> UploadFromStreamAsync(IHttpContext httpContext, Stream source)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(DavStatusCode.Forbidden);
         }
 
         public static PropertyManager<_3dxStoreCollection> DefaultPropertyManager { get; } = new PropertyManager<_3dxStoreCollection>(

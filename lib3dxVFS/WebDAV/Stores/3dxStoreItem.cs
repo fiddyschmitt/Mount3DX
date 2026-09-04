@@ -121,9 +121,9 @@ namespace lib3dxVFS.WebDAV.Stores
             return result;
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async Task<DavStatusCode> UploadFromStreamAsync(IHttpContext httpContext, Stream inputStream) => DavStatusCode.NotImplemented;
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        //read-only store: Forbidden rather than NotImplemented, so Explorer reports "access denied"
+        //instead of a generic error
+        public Task<DavStatusCode> UploadFromStreamAsync(IHttpContext httpContext, Stream inputStream) => Task.FromResult(DavStatusCode.Forbidden);
 
         public IPropertyManager PropertyManager => DefaultPropertyManager;
         public ILockingManager LockingManager { get; }
