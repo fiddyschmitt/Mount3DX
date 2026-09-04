@@ -249,10 +249,11 @@ namespace libVFS.WebDAV.Stores
                                                 .ToList();
                     }
 
-                    var anyAreOversize = folderUrlsToCheck
-                                            .Any(folder =>
+                    //Measure the largest listing among the folders Explorer opens at the top level
+                    var largestListing = folderUrlsToCheck
+                                            .Select(folder =>
                                             {
-                                                //Check how large the metadata is folder this folder
+                                                //Check how large the metadata for this folder is
                                                 //(probe the candidate snapshot; it isn't published to live requests yet)
                                                 var propFindHandler = new PropFindHandler();
                                                 var fakeHttpContext = new FakeHttpContext(new Uri(folder), 1);
@@ -260,18 +261,14 @@ namespace libVFS.WebDAV.Stores
                                                 var folderMetadataLength = fakeHttpContext.Response.Stream.Length;
                                                 fakeHttpContext.Response.Stream.Close();
 
-                                                var isOversize = folderMetadataLength > MaxMetadataSizeInBytes;
+                                                return folderMetadataLength;
+                                            })
+                                            .Max();
 
-                                                if (isOversize)
-                                                {
-                                                    Log.WriteLine($"Folder metadata is {folderMetadataLength:N0} bytes, which exceeds WebClient's maximum.");
-                                                }
-
-                                                return isOversize;
-                                            });
-
-                    if (anyAreOversize)
+                    if (largestListing > MaxMetadataSizeInBytes)
                     {
+                        Log.WriteLine($"Largest top-level folder listing is {largestListing:N0} bytes with {numberFoldersToUse:N0} {"folder".Pluralize(numberFoldersToUse)}, which exceeds WebClient's maximum of {MaxMetadataSizeInBytes:N0} bytes.");
+
                         //If every top-level folder already holds a single item, we can't subdivide any
                         //further. A single document whose own listing exceeds the limit would otherwise
                         //make this loop run forever.
@@ -281,7 +278,12 @@ namespace libVFS.WebDAV.Stores
                             break;
                         }
 
-                        numberFoldersToUse++;
+                        //Jump straight to the folder count the measurement implies rather than adding
+                        //one folder per pass; every pass rebuilds the mappings and serialises every
+                        //top-level listing. Listing size is roughly proportional to item count, so
+                        //scale the current count by the overshoot, and always make progress.
+                        var estimatedFolders = (int)Math.Ceiling(numberFoldersToUse * largestListing / (double)MaxMetadataSizeInBytes);
+                        numberFoldersToUse = Math.Min(originalTopLevelFolders.Count, Math.Max(numberFoldersToUse + 1, estimatedFolders));
                         var itemsPerFolder = (int)Math.Ceiling(originalTopLevelFolders.Count / (double)numberFoldersToUse);
 
                         var newTopLevelFolders = originalTopLevelFolders
