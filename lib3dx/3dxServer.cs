@@ -384,7 +384,19 @@ namespace lib3dx
             var dataField = JObject.Parse(documentDetailsJsonStr)?["data"] ?? throw new Exception("data could not be retrieved");
 
             var documents = dataField
-                                .Select(o => JTokenToDocument(o, parent))
+                                .Select(o =>
+                                {
+                                    try
+                                    {
+                                        return JTokenToDocument(o, parent);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        //one malformed document must not take down the whole list
+                                        Log.WriteLine($"Skipping document {o["id"]} because it could not be parsed: {ex.Message}");
+                                        return null;
+                                    }
+                                })
                                 .ToList();
 
             return documents;
@@ -513,7 +525,7 @@ namespace lib3dx
                                                         .ToList();
 
                                     var documents = GetDocuments(documentIds, parent)
-                                                        .Where(doc => doc != null)  //todo - find which are null and why
+                                                        .Where(doc => doc != null)  //null: no title, or malformed (logged and skipped)
                                                         .ToList();
 
                                     Interlocked.Increment(ref pagesRetrieved);
@@ -619,35 +631,46 @@ namespace lib3dx
 
             var files = o["relateddata"]?["files"]?.Select(file =>
             {
-                var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved");
-                var rawName = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
-                var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
-
-                //the title is whatever the uploader called it; it may contain characters that are
-                //invalid in a Windows path, or be longer than a path segment allows
-                var name = FileUtility.MakeSafeFileName(rawName, MaxFileNameLength);
-
-                var created = ParseServerDate(file["dataelements"]?["originated"]?.ToString());
-                var modified = ParseServerDate(file["dataelements"]?["modified"]?.ToString());
-                var accessed = modified;
-                var size = 0UL;
-
-                var fileSizeStr = file["dataelements"]?["fileSize"]?.ToString();
-                if (!string.IsNullOrEmpty(fileSizeStr))
+                try
                 {
-                    size = ulong.Parse(fileSizeStr);
-                }
+                    var fileObjectId = file["id"]?.ToString() ?? throw new Exception("id could not be retrieved");
+                    var rawName = file["dataelements"]?["title"]?.ToString() ?? throw new Exception("title could not be retrieved");
+                    var fileRevision = file["dataelements"]?["revision"]?.ToString() ?? throw new Exception("revision could not be retrieved");
 
-                return new _3dxFile(
-                            fileObjectId,
-                            name,
-                            newDocument,
-                            created,
-                            modified,
-                            accessed,
-                            documentObjectId,
-                            fileRevision,
-                            size);
+                    //the title is whatever the uploader called it; it may contain characters that are
+                    //invalid in a Windows path, or be longer than a path segment allows
+                    var name = FileUtility.MakeSafeFileName(rawName, MaxFileNameLength);
+
+                    var created = ParseServerDate(file["dataelements"]?["originated"]?.ToString());
+                    var modified = ParseServerDate(file["dataelements"]?["modified"]?.ToString());
+                    var accessed = modified;
+                    var size = 0UL;
+
+                    var fileSizeStr = file["dataelements"]?["fileSize"]?.ToString();
+                    if (!string.IsNullOrEmpty(fileSizeStr) && !ulong.TryParse(fileSizeStr, out size))
+                    {
+                        //unknown size: the file is still served, just without Content-Length or Range support
+                        Log.WriteLine($"Could not parse fileSize \"{fileSizeStr}\" for file {fileObjectId} in document {documentObjectId}; treating its size as unknown.");
+                        size = 0;
+                    }
+
+                    return new _3dxFile(
+                                fileObjectId,
+                                name,
+                                newDocument,
+                                created,
+                                modified,
+                                accessed,
+                                documentObjectId,
+                                fileRevision,
+                                size);
+                }
+                catch (Exception ex)
+                {
+                    //one malformed file must not take down its document, let alone the whole list
+                    Log.WriteLine($"Skipping file {file["id"]} in document {documentObjectId} because it could not be parsed: {ex.Message}");
+                    return (_3dxFile?)null;
+                }
             })
             .OfType<_3dxDownloadableFile>()
             .ToList() ?? [];
