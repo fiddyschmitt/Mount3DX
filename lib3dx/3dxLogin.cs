@@ -126,14 +126,8 @@ namespace lib3dx
         {
             try
             {
-                var cookies = new CookieContainer();
-                var handler = new HttpClientHandler
-                {
-                    CookieContainer = cookies,
-                };
-
                 //load the certificates the server may request
-                var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
+                using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
                 store.Open(OpenFlags.ReadOnly);
 
                 var certs = store.Certificates
@@ -146,9 +140,6 @@ namespace lib3dx
                                 .Where(cert => cert.IssuerName.Name.Contains("Hardware Issuing CA"))
                                 .ToArray();
                 clientHandler.ClientCertificates.AddRange(certs);
-
-
-                
 
                 //go to the login page
                 var request = new HttpRequestMessage(HttpMethod.Get, loginUrl);
@@ -271,12 +262,14 @@ namespace lib3dx
                 postResponse.EnsureSuccessStatusCode();
                 responseStr = postResponse.Content.ReadAsStringAsync().Result;
 
-
-
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                //Failing here is expected on machines without single sign-on (the Selenium fallback
+                //takes over), but the reason must be in the log for the cases where SSO should
+                //have worked
+                Log.WriteLine($"Single sign-on via {nameof(LogInUsingHttpClient)} did not succeed; falling back to the browser.{Environment.NewLine}{ex}");
                 return false;
             }
         }
