@@ -473,9 +473,19 @@ namespace libVFS.WebDAV.Stores
         public Dictionary<string, _3dxStoreCollection> PathToCollectionMapping { get; init; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, _3dxStoreItem> PathToItemMapping { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
+        //Windows sends the path with '/' separators, sometimes with a stray private-use character
+        //U+ECF0 (60656) at the end. Normalise to the form the mappings are keyed on, for
+        //collections and items alike.
+        static string ToStorePath(Uri uri)
+        {
+            return UriHelper.GetDecodedPath(uri)[1..]
+                            .Replace('/', Path.DirectorySeparatorChar)
+                            .TrimEnd('\uECF0');
+        }
+
         public Task<IStoreCollection?> GetCollectionAsync(Uri uri, IHttpContext httpContext)
         {
-            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
+            var requestedPath = ToStorePath(uri);
 
             if (PathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
             {
@@ -488,8 +498,7 @@ namespace libVFS.WebDAV.Stores
 
         public Task<IStoreItem?> GetItemAsync(Uri uri, IHttpContext httpContext)
         {
-            var requestedPath = UriHelper.GetDecodedPath(uri)[1..].Replace('/', Path.DirectorySeparatorChar);
-            requestedPath = requestedPath.TrimEnd(''); //for some reason, this character (60656) is sometimes at the end of the string
+            var requestedPath = ToStorePath(uri);
 
             if (PathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
             {
