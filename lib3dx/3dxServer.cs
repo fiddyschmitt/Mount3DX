@@ -27,31 +27,23 @@ namespace lib3dx
         public string ServerUrl { get; protected set; }
 
         //Whether the generated _link.url / _metadata.json entries are listed and served. They are
-        //always present in the document tree; the WebDAV layer consults these flags on every
-        //listing and lookup, so changing them takes effect immediately, without a rebuild.
-        public bool ServeDocumentLinkFile { get; set; }
-
-        public bool ServeDocumentMetadataFile { get; set; }
+        //always present in the document tree; the WebDAV layer consults this flag on every
+        //listing and lookup, so changing it takes effect immediately, without a rebuild.
+        public bool ServeMetadataFiles { get; set; }
 
         public bool IsServed(_3dxDownloadableFile file)
         {
-            return file switch
-            {
-                _3dxDocUrlFile => ServeDocumentLinkFile,
-                _3dxDocMetadataFile => ServeDocumentMetadataFile,
-                _ => true
-            };
+            return file is _3dxDocUrlFile or _3dxDocMetadataFile ? ServeMetadataFiles : true;
         }
 
         string? SearchServiceUrl;
 
         public event EventHandler<ProgressEventArgs>? KeepAliveFailed;
 
-        public _3dxServer(string serverUrl, bool serveDocumentLinkFile, bool serveDocumentMetadataFile)
+        public _3dxServer(string serverUrl, bool serveMetadataFiles)
         {
             ServerUrl = serverUrl;
-            ServeDocumentLinkFile = serveDocumentLinkFile;
-            ServeDocumentMetadataFile = serveDocumentMetadataFile;
+            ServeMetadataFiles = serveMetadataFiles;
             (HttpClient, ClientHandler) = CreateHttpClient();
         }
 
@@ -698,8 +690,8 @@ namespace lib3dx
             .ToList() ?? [];
 
             //The generated files are always part of the tree. Whether they are listed and served
-            //is decided at request time from ServeDocumentLinkFile / ServeDocumentMetadataFile
-            //(see IsServed), so toggling them doesn't need a rebuild.
+            //is decided at request time from ServeMetadataFiles (see IsServed), so toggling it
+            //doesn't need a rebuild.
             files.Add(new _3dxDocUrlFile(
                             Guid.NewGuid().ToString(),
                             "_link.url",

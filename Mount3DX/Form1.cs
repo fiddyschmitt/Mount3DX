@@ -147,8 +147,7 @@ namespace Mount3DX
 
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
 
-            //one checkbox drives both generated files; settings.json keeps the two separate flags
-            chkExtraFiles.Checked = settings._3dx.GenerateExtraFiles.DocumentLink || settings._3dx.GenerateExtraFiles.DocumentMetadata;
+            chkExtraFiles.Checked = settings._3dx.IncludeMetadataFiles;
         }
 
         private void SaveSettings()
@@ -159,8 +158,7 @@ namespace Mount3DX
 
                 settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
 
-                settings._3dx.GenerateExtraFiles.DocumentLink = chkExtraFiles.Checked;
-                settings._3dx.GenerateExtraFiles.DocumentMetadata = chkExtraFiles.Checked;
+                settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
 
                 var settingsJson = settings.SerializeToJson();
 
@@ -205,7 +203,7 @@ namespace Mount3DX
         {
             ShowStatus(ProgressEventArgs.EnumNature.Neutral, "");
 
-            grp3dx.Enabled = false;
+            SetSettingsEditable(false);
 
             if (btnStart.Text.Equals("Start"))
             {
@@ -220,16 +218,12 @@ namespace Mount3DX
 
                 if (_3dxServer == null || _3dxServer.ServerUrl != settings._3dx.ServerUrl)
                 {
-                    _3dxServer = new _3dxServer(
-                        settings._3dx.ServerUrl,
-                        settings._3dx.GenerateExtraFiles.DocumentLink,
-                        settings._3dx.GenerateExtraFiles.DocumentMetadata);
+                    _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.IncludeMetadataFiles);
                 }
 
                 //The server object is kept between sessions so its cookies survive, so apply any
                 //settings that may have changed since it was created
-                _3dxServer.ServeDocumentLinkFile = settings._3dx.GenerateExtraFiles.DocumentLink;
-                _3dxServer.ServeDocumentMetadataFile = settings._3dx.GenerateExtraFiles.DocumentMetadata;
+                _3dxServer.ServeMetadataFiles = settings._3dx.IncludeMetadataFiles;
 
                 var newSession = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
                 session = newSession;
@@ -263,7 +257,7 @@ namespace Mount3DX
 
                         ShowStatus(ProgressEventArgs.EnumNature.Bad, args.Message);
                         btnOpenVirtualDrive.Visible = false;
-                        grp3dx.Enabled = true;
+                        SetSettingsEditable(true);
                     }
 
                     btnStart.Enabled = true;
@@ -344,12 +338,20 @@ namespace Mount3DX
 
                     btnStart.Text = "Start";
                     btnStart.Enabled = true;
-                    grp3dx.Enabled = true;
+                    SetSettingsEditable(true);
                     ShowStatus(finalNature, finalMessage);
 
                     whenStopped?.Invoke();
                 });
             });
+        }
+
+        //The server URL and refresh interval only apply at Start, so they are locked while a
+        //session runs. The metadata-files checkbox stays enabled: it takes effect immediately.
+        void SetSettingsEditable(bool editable)
+        {
+            txt3dxServerUrl.Enabled = editable;
+            txtRefreshIntervalMinutes.Enabled = editable;
         }
 
         void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)
@@ -370,10 +372,11 @@ namespace Mount3DX
             //The generated files are always in the tree; the WebDAV layer checks these flags on
             //every listing, so this applies to the running session without a rebuild. (Explorer
             //may show its cached listing for up to a minute; F5 refreshes it.)
+            settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
+
             if (_3dxServer != null)
             {
-                _3dxServer.ServeDocumentLinkFile = chkExtraFiles.Checked;
-                _3dxServer.ServeDocumentMetadataFile = chkExtraFiles.Checked;
+                _3dxServer.ServeMetadataFiles = chkExtraFiles.Checked;
             }
         }
 

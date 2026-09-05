@@ -21,13 +21,9 @@ namespace Mount3DX
         public int QueryThreads = 8;
         public int KeepAliveIntervalMinutes = 5;
 
-        public ExtraFiles GenerateExtraFiles = new();
-    }
-
-    public class ExtraFiles
-    {
-        public bool DocumentLink = true;
-        public bool DocumentMetadata = true;
+        //Whether each document folder includes the generated _link.url and _metadata.json files.
+        //Applies immediately to a running session.
+        public bool IncludeMetadataFiles = true;
     }
 
     public class VfsSettings
