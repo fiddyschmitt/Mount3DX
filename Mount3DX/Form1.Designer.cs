@@ -68,7 +68,7 @@
             chkExtraFiles.Name = "chkExtraFiles";
             chkExtraFiles.Size = new Size(341, 19);
             chkExtraFiles.TabIndex = 12;
-            chkExtraFiles.Text = "Include a _link.url and _metadata.json file in each document folder (applies immediately)";
+            chkExtraFiles.Text = "Include metadata files in each document folder";
             chkExtraFiles.UseVisualStyleBackColor = true;
             chkExtraFiles.CheckedChanged += ChkExtraFiles_CheckedChanged;
             //
