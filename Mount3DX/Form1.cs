@@ -181,13 +181,22 @@ namespace Mount3DX
             }
         }
 
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            //Nothing to stop, or Windows is shutting down (don't hold it up; process exit releases
+            //the port anyway)
+            if (session == null || e.CloseReason == CloseReason.WindowsShutDown) return;
+
+            //Stopping waits for the WebDAV host and the background loops. Doing that here on the
+            //UI thread locked the form up, so cancel this close, stop in the background with the
+            //status showing "Stopping...", and close again once the session is gone.
+            e.Cancel = true;
+            StopSession(session, ProgressEventArgs.EnumNature.Neutral, "Stopped", whenStopped: Close);
+        }
+
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             SaveSettings();
-
-            //release the WebDAV port and stop the background loops cleanly rather than relying
-            //on process exit to tear them down
-            session?.Stop();
         }
 
         Session? session = null;
@@ -315,7 +324,7 @@ namespace Mount3DX
 
         //Stopping waits for the WebDAV host and the background loops (several seconds in the worst
         //case), so do it off the UI thread and keep the button disabled meanwhile
-        void StopSession(Session stoppingSession, ProgressEventArgs.EnumNature finalNature, string finalMessage)
+        void StopSession(Session stoppingSession, ProgressEventArgs.EnumNature finalNature, string finalMessage, Action? whenStopped = null)
         {
             btnStart.Enabled = false;
             btnOpenVirtualDrive.Visible = false;
@@ -327,10 +336,18 @@ namespace Mount3DX
 
                 SafeInvoke(() =>
                 {
+                    //no session is running any more (late events from it are ignored via IsCurrent)
+                    if (ReferenceEquals(session, stoppingSession))
+                    {
+                        session = null;
+                    }
+
                     btnStart.Text = "Start";
                     btnStart.Enabled = true;
                     grp3dx.Enabled = true;
                     ShowStatus(finalNature, finalMessage);
+
+                    whenStopped?.Invoke();
                 });
             });
         }

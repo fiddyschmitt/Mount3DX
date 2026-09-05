@@ -64,8 +64,11 @@ namespace libWebDAV
 
             try
             {
-                //wait for shutdown so the port is released before a potential restart
-                host.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                //Wait for shutdown so the port is released before a potential restart. Run it on
+                //the thread pool: ASP.NET Core's shutdown path awaits without ConfigureAwait(false),
+                //so blocking on it from a thread that has a SynchronizationContext (the WinForms UI
+                //thread) deadlocks as soon as it has to wait for a connection to drain.
+                Task.Run(() => host.StopAsync(TimeSpan.FromSeconds(5))).GetAwaiter().GetResult();
             }
             catch (ObjectDisposedException)
             {
