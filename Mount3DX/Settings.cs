@@ -60,8 +60,7 @@ namespace Mount3DX
         //(AnyFS among them) connect to on their own ports.
         public string Address = "127.0.0.1";
 
-        //1445 is the port other portable-smb-server users (AnyFS) default to
-        public int Port = 1446;
+        public int Port = 1445;
 
         public string ShareName = "3DX";
 
