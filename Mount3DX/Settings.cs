@@ -26,6 +26,10 @@ namespace Mount3DX
         //Whether each document folder includes the generated _link.url and _metadata.json files.
         //Applies immediately to a running session.
         public bool IncludeMetadataFiles = true;
+
+        //Whether copying a 3DX link to a document on the drive shows a small window that opens it.
+        //Applies immediately.
+        public bool MonitorClipboard = true;
     }
 
     //How the drive is served. Auto takes SMB where Windows can connect to it (11 24H2 or later)

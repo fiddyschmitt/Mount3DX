@@ -9,6 +9,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationIcon>Mount3DX.ico</ApplicationIcon>
+    <!-- the clipboard listener and the shell calls are declared with LibraryImport -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

@@ -206,6 +206,13 @@ namespace libVFS.WebDAV.Stores
                         }
                     });
 
+                //A link copied from 3DX names its document by id, not by path
+                var documentsById = new Dictionary<string, _3dxDocument>(StringComparer.OrdinalIgnoreCase);
+                foreach (var document in documentsInTree)
+                {
+                    documentsById.TryAdd(document.ObjectId, document);
+                }
+
                 //Windows 10 has very restrictive WebDAV settings. By default, metadata returned by PROPFIND must be less than 1,000,000 bytes.
                 //This is controlled by HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WebClient\Parameters\FileAttributesLimitInBytes
                 //Let's create a folder structure which fits within that constraint.
@@ -247,7 +254,8 @@ namespace libVFS.WebDAV.Stores
                     candidate = new StoreSnapshot()
                     {
                         PathToCollectionMapping = collectionMapping,
-                        PathToItemMapping = itemMapping
+                        PathToItemMapping = itemMapping,
+                        DocumentsById = documentsById,
                     };
 
                     //Only WebDAV has the listing limit; over SMB (no limit) the tree is served as it is
@@ -431,6 +439,40 @@ namespace libVFS.WebDAV.Stores
         public IReadOnlyList<VfsEntry>? List(string path) => snapshot.List(path);
         public Stream OpenRead(string path) => snapshot.OpenRead(path);
 
+        //The document on the drive with this id (the 32-character form the document list uses)
+        public _3dxDocument? FindDocument(string objectId)
+        {
+            return snapshot.DocumentsById.GetValueOrDefault(objectId);
+        }
+
+        //The document on the drive that 3DX described: by the id it gave, or else by its type, name
+        //and revision, in case 3DX answered with an id in a form the document list doesn't use
+        public _3dxDocument? FindDocument(_3dxDocumentIdentity identity)
+        {
+            var current = snapshot;
+
+            if (current.DocumentsById.TryGetValue(identity.Id, out var document))
+            {
+                return document;
+            }
+
+            if (identity.Name == null || identity.Revision == null)
+            {
+                return null;
+            }
+
+            var matches = current
+                            .DocumentsById
+                            .Values
+                            .Where(doc => doc.OriginalName == identity.Name
+                                            && doc.Revision == identity.Revision
+                                            && (identity.TypeNls == null || doc.DocumentType == identity.TypeNls))
+                            .Take(2)
+                            .ToList();
+
+            return matches.Count == 1 ? matches[0] : null;
+        }
+
 
         CancellationTokenSource? CancelRefreshTask;
         Task? RefreshTask;
@@ -485,6 +527,10 @@ namespace libVFS.WebDAV.Stores
         //Windows paths are case-insensitive, so lookups must be too
         public Dictionary<string, _3dxStoreCollection> PathToCollectionMapping { get; init; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, _3dxStoreItem> PathToItemMapping { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+        //Every document in the tree by its id, for links copied from 3DX. 3DX ids are hex, and a
+        //link may spell them in either case.
+        public Dictionary<string, _3dxDocument> DocumentsById { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
         //Windows sends the path with '/' separators, sometimes with a stray private-use character
         //U+ECF0 (60656) at the end. Normalise to the form the mappings are keyed on, for

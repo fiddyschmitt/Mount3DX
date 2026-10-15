@@ -1,4 +1,5 @@
 using lib3dx;
+using lib3dx.Files;
 using libCommon;
 using libCommon.Events;
 using libSMB;
@@ -29,6 +30,13 @@ namespace Mount3DX
         //The transport the drive is served over once started (the log says why, when it isn't the
         //one that was asked for)
         public TransportMode ActiveTransport { get; private set; } = TransportMode.WebDAV;
+
+        //Whether the drive is up with the document tree on it: from a successful start until Stop
+        public bool IsServing => serving;
+        volatile bool serving;
+
+        //How long 3DX may take to say which document a copied link's dotted id is
+        static readonly TimeSpan LinkLookupTimeout = TimeSpan.FromSeconds(20);
 
         public event EventHandler<ProgressEventArgs>? InitialisationProgress;
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
@@ -195,6 +203,8 @@ namespace Mount3DX
             //The server is now serving the tree, so it is safe to open the virtual drive in Explorer
             Process.Start("explorer.exe", ComputedUNC);
 
+            serving = true;
+
             InitialisationFinished?.Invoke(this, new FinishedEventArgs()
             {
                 Success = true,
@@ -263,8 +273,94 @@ namespace Mount3DX
             Log.WriteLine($"Transport: WebDAV, because SMB is not available: {reason}");
         }
 
+        //The document on the drive that a link copied from 3DX points to, from the ids in the link
+        //(see _3dxLink), or null with the reason in the log. A dotted id costs a call to 3DX, so
+        //this is called off the UI thread.
+        public LinkedDocument? FindLinkedDocument(IReadOnlyList<string> objectIds)
+        {
+            if (!serving) return null;
+            var store = _3dxStore;
+            if (store == null) return null;
+
+            string? reason = null;
+
+            foreach (var objectId in objectIds)
+            {
+                _3dxDocument? document;
+
+                if (_3dxLink.IsDottedId(objectId))
+                {
+                    //The document list only has the other form of id, but 3DX knows which document
+                    //this is
+                    _3dxDocumentIdentity? identity;
+                    try
+                    {
+                        using var timeout = new CancellationTokenSource(LinkLookupTimeout);
+                        identity = _3dxServer.LookUpDocument(objectId, timeout.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        reason = $"3DX didn't say which document its dotted id is. {ex.Message}";
+                        continue;
+                    }
+
+                    if (identity == null)
+                    {
+                        reason = "3DX has no document with its dotted id";
+                        continue;
+                    }
+
+                    document = store.FindDocument(identity);
+                    if (document == null)
+                    {
+                        reason = $"3DX says it is {identity.Name} Rev {identity.Revision}, which isn't on the drive";
+                        continue;
+                    }
+                }
+                else
+                {
+                    document = store.FindDocument(objectId);
+                    if (document == null)
+                    {
+                        reason ??= "its object isn't a document on the drive";
+                        continue;
+                    }
+                }
+
+                Log.WriteLine($"A copied 3DX link points to {document.FullPath}");
+                return new LinkedDocument(document.ObjectId, document.Name);
+            }
+
+            Log.WriteLine($"Ignored a copied 3DX link: {reason ?? "it has no object id"}.");
+            return null;
+        }
+
+        //Where a document is on the drive now: its folder, and its files apart from the generated
+        //_link.url and _metadata.json. Looked up on every click, because a refresh may have moved it.
+        public DocumentLocation? Locate(string objectId)
+        {
+            if (!serving) return null;
+            var store = _3dxStore;
+            if (store == null) return null;
+
+            var document = store.FindDocument(objectId);
+            if (document == null) return null;
+
+            var root = ComputedUNC;
+
+            return new DocumentLocation(
+                            Path.Combine(root, document.FullPath),
+                            document
+                                .Files
+                                .OfType<_3dxFile>()
+                                .Select(file => Path.Combine(root, file.FullPath))
+                                .ToList());
+        }
+
         public void Stop()
         {
+            serving = false;
+
             try
             {
                 //the client connection goes first, then the server and its endpoint
@@ -306,4 +402,10 @@ namespace Mount3DX
             Log.WriteLine($"Session stopped.");
         }
     }
+
+    //The document a copied link points to: its id, to find it again when a button is clicked, and
+    //its folder's name, to show
+    public sealed record LinkedDocument(string ObjectId, string Name);
+
+    public sealed record DocumentLocation(string Folder, IReadOnlyList<string> Files);
 }

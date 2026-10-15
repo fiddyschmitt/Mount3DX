@@ -442,6 +442,39 @@ namespace lib3dx
             return dataField;
         }
 
+        //Which document an id is, by any id 3DX accepts for it: in particular the dotted form
+        //(12345.67890.12345.6789) that classic 3DSpace pages put in their links, which the document
+        //list doesn't carry. null when 3DX returns no document for the id.
+        public _3dxDocumentIdentity? LookUpDocument(string objectId, CancellationToken cancellationToken)
+        {
+            var documentsUrl = ServerUrl.UrlCombine("resources/v1/modeler/documents/ids");
+
+            var request = new HttpRequestMessage(HttpMethod.Post, documentsUrl)
+            {
+                Content = new StringContent($"$ids={Uri.EscapeDataString(objectId)}", Encoding.UTF8, "application/x-www-form-urlencoded"),
+            };
+
+            var response = HttpClient.Send(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var responseJson = JObject.Parse(response.Content.ReadAsStringAsync(cancellationToken).Result);
+
+            var document = responseJson["data"]?.FirstOrDefault();
+            var id = document?["id"]?.ToString();
+
+            if (document == null || string.IsNullOrEmpty(id))
+            {
+                return null;
+            }
+
+            var dataElements = document["dataelements"];
+
+            return new _3dxDocumentIdentity(
+                            id,
+                            dataElements?["name"]?.ToString(),
+                            dataElements?["revision"]?.ToString(),
+                            dataElements?["typeNLS"]?.ToString());
+        }
+
 
         public List<_3dxDocument> GetAllDocuments(_3dxFolder parent, int queryThreads, EventHandler<ProgressEventArgs>? progress)
         {

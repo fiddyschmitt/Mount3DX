@@ -41,6 +41,8 @@ namespace Mount3DX
             Log.WriteLine($"Windows {Environment.OSVersion.Version}; SMB on a port other than 445 is {(SmbConnection.IsSupported ? "supported" : "not supported (Windows 11 24H2 or later is needed)")}");
             LogWebClientSettings();
             LoadWebclientSettings();
+
+            ApplyClipboardMonitoring();
         }
 
         public static uint FileAttributesLimitInBytes = 1_000_000;
@@ -150,6 +152,8 @@ namespace Mount3DX
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
 
             chkExtraFiles.Checked = settings._3dx.IncludeMetadataFiles;
+
+            chkMonitorClipboard.Checked = settings._3dx.MonitorClipboard;
         }
 
         private void SaveSettings()
@@ -161,6 +165,8 @@ namespace Mount3DX
                 settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
 
                 settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
+
+                settings._3dx.MonitorClipboard = chkMonitorClipboard.Checked;
 
                 var settingsJson = settings.SerializeToJson();
 
@@ -197,6 +203,11 @@ namespace Mount3DX
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             SaveSettings();
+
+            clipboardMonitor?.Dispose();
+            clipboardMonitor = null;
+            linkPopup?.Dispose();
+            linkPopup = null;
         }
 
         Session? session = null;
@@ -324,6 +335,7 @@ namespace Mount3DX
         {
             btnStart.Enabled = false;
             btnOpenVirtualDrive.Visible = false;
+            linkPopup?.Dismiss();
             ShowStatus(ProgressEventArgs.EnumNature.Neutral, "Stopping...");
 
             Task.Run(() =>
@@ -349,7 +361,7 @@ namespace Mount3DX
         }
 
         //The server URL, refresh interval and transport only apply at Start, so they are locked
-        //while a session runs. The metadata-files checkbox stays enabled: it takes effect immediately.
+        //while a session runs. The two checkboxes stay enabled: they take effect immediately.
         void SetSettingsEditable(bool editable)
         {
             txt3dxServerUrl.Enabled = editable;
@@ -388,6 +400,162 @@ namespace Mount3DX
             {
                 Process.Start("explorer.exe", session.ComputedUNC);
             }
+        }
+
+        ClipboardMonitor? clipboardMonitor;
+        LinkPopup? linkPopup;
+
+        //Some programs change the clipboard twice for one copy; the same link again straight away is
+        //ignored. Only links are kept here, never other text.
+        string? lastCopiedLink;
+        long lastCopiedLinkAt;
+
+        //Counts the copies looked at, so that a slow lookup is dropped once a later copy has overtaken it
+        int clipboardCopies;
+
+        private void ChkMonitorClipboard_CheckedChanged(object sender, EventArgs e)
+        {
+            settings._3dx.MonitorClipboard = chkMonitorClipboard.Checked;
+            ApplyClipboardMonitoring();
+        }
+
+        //Listens to the clipboard while the checkbox is ticked
+        void ApplyClipboardMonitoring()
+        {
+            if (chkMonitorClipboard.Checked)
+            {
+                if (clipboardMonitor != null) return;
+
+                try
+                {
+                    clipboardMonitor = new ClipboardMonitor();
+                    clipboardMonitor.Changed += ClipboardMonitor_Changed;
+                    Log.WriteLine("Watching the clipboard for 3DX links.");
+                }
+                catch (Exception ex)
+                {
+                    Log.WriteLine($"Could not watch the clipboard: {ex.Message}");
+                }
+            }
+            else
+            {
+                if (clipboardMonitor == null) return;
+
+                clipboardMonitor.Dispose();
+                clipboardMonitor = null;
+                linkPopup?.Dismiss();
+                Log.WriteLine("Stopped watching the clipboard.");
+            }
+        }
+
+        void ClipboardMonitor_Changed(object? sender, EventArgs e)
+        {
+            //Only while the drive is up, which is where the document would be opened from. The text
+            //isn't even read otherwise.
+            var current = session;
+            if (current == null || !current.IsServing || clipboardMonitor == null) return;
+
+            var text = clipboardMonitor.ReadText();
+            var objectIds = _3dxLink.GetObjectIds(text);
+
+            if (objectIds.Count == 0)
+            {
+                //whatever was copied instead overtakes a lookup still under way
+                clipboardCopies++;
+                lastCopiedLink = null;
+                return;
+            }
+
+            var now = Environment.TickCount64;
+            if (text == lastCopiedLink && now - lastCopiedLinkAt < 1000) return;
+            lastCopiedLink = text;
+            lastCopiedLinkAt = now;
+
+            var copy = ++clipboardCopies;
+
+            //a dotted id is looked up in 3DX, so this happens in the background
+            Task.Run(() => current.FindLinkedDocument(objectIds))
+                .ContinueWith(lookup =>
+                {
+                    if (lookup.Exception != null)
+                    {
+                        Log.WriteLine($"Error while looking up a copied 3DX link:{Environment.NewLine}{lookup.Exception}");
+                        return;
+                    }
+
+                    if (lookup.Result is not LinkedDocument document) return;
+
+                    SafeInvoke(() =>
+                    {
+                        //a later copy, a stop or the checkbox overtook this one
+                        if (copy != clipboardCopies || !ReferenceEquals(session, current) || !current.IsServing || clipboardMonitor == null) return;
+
+                        ShowLinkPopup(document);
+                    });
+                }, TaskScheduler.Default);
+        }
+
+        void ShowLinkPopup(LinkedDocument document)
+        {
+            if (linkPopup == null || linkPopup.IsDisposed)
+            {
+                linkPopup = new LinkPopup();
+                linkPopup.OpenRequested += objectId => OpenLinkedDocument(objectId, inFolder: false);
+                linkPopup.OpenFolderRequested += objectId => OpenLinkedDocument(objectId, inFolder: true);
+            }
+
+            linkPopup.ShowFor(document);
+        }
+
+        //A document with one file: Open opens the file, Open folder shows it selected in its folder.
+        //Several files, or none: both open the document's folder.
+        void OpenLinkedDocument(string objectId, bool inFolder)
+        {
+            var current = session;
+            if (current == null || !current.IsServing) return;
+
+            //The click was the last input, which lets this process hand the foreground to whatever it
+            //opens (the popup never activates, so the window the link was copied in is still in front)
+            ShellActions.AllowAnyProcessToTakeForeground();
+
+            //Its own thread: anything that touches the drive can take a while, and the shell wants STA
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    var location = current.Locate(objectId) ?? throw new InvalidOperationException("The document is no longer on the drive. It may have left 3DX's document list at the last refresh.");
+
+                    ShellActions.AllowAnyProcessToTakeForeground();
+
+                    if (location.Files.Count != 1)
+                    {
+                        Log.WriteLine($"Opening {location.Folder}");
+                        ShellActions.Open(location.Folder);
+                    }
+                    else if (inFolder)
+                    {
+                        Log.WriteLine($"Showing {location.Files[0]} in its folder");
+                        ShellActions.ShowInFolder(location.Files[0]);
+                    }
+                    else
+                    {
+                        Log.WriteLine($"Opening {location.Files[0]}");
+                        ShellActions.Open(location.Files[0]);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.WriteLine($"Could not open the document of a copied 3DX link:{Environment.NewLine}{ex}");
+                    MessageBox.Show(ex.Message, PROGRAM_NAME, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "Open copied 3DX link",
+            };
+
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
         }
     }
 }
