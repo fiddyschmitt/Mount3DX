@@ -30,6 +30,8 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             grp3dx = new GroupBox();
+            cmbTransport = new ComboBox();
+            label5 = new Label();
             chkExtraFiles = new CheckBox();
             label4 = new Label();
             txtRefreshIntervalMinutes = new NumericUpDown();
@@ -47,6 +49,8 @@
             // grp3dx
             // 
             grp3dx.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            grp3dx.Controls.Add(cmbTransport);
+            grp3dx.Controls.Add(label5);
             grp3dx.Controls.Add(chkExtraFiles);
             grp3dx.Controls.Add(label4);
             grp3dx.Controls.Add(txtRefreshIntervalMinutes);
@@ -55,17 +59,36 @@
             grp3dx.Controls.Add(label2);
             grp3dx.Location = new Point(12, 12);
             grp3dx.Name = "grp3dx";
-            grp3dx.Size = new Size(654, 124);
+            grp3dx.Size = new Size(654, 153);
             grp3dx.TabIndex = 1;
             grp3dx.TabStop = false;
             grp3dx.Text = "3DX settings";
-            // 
+            //
+            // cmbTransport
+            //
+            cmbTransport.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbTransport.FormattingEnabled = true;
+            cmbTransport.Items.AddRange(new object[] { "Auto", "SMB", "WebDAV" });
+            cmbTransport.Location = new Point(176, 84);
+            cmbTransport.Name = "cmbTransport";
+            cmbTransport.Size = new Size(97, 23);
+            cmbTransport.TabIndex = 13;
+            //
+            // label5
+            //
+            label5.AutoSize = true;
+            label5.Location = new Point(74, 87);
+            label5.Name = "label5";
+            label5.Size = new Size(96, 15);
+            label5.TabIndex = 14;
+            label5.Text = "Serve files over:";
+            //
             // chkExtraFiles
-            // 
+            //
             chkExtraFiles.AutoSize = true;
             chkExtraFiles.Checked = true;
             chkExtraFiles.CheckState = CheckState.Checked;
-            chkExtraFiles.Location = new Point(176, 86);
+            chkExtraFiles.Location = new Point(176, 115);
             chkExtraFiles.Name = "chkExtraFiles";
             chkExtraFiles.Size = new Size(275, 19);
             chkExtraFiles.TabIndex = 12;
@@ -120,7 +143,7 @@
             // btnStart
             // 
             btnStart.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnStart.Location = new Point(12, 149);
+            btnStart.Location = new Point(12, 178);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(75, 23);
             btnStart.TabIndex = 0;
@@ -133,7 +156,7 @@
             lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
             lblRunningStatus.BackColor = SystemColors.Control;
-            lblRunningStatus.Location = new Point(93, 150);
+            lblRunningStatus.Location = new Point(93, 179);
             lblRunningStatus.Name = "lblRunningStatus";
             lblRunningStatus.Padding = new Padding(3);
             lblRunningStatus.Size = new Size(103, 21);
@@ -143,7 +166,7 @@
             // btnOpenVirtualDrive
             // 
             btnOpenVirtualDrive.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnOpenVirtualDrive.Location = new Point(246, 149);
+            btnOpenVirtualDrive.Location = new Point(246, 178);
             btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
             btnOpenVirtualDrive.Size = new Size(205, 23);
             btnOpenVirtualDrive.TabIndex = 4;
@@ -156,7 +179,7 @@
             // 
             lblVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lblVersion.AutoSize = true;
-            lblVersion.Location = new Point(630, 153);
+            lblVersion.Location = new Point(630, 182);
             lblVersion.Name = "lblVersion";
             lblVersion.Size = new Size(30, 15);
             lblVersion.TabIndex = 5;
@@ -166,7 +189,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(678, 185);
+            ClientSize = new Size(678, 214);
             Controls.Add(lblVersion);
             Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
@@ -198,5 +221,7 @@
         private Label label1;
         private Label lblVersion;
         private CheckBox chkExtraFiles;
+        private ComboBox cmbTransport;
+        private Label label5;
     }
 }

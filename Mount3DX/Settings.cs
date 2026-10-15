@@ -1,4 +1,6 @@
-﻿using libCommon;
+using libCommon;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,8 +28,22 @@ namespace Mount3DX
         public bool IncludeMetadataFiles = true;
     }
 
+    //How the drive is served. Auto takes SMB where Windows can connect to it (11 24H2 or later)
+    //and WebDAV otherwise; the other two insist.
+    public enum TransportMode
+    {
+        Auto,
+        SMB,
+        WebDAV,
+    }
+
     public class VfsSettings
     {
+        [JsonConverter(typeof(StringEnumConverter))]
+        public TransportMode Transport = TransportMode.Auto;
+
+        public SmbSettings Smb = new();
+
         public string WebDavServerUrl = "http://localhost:11000";
 
         public string GetComputedUNC()
@@ -42,4 +58,21 @@ namespace Mount3DX
         }
     }
 
+    public class SmbSettings
+    {
+        //The Windows client ties the port to the server name for every later connection to that
+        //name, so the share gets a name of its own rather than "localhost", which other tools
+        //(AnyFS among them) connect to on their own ports.
+        public string Address = "127.0.0.1";
+
+        //1445 is the port other portable-smb-server users (AnyFS) default to
+        public int Port = 1446;
+
+        public string ShareName = "3DX";
+
+        public string GetComputedUNC()
+        {
+            return $@"\\{Address}\{ShareName}";
+        }
+    }
 }

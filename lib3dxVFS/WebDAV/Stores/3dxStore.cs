@@ -21,10 +21,12 @@ using lib3dxVFS.WebDAV.Locks;
 using NWebDav.Server.Handlers;
 using lib3dxVFS.WebDAV.Stubs;
 using libCommon.Comparers;
+using libCommon.Vfs;
+using lib3dx.Files;
 
 namespace libVFS.WebDAV.Stores
 {
-    public class _3dxStore : IStore
+    public class _3dxStore : IStore, IVfsSource
     {
         readonly ILockingManager LockingManager = new NoLocking();
 
@@ -248,6 +250,12 @@ namespace libVFS.WebDAV.Stores
                         PathToItemMapping = itemMapping
                     };
 
+                    //Only WebDAV has the listing limit; over SMB (no limit) the tree is served as it is
+                    if (MaxMetadataSizeInBytes == 0)
+                    {
+                        break;
+                    }
+
                     var folderUrlsToCheck = new List<string>();
                     if (numberFoldersToUse == 1)
                     {
@@ -418,6 +426,11 @@ namespace libVFS.WebDAV.Stores
             return snapshot.GetItemAsync(uri, httpContext);
         }
 
+        //The SMB side reads the same published snapshot
+        public VfsEntry? Stat(string path) => snapshot.Stat(path);
+        public IReadOnlyList<VfsEntry>? List(string path) => snapshot.List(path);
+        public Stream OpenRead(string path) => snapshot.OpenRead(path);
+
 
         CancellationTokenSource? CancelRefreshTask;
         Task? RefreshTask;
@@ -513,6 +526,90 @@ namespace libVFS.WebDAV.Stores
 
             // The item doesn't exist
             return Task.FromResult<IStoreItem?>(null);
+        }
+
+        //The SMB server's VFS contract: share-relative paths with '/' separators, "" for the root,
+        //which is how the mappings are keyed apart from the separator
+        static string ToStorePath(string vfsPath)
+        {
+            return vfsPath.Replace('/', Path.DirectorySeparatorChar);
+        }
+
+        public VfsEntry? Stat(string vfsPath)
+        {
+            var requestedPath = ToStorePath(vfsPath);
+
+            if (PathToCollectionMapping.TryGetValue(requestedPath, out _3dxStoreCollection? collection))
+            {
+                return ToEntry(collection.FolderInfo);
+            }
+
+            if (PathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item) && item._3dxServer.IsServed(item._fileInfo))
+            {
+                return ToEntry(item._fileInfo, item._3dxServer, forOpen: true);
+            }
+
+            return null;
+        }
+
+        public IReadOnlyList<VfsEntry>? List(string vfsPath)
+        {
+            if (!PathToCollectionMapping.TryGetValue(ToStorePath(vfsPath), out _3dxStoreCollection? collection))
+            {
+                return null;
+            }
+
+            var folder = collection.FolderInfo;
+            var entries = folder.Subfolders.Select(ToEntry).ToList();
+
+            //files (the generated ones only while their setting is on)
+            if (folder is _3dxDocument document)
+            {
+                entries.AddRange(document
+                                    .Files
+                                    .Where(file => collection._3dxServer.IsServed(file))
+                                    .Select(file => ToEntry(file, collection._3dxServer, forOpen: false)));
+            }
+
+            return entries;
+        }
+
+        public Stream OpenRead(string vfsPath)
+        {
+            if (!PathToItemMapping.TryGetValue(ToStorePath(vfsPath), out _3dxStoreItem? item) || !item._3dxServer.IsServed(item._fileInfo))
+            {
+                throw new FileNotFoundException("The file is not in the document tree.", vfsPath);
+            }
+
+            return item._fileInfo.Download(item._3dxServer);
+        }
+
+        static VfsEntry ToEntry(_3dxFolder folder)
+        {
+            return new VfsEntry
+            {
+                Name = folder.Name,
+                IsDirectory = true,
+                LastWriteTimeUtc = WebDavDates.Clamp(folder.LastWriteTimeUtc),
+            };
+        }
+
+        //A listing reports the metadata file's placeholder size (see _3dxDocMetadataFile); an open
+        //reports the real one, because the SMB client reads exactly as many bytes as it is told
+        static VfsEntry ToEntry(_3dxDownloadableFile file, _3dxServer _3dxServer, bool forOpen)
+        {
+            var size = forOpen && file is _3dxDocMetadataFile metadataFile
+                            ? metadataFile.GetContentLength(_3dxServer)
+                            : file.Size;
+
+            return new VfsEntry
+            {
+                Name = file.Name,
+                IsDirectory = false,
+                Size = size,
+                LastWriteTimeUtc = WebDavDates.Clamp(file.LastWriteTimeUtc),
+                ContentKey = $"{file.ObjectId}:{file.LastWriteTimeUtc.Ticks}:{size}",
+            };
         }
     }
 }

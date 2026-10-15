@@ -1,6 +1,7 @@
-﻿using lib3dx;
+using lib3dx;
 using libCommon;
 using libCommon.Events;
+using libSMB;
 using libVFS.WebDAV.Stores;
 using libWebDAV;
 using NWebDav.Server.Stores;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -21,7 +23,13 @@ namespace Mount3DX
         _3dxServer _3dxServer;
         _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
+        SmbHost? smbHost;
         public string ComputedUNC { get; protected set; }
+
+        //The transport the drive is served over once started, and why it isn't SMB when SMB was
+        //the first choice (null otherwise)
+        public TransportMode ActiveTransport { get; private set; } = TransportMode.WebDAV;
+        public string? TransportNote { get; private set; }
 
         public event EventHandler<ProgressEventArgs>? InitialisationProgress;
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
@@ -120,23 +128,22 @@ namespace Mount3DX
                 _3dxServer.StartKeepAlive(Settings._3dx.KeepAliveIntervalMinutes);
             }
 
-            InitialisationProgress?.Invoke(this, new ProgressEventArgs()
-            {
-                Nature = ProgressEventArgs.EnumNature.Neutral,
-                Message = "Initialising WebDAV server"
-            });
-
-
+            //Before the documents are fetched, so that a transport that can't work is known (and
+            //fallen back from) without a fetch being wasted on it
+            StartTransport();
 
             try
             {
                 Log.WriteLine($"Initialising {nameof(_3dxStore)}.");
 
+                //SMB has no listing size limit, so the tree keeps its own shape there
+                var listingLimit = ActiveTransport == TransportMode.SMB ? 0 : MaxMetadataSizeInBytes;
+
                 _3dxStore = new _3dxStore(
                     _3dxServer,
                     Settings.Vfs.WebDavServerUrl,
                     Settings._3dx.QueryThreads,
-                    MaxMetadataSizeInBytes,
+                    listingLimit,
                     InitialisationProgress);
 
                 Log.WriteLine($"{nameof(_3dxStore)} initialised.");
@@ -147,31 +154,46 @@ namespace Mount3DX
                     _3dxStore.StartRefresh(Settings._3dx.RefreshIntervalMinutes);
                 }
 
-                Log.WriteLine("Initialising WebDAV server");
-                webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
+                if (smbHost != null)
+                {
+                    //the share has been up (and empty) since StartTransport; now it has the tree
+                    smbHost.Source = _3dxStore;
+                    Log.WriteLine($"Serving the document tree at {ComputedUNC} over SMB.");
+                }
+                else
+                {
+                    InitialisationProgress?.Invoke(this, new ProgressEventArgs()
+                    {
+                        Nature = ProgressEventArgs.EnumNature.Neutral,
+                        Message = "Initialising WebDAV server"
+                    });
 
-                //Start synchronously so we know the server is actually listening (and surface a
-                //bind failure such as the port already being in use) before opening Explorer.
-                Log.WriteLine("Starting WebDAV server");
-                webdavHost.Start();
-                Log.WriteLine("WebDAV server started.");
+                    Log.WriteLine("Initialising WebDAV server");
+                    webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
+
+                    //Start synchronously so we know the server is actually listening (and surface a
+                    //bind failure such as the port already being in use) before opening Explorer.
+                    Log.WriteLine("Starting WebDAV server");
+                    webdavHost.Start();
+                    Log.WriteLine("WebDAV server started.");
+                }
             }
             catch (Exception ex)
             {
-                Log.WriteLine($"Error while starting WebDAV server:{Environment.NewLine}{ex}");
+                Log.WriteLine($"Error while starting the file server:{Environment.NewLine}{ex}");
 
                 Stop();
 
                 InitialisationFinished?.Invoke(this, new FinishedEventArgs()
                 {
                     Success = false,
-                    Message = $"Error while starting WebDAV server: {ex.Message}"
+                    Message = $"Error while starting the file server: {ex.Message}"
                 });
 
                 return;
             }
 
-            //The server is now listening, so it is safe to open the virtual drive in Explorer
+            //The server is now serving the tree, so it is safe to open the virtual drive in Explorer
             Process.Start("explorer.exe", ComputedUNC);
 
             InitialisationFinished?.Invoke(this, new FinishedEventArgs()
@@ -180,8 +202,83 @@ namespace Mount3DX
             });
         }
 
+        //SMB where it is asked for and possible, otherwise WebDAV. Auto falls back quietly (the
+        //note says why); SMB asked for outright is not silently something else.
+        void StartTransport()
+        {
+            var mode = Settings.Vfs.Transport;
+
+            ActiveTransport = TransportMode.WebDAV;
+            TransportNote = null;
+            ComputedUNC = Settings.Vfs.GetComputedUNC();
+
+            if (mode == TransportMode.WebDAV)
+            {
+                Log.WriteLine("Transport: WebDAV (as configured).");
+                return;
+            }
+
+            string reason;
+            if (!SmbConnection.IsSupported)
+            {
+                reason = $"Windows build {Environment.OSVersion.Version.Build} can't connect to an SMB server on a port other than 445 (Windows 11 24H2 or later is needed)";
+            }
+            else if (!SmbServerBinary.IsAvailable(out var missing))
+            {
+                reason = missing;
+            }
+            else
+            {
+                InitialisationProgress?.Invoke(this, new ProgressEventArgs()
+                {
+                    Nature = ProgressEventArgs.EnumNature.Neutral,
+                    Message = "Starting SMB server..."
+                });
+
+                try
+                {
+                    var smb = Settings.Vfs.Smb;
+                    smbHost = SmbHost.Start(IPAddress.Parse(smb.Address), smb.Port, smb.ShareName);
+                    smbHost.ServerDied += message => SessionError?.Invoke(this, new ProgressEventArgs()
+                    {
+                        Message = message,
+                        Nature = ProgressEventArgs.EnumNature.Bad
+                    });
+
+                    ActiveTransport = TransportMode.SMB;
+                    ComputedUNC = smbHost.UncPath;
+                    Log.WriteLine($"Transport: SMB at {ComputedUNC}.");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Log.WriteLine($"Could not start the SMB transport:{Environment.NewLine}{ex}");
+                    reason = ex.Message;
+                }
+            }
+
+            if (mode == TransportMode.SMB)
+            {
+                throw new Exception($"SMB is not available: {reason}");
+            }
+
+            Log.WriteLine($"Transport: WebDAV, because SMB is not available: {reason}");
+            TransportNote = $"SMB unavailable: {reason}";
+        }
+
         public void Stop()
         {
+            try
+            {
+                //the client connection goes first, then the server and its endpoint
+                smbHost?.Dispose();
+                smbHost = null;
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while stopping the SMB host: {ex.Message}");
+            }
+
             try
             {
                 webdavHost?.Stop();

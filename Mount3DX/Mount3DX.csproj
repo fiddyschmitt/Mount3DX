@@ -18,7 +18,22 @@
   <ItemGroup>
     <ProjectReference Include="..\lib3dxVFS\lib3dxVFS.csproj" />
     <ProjectReference Include="..\libCommon\libCommon.csproj" />
+    <ProjectReference Include="..\libSMB\libSMB.csproj" />
     <ProjectReference Include="..\libWebDAV\libWebDAV.csproj" />
   </ItemGroup>
+
+  <!-- The bundled SMB server (portable-smb-server): scripts/fetch-smb-server.ps1 puts the pinned
+       release under tools/, and every build that finds it there embeds it; libSMB extracts it on
+       first use. A build without it still works, serving WebDAV only. -->
+  <PropertyGroup>
+    <SmbServerBinary>$(MSBuildThisFileDirectory)..\tools\portable-smb-server\portable-smb-server.exe</SmbServerBinary>
+  </PropertyGroup>
+  <ItemGroup Condition="Exists('$(SmbServerBinary)')">
+    <EmbeddedResource Include="$(SmbServerBinary)" LogicalName="portable-smb-server" />
+  </ItemGroup>
+  <Target Name="ReportBundledSmbServer" BeforeTargets="CoreCompile">
+    <Message Importance="high" Text="SMB: embedding $(SmbServerBinary)" Condition="Exists('$(SmbServerBinary)')" />
+    <Warning Text="SMB: no server binary at $(SmbServerBinary); run scripts/fetch-smb-server.ps1 first, or this build serves WebDAV only" Condition="!Exists('$(SmbServerBinary)')" />
+  </Target>
 
 </Project>

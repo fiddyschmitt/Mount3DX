@@ -9,6 +9,7 @@ using System.Diagnostics;
 using libCommon.Utilities;
 using System.Collections.Concurrent;
 using Microsoft.Win32;
+using libSMB;
 
 namespace Mount3DX
 {
@@ -37,6 +38,7 @@ namespace Mount3DX
             LoadSettings();
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
+            Log.WriteLine($"Windows {Environment.OSVersion.Version}; SMB on a port other than 445 is {(SmbConnection.IsSupported ? "supported" : "not supported (Windows 11 24H2 or later is needed)")}");
             LogWebClientSettings();
             LoadWebclientSettings();
         }
@@ -148,6 +150,9 @@ namespace Mount3DX
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
 
             chkExtraFiles.Checked = settings._3dx.IncludeMetadataFiles;
+
+            //the items are the TransportMode names, in enum order
+            cmbTransport.SelectedIndex = Math.Max(0, cmbTransport.Items.IndexOf(settings.Vfs.Transport.ToString()));
         }
 
         private void SaveSettings()
@@ -159,6 +164,11 @@ namespace Mount3DX
                 settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
 
                 settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
+
+                if (Enum.TryParse<TransportMode>(cmbTransport.SelectedItem?.ToString(), out var transport))
+                {
+                    settings.Vfs.Transport = transport;
+                }
 
                 var settingsJson = settings.SerializeToJson();
 
@@ -248,7 +258,7 @@ namespace Mount3DX
                         Log.WriteLine("Session started successfully.");
 
                         btnStart.Text = "Stop";
-                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
+                        ShowRunningStatus(newSession);
                         btnOpenVirtualDrive.Visible = true;
                     }
                     else
@@ -271,7 +281,7 @@ namespace Mount3DX
                     if (args.Nature == ProgressEventArgs.EnumNature.Good)
                     {
                         //recovered; back to the normal running state
-                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
+                        ShowRunningStatus(newSession);
                     }
                     else
                     {
@@ -346,12 +356,26 @@ namespace Mount3DX
             });
         }
 
-        //The server URL and refresh interval only apply at Start, so they are locked while a
-        //session runs. The metadata-files checkbox stays enabled: it takes effect immediately.
+        //The server URL, refresh interval and transport only apply at Start, so they are locked
+        //while a session runs. The metadata-files checkbox stays enabled: it takes effect immediately.
         void SetSettingsEditable(bool editable)
         {
             txt3dxServerUrl.Enabled = editable;
             txtRefreshIntervalMinutes.Enabled = editable;
+            cmbTransport.Enabled = editable;
+        }
+
+        //"Running (SMB)", or the transport fallen back to and why (a warning, so it is noticed)
+        void ShowRunningStatus(Session runningSession)
+        {
+            if (runningSession.TransportNote == null)
+            {
+                ShowStatus(ProgressEventArgs.EnumNature.Good, $"Running ({runningSession.ActiveTransport})");
+            }
+            else
+            {
+                ShowStatus(ProgressEventArgs.EnumNature.Warning, $"Running ({runningSession.ActiveTransport}). {runningSession.TransportNote}");
+            }
         }
 
         void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)

@@ -363,3 +363,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# The bundled SMB server: fetched by scripts/fetch-smb-server.ps1, embedded at build
+/tools/portable-smb-server/

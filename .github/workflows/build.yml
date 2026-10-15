@@ -18,5 +18,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # the SMB server the executable embeds
+      - name: Fetch the bundled SMB server
+        shell: pwsh
+        run: ./scripts/fetch-smb-server.ps1
+
       - name: Build
         run: dotnet build VirtualFileSystems.sln -c Release
