@@ -365,17 +365,11 @@ namespace Mount3DX
             cmbTransport.Enabled = editable;
         }
 
-        //"Running (SMB)", or the transport fallen back to and why (a warning, so it is noticed)
+        //"Running (SMB)" or "Running (WebDAV)". Why SMB was fallen back from, when it was, is in the
+        //log; the label sits beside the Open button and has no room for it.
         void ShowRunningStatus(Session runningSession)
         {
-            if (runningSession.TransportNote == null)
-            {
-                ShowStatus(ProgressEventArgs.EnumNature.Good, $"Running ({runningSession.ActiveTransport})");
-            }
-            else
-            {
-                ShowStatus(ProgressEventArgs.EnumNature.Warning, $"Running ({runningSession.ActiveTransport}). {runningSession.TransportNote}");
-            }
+            ShowStatus(ProgressEventArgs.EnumNature.Good, $"Running ({runningSession.ActiveTransport})");
         }
 
         void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)

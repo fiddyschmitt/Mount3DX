@@ -26,10 +26,9 @@ namespace Mount3DX
         SmbHost? smbHost;
         public string ComputedUNC { get; protected set; }
 
-        //The transport the drive is served over once started, and why it isn't SMB when SMB was
-        //the first choice (null otherwise)
+        //The transport the drive is served over once started (the log says why, when it isn't the
+        //one that was asked for)
         public TransportMode ActiveTransport { get; private set; } = TransportMode.WebDAV;
-        public string? TransportNote { get; private set; }
 
         public event EventHandler<ProgressEventArgs>? InitialisationProgress;
         public event EventHandler<FinishedEventArgs>? InitialisationFinished;
@@ -203,13 +202,12 @@ namespace Mount3DX
         }
 
         //SMB where it is asked for and possible, otherwise WebDAV. Auto falls back quietly (the
-        //note says why); SMB asked for outright is not silently something else.
+        //log says why); SMB asked for outright is not silently something else.
         void StartTransport()
         {
             var mode = Settings.Vfs.Transport;
 
             ActiveTransport = TransportMode.WebDAV;
-            TransportNote = null;
             ComputedUNC = Settings.Vfs.GetComputedUNC();
 
             if (mode == TransportMode.WebDAV)
@@ -263,7 +261,6 @@ namespace Mount3DX
             }
 
             Log.WriteLine($"Transport: WebDAV, because SMB is not available: {reason}");
-            TransportNote = $"SMB unavailable: {reason}";
         }
 
         public void Stop()
