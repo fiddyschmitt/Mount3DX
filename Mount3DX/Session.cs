@@ -236,7 +236,7 @@ namespace Mount3DX
                 try
                 {
                     var smb = Settings.Vfs.Smb;
-                    smbHost = SmbHost.Start(IPAddress.Parse(smb.Address), smb.Port, smb.ShareName);
+                    smbHost = SmbHost.Start(IPAddress.Parse(smb.Address), smb.Port, smb.ShareName, cacheSizeBytes: smb.CacheSizeMB * 1024L * 1024);
                     smbHost.ServerDied += message => SessionError?.Invoke(this, new ProgressEventArgs()
                     {
                         Message = message,

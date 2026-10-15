@@ -10,7 +10,8 @@ namespace libCommon.Vfs
         //The entries directly under a directory; null when the path isn't a directory
         IReadOnlyList<VfsEntry>? List(string path);
 
-        //The content of a file, readable from the start
+        //The content of a file, readable from the start and, where the source can, seekable: a read
+        //deep inside a large file then doesn't have to transfer everything before it
         Stream OpenRead(string path);
     }
 

@@ -35,7 +35,7 @@ namespace libSMB
         static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         readonly WebApplication app;
-        readonly SpoolCache spoolCache;
+        readonly ChunkCache cache;
         readonly string shareName;
         volatile IVfsSource? source;
 
@@ -53,10 +53,10 @@ namespace libSMB
             set => source = value;
         }
 
-        VfsEndpoint(string shareName, SpoolCache spoolCache)
+        VfsEndpoint(string shareName, ChunkCache cache)
         {
             this.shareName = shareName;
-            this.spoolCache = spoolCache;
+            this.cache = cache;
             Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
 
             var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -84,9 +84,9 @@ namespace libSMB
             app.Run(HandleAsync);
         }
 
-        public static VfsEndpoint Start(string shareName, SpoolCache spoolCache)
+        public static VfsEndpoint Start(string shareName, ChunkCache cache)
         {
-            var endpoint = new VfsEndpoint(shareName, spoolCache);
+            var endpoint = new VfsEndpoint(shareName, cache);
             try
             {
                 //Start (not Run): returns once Kestrel is listening, and throws if it can't. Run on
@@ -247,7 +247,7 @@ namespace libSMB
             var buffer = ArrayPool<byte>.Shared.Rent(want);
             try
             {
-                var read = await spoolCache.ReadAsync(key, size, () => tree.OpenRead(path), offset, buffer.AsMemory(0, want), cancellationToken).ConfigureAwait(false);
+                var read = await cache.ReadAsync(key, size, () => tree.OpenRead(path), offset, buffer.AsMemory(0, want), cancellationToken).ConfigureAwait(false);
 
                 context.Response.ContentLength = read;
                 if (read > 0)

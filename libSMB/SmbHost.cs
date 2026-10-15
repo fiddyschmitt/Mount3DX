@@ -15,11 +15,13 @@ namespace libSMB
         public const string UserName = "mount3dx";
         public const string Password = "mount3dx";
 
+        public const long DefaultCacheSizeBytes = 2L << 30;
+
         public static string DefaultStateDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mount3DX");
 
         readonly VfsEndpoint endpoint;
         readonly SmbServerProcess server;
-        readonly SpoolCache spoolCache;
+        readonly ChunkCache cache;
         bool disposed;
 
         public string UncPath { get; }
@@ -27,12 +29,12 @@ namespace libSMB
         //Raised when the server exits on its own, with the reason
         public event Action<string>? ServerDied;
 
-        SmbHost(string uncPath, VfsEndpoint endpoint, SmbServerProcess server, SpoolCache spoolCache)
+        SmbHost(string uncPath, VfsEndpoint endpoint, SmbServerProcess server, ChunkCache cache)
         {
             UncPath = uncPath;
             this.endpoint = endpoint;
             this.server = server;
-            this.spoolCache = spoolCache;
+            this.cache = cache;
 
             server.Died += message => ServerDied?.Invoke(message);
         }
@@ -44,7 +46,7 @@ namespace libSMB
         }
 
         //Everything that could go wrong is checked here and nothing is left running on failure
-        public static SmbHost Start(IPAddress address, int port, string shareName, string? stateDirectory = null)
+        public static SmbHost Start(IPAddress address, int port, string shareName, string? stateDirectory = null, long cacheSizeBytes = DefaultCacheSizeBytes)
         {
             if (!SmbConnection.IsSupported)
             {
@@ -57,13 +59,13 @@ namespace libSMB
             //a connection left by an earlier run (a crash) would keep its old port
             SmbConnection.Disconnect(unc);
 
-            var spoolCache = new SpoolCache(Path.Combine(stateDirectory, "cache"));
+            var cache = new ChunkCache(Path.Combine(stateDirectory, "cache"), cacheSizeBytes);
             VfsEndpoint? endpoint = null;
             SmbServerProcess? server = null;
 
             try
             {
-                endpoint = VfsEndpoint.Start(shareName, spoolCache);
+                endpoint = VfsEndpoint.Start(shareName, cache);
 
                 var binary = SmbServerBinary.Locate(stateDirectory);
                 server = SmbServerProcess.Start(binary, address, port, UserName, Password, endpoint.BaseUrl, shareName, endpoint.Token);
@@ -74,14 +76,14 @@ namespace libSMB
                 Directory.GetFileSystemEntries(unc);
                 Log.WriteLine($"SMB share {unc} is reachable.");
 
-                return new SmbHost(unc, endpoint, server, spoolCache);
+                return new SmbHost(unc, endpoint, server, cache);
             }
             catch
             {
                 SmbConnection.Disconnect(unc);
                 server?.Dispose();
                 endpoint?.Dispose();
-                spoolCache.Dispose();
+                cache.Dispose();
                 throw;
             }
         }
@@ -95,7 +97,7 @@ namespace libSMB
             SmbConnection.Disconnect(UncPath);
             server.Dispose();
             endpoint.Dispose();
-            spoolCache.Dispose();
+            cache.Dispose();
         }
     }
 }

@@ -64,6 +64,11 @@ namespace Mount3DX
 
         public string ShareName = "3DX";
 
+        //How much of what has been read over SMB is kept on disk (the cache folder under the
+        //Mount3DX folder in LocalAppData) for rereads. Files larger than this are still read in
+        //full, a piece at a time.
+        public int CacheSizeMB = 2048;
+
         public string GetComputedUNC()
         {
             return $@"\\{Address}\{ShareName}";

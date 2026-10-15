@@ -126,6 +126,7 @@ namespace lib3dx.Files
                     else
                     {
                         //the server ignored the Range header and sent the whole file
+                        Log.WriteLine($"The server ignored the Range request for {description}; reading and discarding {position:N0} bytes to reach the requested position.");
                         toSkip = position;
                     }
                 }
