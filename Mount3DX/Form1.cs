@@ -150,9 +150,6 @@ namespace Mount3DX
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
 
             chkExtraFiles.Checked = settings._3dx.IncludeMetadataFiles;
-
-            //the items are the TransportMode names, in enum order
-            cmbTransport.SelectedIndex = Math.Max(0, cmbTransport.Items.IndexOf(settings.Vfs.Transport.ToString()));
         }
 
         private void SaveSettings()
@@ -164,11 +161,6 @@ namespace Mount3DX
                 settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
 
                 settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
-
-                if (Enum.TryParse<TransportMode>(cmbTransport.SelectedItem?.ToString(), out var transport))
-                {
-                    settings.Vfs.Transport = transport;
-                }
 
                 var settingsJson = settings.SerializeToJson();
 
@@ -258,7 +250,7 @@ namespace Mount3DX
                         Log.WriteLine("Session started successfully.");
 
                         btnStart.Text = "Stop";
-                        ShowRunningStatus(newSession);
+                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
                         btnOpenVirtualDrive.Visible = true;
                     }
                     else
@@ -281,7 +273,7 @@ namespace Mount3DX
                     if (args.Nature == ProgressEventArgs.EnumNature.Good)
                     {
                         //recovered; back to the normal running state
-                        ShowRunningStatus(newSession);
+                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
                     }
                     else
                     {
@@ -362,14 +354,6 @@ namespace Mount3DX
         {
             txt3dxServerUrl.Enabled = editable;
             txtRefreshIntervalMinutes.Enabled = editable;
-            cmbTransport.Enabled = editable;
-        }
-
-        //"Running (SMB)" or "Running (WebDAV)". Why SMB was fallen back from, when it was, is in the
-        //log; the label sits beside the Open button and has no room for it.
-        void ShowRunningStatus(Session runningSession)
-        {
-            ShowStatus(ProgressEventArgs.EnumNature.Good, $"Running ({runningSession.ActiveTransport})");
         }
 
         void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)

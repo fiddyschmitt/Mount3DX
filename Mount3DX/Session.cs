@@ -44,7 +44,7 @@ namespace Mount3DX
             this._3dxServer = _3dxServer;
             Settings = settings;
             MaxMetadataSizeInBytes = maxMetadataSizeInBytes;
-            ComputedUNC = settings.Vfs.GetComputedUNC();
+            ComputedUNC = settings.Vfs.WebDAV.GetComputedUNC();
         }
 
         public void Start()
@@ -136,11 +136,11 @@ namespace Mount3DX
                 Log.WriteLine($"Initialising {nameof(_3dxStore)}.");
 
                 //SMB has no listing size limit, so the tree keeps its own shape there
-                var listingLimit = ActiveTransport == TransportMode.SMB ? 0 : MaxMetadataSizeInBytes;
+                var listingLimit = ActiveTransport == TransportMode.Smb ? 0 : MaxMetadataSizeInBytes;
 
                 _3dxStore = new _3dxStore(
                     _3dxServer,
-                    Settings.Vfs.WebDavServerUrl,
+                    Settings.Vfs.WebDAV.ServerUrl,
                     Settings._3dx.QueryThreads,
                     listingLimit,
                     InitialisationProgress);
@@ -168,7 +168,7 @@ namespace Mount3DX
                     });
 
                     Log.WriteLine("Initialising WebDAV server");
-                    webdavHost = new WebdavHost(Settings.Vfs.WebDavServerUrl, _3dxStore);
+                    webdavHost = new WebdavHost(Settings.Vfs.WebDAV.ServerUrl, _3dxStore);
 
                     //Start synchronously so we know the server is actually listening (and surface a
                     //bind failure such as the port already being in use) before opening Explorer.
@@ -208,7 +208,7 @@ namespace Mount3DX
             var mode = Settings.Vfs.Transport;
 
             ActiveTransport = TransportMode.WebDAV;
-            ComputedUNC = Settings.Vfs.GetComputedUNC();
+            ComputedUNC = Settings.Vfs.WebDAV.GetComputedUNC();
 
             if (mode == TransportMode.WebDAV)
             {
@@ -243,7 +243,7 @@ namespace Mount3DX
                         Nature = ProgressEventArgs.EnumNature.Bad
                     });
 
-                    ActiveTransport = TransportMode.SMB;
+                    ActiveTransport = TransportMode.Smb;
                     ComputedUNC = smbHost.UncPath;
                     Log.WriteLine($"Transport: SMB at {ComputedUNC}.");
                     return;
@@ -255,7 +255,7 @@ namespace Mount3DX
                 }
             }
 
-            if (mode == TransportMode.SMB)
+            if (mode == TransportMode.Smb)
             {
                 throw new Exception($"SMB is not available: {reason}");
             }

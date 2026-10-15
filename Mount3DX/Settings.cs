@@ -29,11 +29,12 @@ namespace Mount3DX
     }
 
     //How the drive is served. Auto takes SMB where Windows can connect to it (11 24H2 or later)
-    //and WebDAV otherwise; the other two insist.
+    //and WebDAV otherwise; the other two insist. Each is the name of the settings group that
+    //configures it, and settings.json may spell it in any case ("smb", "Smb" and "SMB" all do).
     public enum TransportMode
     {
         Auto,
-        SMB,
+        Smb,
         WebDAV,
     }
 
@@ -44,18 +45,12 @@ namespace Mount3DX
 
         public SmbSettings Smb = new();
 
-        public string WebDavServerUrl = "http://localhost:11000";
+        public WebDavSettings WebDAV = new();
 
-        public string GetComputedUNC()
-        {
-            //http://localhost:11000   ->  \\localhost@11000\DavWWWRoot
-            //https://localhost:11000  ->  \\localhost@SSL@11000\DavWWWRoot
-            var uri = new Uri(WebDavServerUrl);
-            var ssl = uri.Scheme == Uri.UriSchemeHttps ? "@SSL" : "";
-            var port = uri.IsDefaultPort ? "" : $"@{uri.Port}";
-            var result = $@"\\{uri.Host}{ssl}{port}\DavWWWRoot";
-            return result;
-        }
+        //Where a settings.json from before the WebDAV group (1.7.0 and earlier) kept the URL.
+        //Read only; it is written back in its new place.
+        [JsonProperty]
+        string WebDavServerUrl { set => WebDAV.ServerUrl = value; }
     }
 
     public class SmbSettings
@@ -73,6 +68,22 @@ namespace Mount3DX
         public string GetComputedUNC()
         {
             return $@"\\{Address}\{ShareName}";
+        }
+    }
+
+    public class WebDavSettings
+    {
+        public string ServerUrl = "http://localhost:11000";
+
+        public string GetComputedUNC()
+        {
+            //http://localhost:11000   ->  \\localhost@11000\DavWWWRoot
+            //https://localhost:11000  ->  \\localhost@SSL@11000\DavWWWRoot
+            var uri = new Uri(ServerUrl);
+            var ssl = uri.Scheme == Uri.UriSchemeHttps ? "@SSL" : "";
+            var port = uri.IsDefaultPort ? "" : $"@{uri.Port}";
+            var result = $@"\\{uri.Host}{ssl}{port}\DavWWWRoot";
+            return result;
         }
     }
 }
