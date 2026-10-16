@@ -93,10 +93,9 @@ namespace Mount3DX
         }
 
         //Sizes the window to the whole name: on one line where the screen is wide enough, and over as
-        //many lines as it takes where it isn't. The buttons keep their size in the bottom right
-        //corner, so they are in the same place on the screen whatever the name. Then the window goes
-        //in the bottom right corner of the primary screen's working area, which leaves out the
-        //taskbar (that screen has the notification area).
+        //many lines as it takes where it isn't. The buttons keep their size, side by side from the
+        //left under the name. Then the window goes in the bottom right corner of the primary screen's
+        //working area, which leaves out the taskbar (that screen has the notification area).
         void FitAndPlace()
         {
             var area = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
@@ -120,8 +119,8 @@ namespace Mount3DX
             var height = buttonsTop + button.Height + edge;
 
             lblName.SetBounds(edge, edge, contentWidth, name.Height);
-            btnOpenFolder.SetBounds(width - edge - button.Width, buttonsTop, button.Width, button.Height);
-            btnOpen.SetBounds(btnOpenFolder.Left - spacing - button.Width, buttonsTop, button.Width, button.Height);
+            btnOpen.SetBounds(edge, buttonsTop, button.Width, button.Height);
+            btnOpenFolder.SetBounds(btnOpen.Right + spacing, buttonsTop, button.Width, button.Height);
 
             SetBounds(area.Right - width - screenMargin, area.Bottom - height - screenMargin, width, height);
         }
