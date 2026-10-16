@@ -21,6 +21,7 @@ namespace Mount3DX
     {
         private readonly Settings Settings;
         private readonly uint MaxMetadataSizeInBytes;
+        private readonly bool OpenInExplorer;
         _3dxServer _3dxServer;
         _3dxStore? _3dxStore;
         WebdavHost? webdavHost;
@@ -47,11 +48,12 @@ namespace Mount3DX
         //or has since recovered
         public event EventHandler<ProgressEventArgs>? SessionStatus;
 
-        public Session(_3dxServer _3dxServer, Settings settings, uint maxMetadataSizeInBytes)
+        public Session(_3dxServer _3dxServer, Settings settings, uint maxMetadataSizeInBytes, bool openInExplorer)
         {
             this._3dxServer = _3dxServer;
             Settings = settings;
             MaxMetadataSizeInBytes = maxMetadataSizeInBytes;
+            OpenInExplorer = openInExplorer;
             ComputedUNC = settings.Vfs.WebDAV.GetComputedUNC();
         }
 
@@ -201,7 +203,10 @@ namespace Mount3DX
             }
 
             //The server is now serving the tree, so it is safe to open the virtual drive in Explorer
-            Process.Start("explorer.exe", ComputedUNC);
+            if (OpenInExplorer)
+            {
+                Process.Start("explorer.exe", ComputedUNC);
+            }
 
             serving = true;
 

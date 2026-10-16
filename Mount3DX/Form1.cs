@@ -17,9 +17,13 @@ namespace Mount3DX
     {
         _3dxServer? _3dxServer;
 
-        public Form1()
+        //Run with --start, as the startup shortcut does: the session starts as soon as the window is up
+        readonly bool startOnLaunch;
+
+        public Form1(bool startOnLaunch = false)
         {
             InitializeComponent();
+            this.startOnLaunch = startOnLaunch;
         }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
@@ -43,6 +47,19 @@ namespace Mount3DX
             LoadWebclientSettings();
 
             ApplyClipboardMonitoring();
+
+            //ticked when the shortcut is there, which this leaves as it is
+            chkRunAtStartup.Checked = StartupShortcut.Exists;
+        }
+
+        private void Form1_Shown(object sender, EventArgs e)
+        {
+            if (!startOnLaunch) return;
+
+            //The startup shortcut runs it this way at sign-in, when nobody has asked to see the drive,
+            //so it isn't opened in Explorer (Open virtual drive is there for that)
+            Log.WriteLine($"Run with {StartupShortcut.StartArgument}, so starting straight away, without opening Explorer");
+            StartSession(openInExplorer: false);
         }
 
         public static uint FileAttributesLimitInBytes = 1_000_000;
@@ -214,96 +231,10 @@ namespace Mount3DX
 
         private void BtnStart_Click(object sender, EventArgs e)
         {
-            ShowStatus(ProgressEventArgs.EnumNature.Neutral, "");
-
-            SetSettingsEditable(false);
-
             if (btnStart.Text.Equals("Start"))
             {
                 Log.WriteLine($"Start button clicked");
-                var startTime = DateTime.Now;
-
-                btnStart.Enabled = false;
-                Cursor = Cursors.WaitCursor;
-
-                SaveSettings();
-                LoadSettings();
-
-                if (_3dxServer == null || _3dxServer.ServerUrl != settings._3dx.ServerUrl)
-                {
-                    _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.IncludeMetadataFiles);
-                }
-
-                //The server object is kept between sessions so its cookies survive, so apply any
-                //settings that may have changed since it was created
-                _3dxServer.ServeMetadataFiles = settings._3dx.IncludeMetadataFiles;
-
-                var newSession = new Session(_3dxServer, settings, FileAttributesLimitInBytes);
-                session = newSession;
-
-                //A stopped session may still have a refresh in flight (it cannot be interrupted
-                //mid-way), so its late events must not be applied to a newer session
-                bool IsCurrent() => ReferenceEquals(newSession, session);
-
-                newSession.InitialisationProgress += (sender, args) => SafeInvoke(() =>
-                {
-                    if (!IsCurrent()) return;
-
-                    ShowStatus(args.Nature, args.Message);
-                });
-
-                newSession.InitialisationFinished += (sender, args) => SafeInvoke(() =>
-                {
-                    if (!IsCurrent()) return;
-
-                    if (args.Success)
-                    {
-                        Log.WriteLine("Session started successfully.");
-
-                        btnStart.Text = "Stop";
-                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
-                        btnOpenVirtualDrive.Visible = true;
-                    }
-                    else
-                    {
-                        Log.WriteLine($"Session failed to start: {args.Message}");
-
-                        ShowStatus(ProgressEventArgs.EnumNature.Bad, args.Message);
-                        btnOpenVirtualDrive.Visible = false;
-                        SetSettingsEditable(true);
-                    }
-
-                    btnStart.Enabled = true;
-                    Cursor = Cursors.Default;
-                });
-
-                newSession.SessionStatus += (sender, args) => SafeInvoke(() =>
-                {
-                    if (!IsCurrent()) return;
-
-                    if (args.Nature == ProgressEventArgs.EnumNature.Good)
-                    {
-                        //recovered; back to the normal running state
-                        ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
-                    }
-                    else
-                    {
-                        ShowStatus(args.Nature, args.Message);
-                    }
-                });
-
-                newSession.SessionError += (sender, args) => SafeInvoke(() =>
-                {
-                    if (!IsCurrent()) return;
-
-                    var sessionDuration = DateTime.Now - startTime;
-                    var message = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
-                    Log.WriteLine(message);
-
-                    StopSession(newSession, ProgressEventArgs.EnumNature.Bad, message);
-                });
-
-                Task.Factory.StartNew(newSession.Start);
+                StartSession(openInExplorer: true);
             }
             else
             {
@@ -314,6 +245,97 @@ namespace Mount3DX
                     StopSession(session, ProgressEventArgs.EnumNature.Neutral, "Stopped");
                 }
             }
+        }
+
+        void StartSession(bool openInExplorer)
+        {
+            ShowStatus(ProgressEventArgs.EnumNature.Neutral, "");
+
+            SetSettingsEditable(false);
+
+            var startTime = DateTime.Now;
+
+            btnStart.Enabled = false;
+            Cursor = Cursors.WaitCursor;
+
+            SaveSettings();
+            LoadSettings();
+
+            if (_3dxServer == null || _3dxServer.ServerUrl != settings._3dx.ServerUrl)
+            {
+                _3dxServer = new _3dxServer(settings._3dx.ServerUrl, settings._3dx.IncludeMetadataFiles);
+            }
+
+            //The server object is kept between sessions so its cookies survive, so apply any
+            //settings that may have changed since it was created
+            _3dxServer.ServeMetadataFiles = settings._3dx.IncludeMetadataFiles;
+
+            var newSession = new Session(_3dxServer, settings, FileAttributesLimitInBytes, openInExplorer);
+            session = newSession;
+
+            //A stopped session may still have a refresh in flight (it cannot be interrupted
+            //mid-way), so its late events must not be applied to a newer session
+            bool IsCurrent() => ReferenceEquals(newSession, session);
+
+            newSession.InitialisationProgress += (sender, args) => SafeInvoke(() =>
+            {
+                if (!IsCurrent()) return;
+
+                ShowStatus(args.Nature, args.Message);
+            });
+
+            newSession.InitialisationFinished += (sender, args) => SafeInvoke(() =>
+            {
+                if (!IsCurrent()) return;
+
+                if (args.Success)
+                {
+                    Log.WriteLine("Session started successfully.");
+
+                    btnStart.Text = "Stop";
+                    ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
+                    btnOpenVirtualDrive.Visible = true;
+                }
+                else
+                {
+                    Log.WriteLine($"Session failed to start: {args.Message}");
+
+                    ShowStatus(ProgressEventArgs.EnumNature.Bad, args.Message);
+                    btnOpenVirtualDrive.Visible = false;
+                    SetSettingsEditable(true);
+                }
+
+                btnStart.Enabled = true;
+                Cursor = Cursors.Default;
+            });
+
+            newSession.SessionStatus += (sender, args) => SafeInvoke(() =>
+            {
+                if (!IsCurrent()) return;
+
+                if (args.Nature == ProgressEventArgs.EnumNature.Good)
+                {
+                    //recovered; back to the normal running state
+                    ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
+                }
+                else
+                {
+                    ShowStatus(args.Nature, args.Message);
+                }
+            });
+
+            newSession.SessionError += (sender, args) => SafeInvoke(() =>
+            {
+                if (!IsCurrent()) return;
+
+                var sessionDuration = DateTime.Now - startTime;
+                var message = $"Session finished after {sessionDuration.FormatTimeSpan()}. Reason: {args.Message}";
+                Log.WriteLine(message);
+
+                StopSession(newSession, ProgressEventArgs.EnumNature.Bad, message);
+            });
+
+            Task.Factory.StartNew(newSession.Start);
         }
 
         //Session events arrive on background threads, possibly after the form has closed
@@ -361,7 +383,7 @@ namespace Mount3DX
         }
 
         //The server URL, refresh interval and transport only apply at Start, so they are locked
-        //while a session runs. The two checkboxes stay enabled: they take effect immediately.
+        //while a session runs. The checkboxes stay enabled: they take effect immediately.
         void SetSettingsEditable(bool editable)
         {
             txt3dxServerUrl.Enabled = editable;
@@ -391,6 +413,37 @@ namespace Mount3DX
             if (_3dxServer != null)
             {
                 _3dxServer.ServeMetadataFiles = chkExtraFiles.Checked;
+            }
+        }
+
+        //Ticking makes the startup shortcut and unticking deletes it, there and then. Loading the form
+        //ticks the box when the shortcut is already there, which leaves the shortcut as it is.
+        private void ChkRunAtStartup_CheckedChanged(object sender, EventArgs e)
+        {
+            var runAtStartup = chkRunAtStartup.Checked;
+            if (runAtStartup == StartupShortcut.Exists) return;
+
+            try
+            {
+                if (runAtStartup)
+                {
+                    StartupShortcut.Create();
+                    Log.WriteLine($"Run at startup: created {StartupShortcut.FilePath}");
+                }
+                else
+                {
+                    StartupShortcut.Delete();
+                    Log.WriteLine($"Run at startup: deleted {StartupShortcut.FilePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                var action = runAtStartup ? "create" : "delete";
+                Log.WriteLine($"Could not {action} {StartupShortcut.FilePath}:{Environment.NewLine}{ex}");
+                MessageBox.Show($"Could not {action} the startup shortcut. {ex.Message}", PROGRAM_NAME, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                //back to what is there, which comes back here and stops at the check above
+                chkRunAtStartup.Checked = StartupShortcut.Exists;
             }
         }
 

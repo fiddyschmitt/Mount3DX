@@ -9,7 +9,7 @@ namespace Mount3DX
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             //Only allow one instance; a second instance would fail to bind the WebDAV port with a confusing error.
             //Global, because the port is machine-wide even across user sessions.
@@ -23,7 +23,10 @@ namespace Mount3DX
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-            Application.Run(new Form1());
+
+            //the startup shortcut passes --start
+            var startOnLaunch = args.Contains(StartupShortcut.StartArgument, StringComparer.OrdinalIgnoreCase);
+            Application.Run(new Form1(startOnLaunch));
         }
 
         static Mutex? CreateSingleInstanceMutex(out bool isFirstInstance)

@@ -30,6 +30,7 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             grp3dx = new GroupBox();
+            chkRunAtStartup = new CheckBox();
             chkMonitorClipboard = new CheckBox();
             chkExtraFiles = new CheckBox();
             label4 = new Label();
@@ -48,6 +49,7 @@
             // grp3dx
             // 
             grp3dx.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            grp3dx.Controls.Add(chkRunAtStartup);
             grp3dx.Controls.Add(chkMonitorClipboard);
             grp3dx.Controls.Add(chkExtraFiles);
             grp3dx.Controls.Add(label4);
@@ -57,10 +59,21 @@
             grp3dx.Controls.Add(label2);
             grp3dx.Location = new Point(12, 12);
             grp3dx.Name = "grp3dx";
-            grp3dx.Size = new Size(654, 149);
+            grp3dx.Size = new Size(654, 174);
             grp3dx.TabIndex = 1;
             grp3dx.TabStop = false;
             grp3dx.Text = "3DX settings";
+            // 
+            // chkRunAtStartup
+            // 
+            chkRunAtStartup.AutoSize = true;
+            chkRunAtStartup.Location = new Point(176, 136);
+            chkRunAtStartup.Name = "chkRunAtStartup";
+            chkRunAtStartup.Size = new Size(101, 19);
+            chkRunAtStartup.TabIndex = 14;
+            chkRunAtStartup.Text = "Run at startup";
+            chkRunAtStartup.UseVisualStyleBackColor = true;
+            chkRunAtStartup.CheckedChanged += ChkRunAtStartup_CheckedChanged;
             //
             // chkMonitorClipboard
             //
@@ -135,7 +148,7 @@
             // btnStart
             // 
             btnStart.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnStart.Location = new Point(12, 174);
+            btnStart.Location = new Point(12, 199);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(75, 23);
             btnStart.TabIndex = 0;
@@ -148,7 +161,7 @@
             lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
             lblRunningStatus.BackColor = SystemColors.Control;
-            lblRunningStatus.Location = new Point(93, 175);
+            lblRunningStatus.Location = new Point(93, 200);
             lblRunningStatus.Name = "lblRunningStatus";
             lblRunningStatus.Padding = new Padding(3);
             lblRunningStatus.Size = new Size(103, 21);
@@ -158,7 +171,7 @@
             // btnOpenVirtualDrive
             // 
             btnOpenVirtualDrive.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnOpenVirtualDrive.Location = new Point(246, 174);
+            btnOpenVirtualDrive.Location = new Point(246, 199);
             btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
             btnOpenVirtualDrive.Size = new Size(205, 23);
             btnOpenVirtualDrive.TabIndex = 4;
@@ -171,7 +184,7 @@
             // 
             lblVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lblVersion.AutoSize = true;
-            lblVersion.Location = new Point(630, 178);
+            lblVersion.Location = new Point(630, 203);
             lblVersion.Name = "lblVersion";
             lblVersion.Size = new Size(30, 15);
             lblVersion.TabIndex = 5;
@@ -181,7 +194,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(678, 210);
+            ClientSize = new Size(678, 235);
             Controls.Add(lblVersion);
             Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
@@ -193,6 +206,7 @@
             FormClosing += Form1_FormClosing;
             FormClosed += Form1_FormClosed;
             Load += Form1_Load;
+            Shown += Form1_Shown;
             grp3dx.ResumeLayout(false);
             grp3dx.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)txtRefreshIntervalMinutes).EndInit();
@@ -214,5 +228,6 @@
         private Label lblVersion;
         private CheckBox chkExtraFiles;
         private CheckBox chkMonitorClipboard;
+        private CheckBox chkRunAtStartup;
     }
 }
