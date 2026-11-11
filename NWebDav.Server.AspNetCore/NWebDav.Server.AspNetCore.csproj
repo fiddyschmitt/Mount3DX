@@ -10,7 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NWebDav.Server\NWebDav.Server.csproj" />
 
-	<PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.3.9" />
+	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>
