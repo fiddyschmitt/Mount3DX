@@ -43,9 +43,10 @@ namespace NWebDav.Server.Helpers
         public long? End { get; set; }
 
         /// <summary>
-        /// Optional conditional date/time.
+        /// Optional conditional date/time (If-Range). Nullable: as a plain DateTime it was never
+        /// null, so every range was taken for a failed If-Range and ignored.
         /// </summary>
-        public DateTime If {get; set; }
+        public DateTime? If { get; set; }
     }
 
     /// <summary>

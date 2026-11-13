@@ -148,7 +148,7 @@ namespace NWebDav.Server.Handlers
                             length = end - start + 1;
 
                             // Write the range
-                            response.SetHeaderValue("Content-Range", $"bytes {start}-{end} / {stream.Length}");
+                            response.SetHeaderValue("Content-Range", $"bytes {start}-{end}/{stream.Length}");
 
                             // Set status to partial result if not all data can be sent
                             if (length < stream.Length)
