@@ -3,7 +3,6 @@ using Newtonsoft.Json.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.Xml.Linq;
 using static Mount3DX.Tests.TestTree;
 
 namespace Mount3DX.Tests
@@ -216,43 +215,9 @@ namespace Mount3DX.Tests
             Assert.AreEqual(Pump.Title, StoreTests.TitleIn(JObject.Parse(File.ReadAllText(Path.Combine(root, FolderOf(Pump), MetadataFile)))));
         }
 
-        //A URL of the drive, each segment escaped
-        static string UrlOf(params string[] segments) => "/" + string.Join("/", segments.Select(Uri.EscapeDataString));
+        static string UrlOf(params string[] segments) => WebDav.UrlOf(segments);
 
-        sealed record DavEntry(string Name, bool IsCollection, long? Length);
-
-        //The entries of a folder (Depth: 1), without the folder itself
-        static async Task<List<DavEntry>> PropFindAsync(string url)
-        {
-            using var request = new HttpRequestMessage(new HttpMethod("PROPFIND"), url);
-            request.Headers.Add("Depth", "1");
-            using var response = await http.SendAsync(request);
-
-            Assert.AreEqual(HttpStatusCode.MultiStatus, response.StatusCode, $"PROPFIND {url}");
-
-            XNamespace dav = "DAV:";
-            var folder = UnescapedPath(url);
-
-            return XDocument.Parse(await response.Content.ReadAsStringAsync())
-                        .Descendants(dav + "response")
-                        .Select(entry =>
-                        {
-                            var href = entry.Element(dav + "href")!.Value;
-                            var path = UnescapedPath(Uri.TryCreate(href, UriKind.Absolute, out var absolute) ? absolute.AbsolutePath : href);
-                            var length = entry.Descendants(dav + "getcontentlength").FirstOrDefault()?.Value;
-
-                            return (Path: path, Entry: new DavEntry(
-                                                            path.Split('/').Last(),
-                                                            entry.Descendants(dav + "collection").Any(),
-                                                            long.TryParse(length, out var n) ? n : null));
-                        })
-                        .Where(item => item.Path != folder)
-                        .Select(item => item.Entry)
-                        .ToList();
-        }
-
-        //An unescaped path without the slashes at its ends
-        static string UnescapedPath(string url) => Uri.UnescapeDataString(url).Trim('/');
+        static Task<List<WebDav.Entry>> PropFindAsync(string url) => WebDav.ListAsync(http, url);
 
         static string? RawHeader(HttpResponseMessage response, string name) =>
             response.Content.Headers.NonValidated.TryGetValues(name, out var values) || response.Headers.NonValidated.TryGetValues(name, out values)
