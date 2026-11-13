@@ -36,6 +36,10 @@ namespace Mount3DX
         public bool IsServing => serving;
         volatile bool serving;
 
+        //Where the SMB transport keeps its cache (wiped at start, removed at stop). The tests point
+        //it elsewhere, so they never touch the cache of a Mount3DX that is running.
+        public string SmbStateDirectory { get; init; } = SmbHost.DefaultStateDirectory;
+
         //How long 3DX may take to say which document a copied link's dotted id is
         static readonly TimeSpan LinkLookupTimeout = TimeSpan.FromSeconds(20);
 
@@ -247,7 +251,7 @@ namespace Mount3DX
                 try
                 {
                     var smb = Settings.Vfs.Smb;
-                    smbHost = SmbHost.Start(IPAddress.Parse(smb.Address), smb.Port, smb.ShareName, cacheSizeBytes: smb.CacheSizeMB * 1024L * 1024);
+                    smbHost = SmbHost.Start(IPAddress.Parse(smb.Address), smb.Port, smb.ShareName, SmbStateDirectory, smb.CacheSizeMB * 1024L * 1024);
                     smbHost.ServerDied += message => SessionError?.Invoke(this, new ProgressEventArgs()
                     {
                         Message = message,

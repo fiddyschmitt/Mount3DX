@@ -98,16 +98,20 @@ namespace lib3dx
 
             if (result)
             {
-                //find the Search Service
-                SearchServiceUrl = _3dxLogin.DiscoverSearchServiceUrl(ServerUrl, HttpClient);
-
-                //Pinging the server retrieves the Search Service cookies
-                var pingSuccessful = Ping(CancellationToken.None);
-
-                result &= pingSuccessful;
+                result &= FindServices();
             }
 
             return result;
+        }
+
+        //What a login ends with: find the Search Service, then ping, which also retrieves the Search
+        //Service cookies. A server that needs no sign-in (the fake 3DX the tests run against) is
+        //ready after this alone.
+        public bool FindServices()
+        {
+            SearchServiceUrl = _3dxLogin.DiscoverSearchServiceUrl(ServerUrl, HttpClient);
+
+            return Ping(CancellationToken.None);
         }
 
         public void StartKeepAlive(int keepAliveIntervalMinutes)
