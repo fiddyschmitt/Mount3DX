@@ -236,10 +236,6 @@ namespace Mount3DX
             {
                 reason = $"Windows build {Environment.OSVersion.Version.Build} can't connect to an SMB server on a port other than 445 (Windows 11 24H2 or later is needed)";
             }
-            else if (!SmbServerBinary.IsAvailable(out var missing))
-            {
-                reason = missing;
-            }
             else
             {
                 InitialisationProgress?.Invoke(this, new ProgressEventArgs()

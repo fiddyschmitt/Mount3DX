@@ -5,10 +5,10 @@ using System.Text;
 
 namespace lib3dxVFS.SMB
 {
-    //portable-smb-server asks for file content in stateless ranged reads (/read?offset&length), with
-    //several in flight, while a 3DX download is a three-call affair that then streams from wherever
-    //it was opened. Files can be tens of GB, so neither "one download per read" nor "download the
-    //whole file first" will do.
+    //The SMB client asks for file content in ranged reads (each one a ReadAsync of the file LibSmb
+    //opened), with several in flight and in no promised order, while a 3DX download is a three-call
+    //affair that then streams from wherever it was opened. Files can be tens of GB, so neither "one
+    //download per read" nor "download the whole file first" will do.
     //
     //Each file is cached in fixed-size chunks under the cache folder, fetched only when a read needs
     //them. A read demands the chunks it covers; a run (one upstream download, read in order) fetches
@@ -78,8 +78,7 @@ namespace lib3dxVFS.SMB
         }
 
         //Fills the buffer from the file identified by key (any string that changes when the content
-        //does). Returns fewer bytes only at the end of the file: the SMB server treats a short answer
-        //as end-of-file.
+        //does). Returns fewer bytes only at the end of the file, so one call answers one SMB read.
         public async Task<int> ReadAsync(string key, long length, Func<Stream> openUpstream, long offset, Memory<byte> buffer, CancellationToken cancellationToken)
         {
             if (buffer.Length == 0 || offset >= length)

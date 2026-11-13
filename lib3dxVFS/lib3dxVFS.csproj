@@ -4,13 +4,11 @@
     <TargetFramework>net10.0-windows7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- the job object that ties the SMB server process to this one is declared with LibraryImport -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Kestrel, for the loopback VFS endpoint the SMB server reads the share from -->
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- the SMB server the drive is served by on Windows 11 24H2 and later -->
+    <PackageReference Include="LibSmb" Version="0.1.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,7 +7,4 @@ Mount your 3DX server as a drive letter, so you can browse and open documents wi
 Releases can be found over in the [releases](https://github.com/fiddyschmitt/Mount3DX/releases) section.
 
 # How the drive is served
-On Windows 11 24H2 or later the drive is served over SMB by a bundled copy of [portable-smb-server](https://github.com/fiddyschmitt/portable-smb-server). Older versions of Windows get it over WebDAV.
-
-# Building
-The SMB server is fetched, checksummed and embedded by the build: run `scripts\fetch-smb-server.ps1` once after cloning (and whenever `scripts\smb-server.json` pins a new version). A build without it still works and serves WebDAV only.
+On Windows 11 24H2 or later the drive is served over SMB, by [LibSmb](https://www.nuget.org/packages/LibSmb). Older versions of Windows get it over WebDAV.

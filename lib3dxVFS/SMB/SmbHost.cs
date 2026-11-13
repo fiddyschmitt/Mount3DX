@@ -1,11 +1,13 @@
 using libCommon;
 using libCommon.Vfs;
+using LibSmb;
+using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace lib3dxVFS.SMB
 {
-    //Serves a tree (reads only) as an SMB share on this machine: the VFS endpoint, the bundled
-    //portable-smb-server reading from it, and the Windows client's connection to the share. Start
+    //Serves a tree (reads only) as an SMB share on this machine: LibSmb's server, in this process,
+    //reading the tree through VfsFileSystem, and the Windows client's connection to the share. Start
     //proves the whole chain with an empty tree first, so a Windows that can't do this is known
     //before the documents are fetched; the tree is handed over through Source once it is loaded.
     public sealed class SmbHost : IDisposable
@@ -19,30 +21,30 @@ namespace lib3dxVFS.SMB
 
         public static string DefaultStateDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mount3DX");
 
-        readonly VfsEndpoint endpoint;
-        readonly SmbServerProcess server;
+        readonly SmbServer server;
+        readonly VfsFileSystem fileSystem;
         readonly ChunkCache cache;
         bool disposed;
 
         public string UncPath { get; }
 
-        //Raised when the server exits on its own, with the reason
+        //Raised when the server stops accepting connections on its own, with the reason
         public event Action<string>? ServerDied;
 
-        SmbHost(string uncPath, VfsEndpoint endpoint, SmbServerProcess server, ChunkCache cache)
+        SmbHost(string uncPath, SmbServer server, VfsFileSystem fileSystem, ChunkCache cache)
         {
             UncPath = uncPath;
-            this.endpoint = endpoint;
             this.server = server;
+            this.fileSystem = fileSystem;
             this.cache = cache;
 
-            server.Died += message => ServerDied?.Invoke(message);
+            server.Faulted += ex => ServerDied?.Invoke($"The SMB server stopped accepting connections: {ex.Message}");
         }
 
         public IVfsSource? Source
         {
-            get => endpoint.Source;
-            set => endpoint.Source = value;
+            get => fileSystem.Source;
+            set => fileSystem.Source = value;
         }
 
         //Everything that could go wrong is checked here and nothing is left running on failure
@@ -60,29 +62,41 @@ namespace lib3dxVFS.SMB
             WindowsSmbClient.Disconnect(unc);
 
             var cache = new ChunkCache(Path.Combine(stateDirectory, "cache"), cacheSizeBytes);
-            VfsEndpoint? endpoint = null;
-            SmbServerProcess? server = null;
+            var fileSystem = new VfsFileSystem(cache);
+            SmbServer? server = null;
 
             try
             {
-                endpoint = VfsEndpoint.Start(shareName, cache);
+                //A read-only share: the server refuses a write, a delete or a rename up front ("the
+                //media is write protected") rather than at the close of the handle, where Windows
+                //ignores the answer and a delete would look successful
+                server = SmbServer.Start(
+                    new SmbServerOptions
+                    {
+                        EndPoint = new IPEndPoint(address, port),
+                        User = UserName,
+                        Password = Password,
+                        Logger = new LogFileLogger(),
+                    },
+                    [new SmbShare(shareName, fileSystem, readOnly: true)]);
 
-                var binary = SmbServerBinary.Locate(stateDirectory);
-                server = SmbServerProcess.Start(binary, address, port, UserName, Password, endpoint.BaseUrl, shareName, endpoint.Token);
+                Log.WriteLine($"SMB server (LibSmb {typeof(SmbServer).Assembly.GetName().Version?.ToString(3)}) listening on {server.LocalEndPoint}.");
 
                 WindowsSmbClient.Connect(unc, port, UserName, Password);
 
-                //the client, the server and the endpoint, end to end (the root is empty for now)
+                //the client, the server and the file system, end to end (the root is empty for now)
                 Directory.GetFileSystemEntries(unc);
                 Log.WriteLine($"SMB share {unc} is reachable.");
 
-                return new SmbHost(unc, endpoint, server, cache);
+                return new SmbHost(unc, server, fileSystem, cache);
             }
             catch
             {
                 WindowsSmbClient.Disconnect(unc);
-                server?.Dispose();
-                endpoint?.Dispose();
+                if (server != null)
+                {
+                    Stop(server);
+                }
                 cache.Dispose();
                 throw;
             }
@@ -95,9 +109,42 @@ namespace lib3dxVFS.SMB
 
             //the client first, so it drops the connection cleanly rather than discovering a dead server
             WindowsSmbClient.Disconnect(UncPath);
-            server.Dispose();
-            endpoint.Dispose();
+            Stop(server);
             cache.Dispose();
+        }
+
+        //On the thread pool, so a caller with a SynchronizationContext (the UI) can't deadlock it
+        static void Stop(SmbServer server)
+        {
+            try
+            {
+                Task.Run(async () => await server.DisposeAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
+                Log.WriteLine("SMB server stopped.");
+            }
+            catch (Exception ex)
+            {
+                Log.WriteLine($"Error while stopping the SMB server: {ex.Message}");
+            }
+        }
+
+        //LibSmb's connections, sign-ins and failures go to the log file; its trace of every request
+        //does not
+        sealed class LogFileLogger : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => logLevel is >= LogLevel.Debug and < LogLevel.None;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (!IsEnabled(logLevel)) return;
+
+                //an unexpected failure gets its stack; an expected one just its message
+                var detail = exception == null ? ""
+                                : logLevel >= LogLevel.Warning ? $"{Environment.NewLine}{exception}"
+                                : $" ({exception.Message})";
+
+                libCommon.Log.WriteLine($"{formatter(state, exception)}{detail}");
+            }
         }
     }
 }

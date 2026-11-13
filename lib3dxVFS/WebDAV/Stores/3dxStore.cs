@@ -435,7 +435,7 @@ namespace libVFS.WebDAV.Stores
         }
 
         //The SMB side reads the same published snapshot
-        public VfsEntry? Stat(string path) => snapshot.Stat(path);
+        public VfsEntry? Stat(string path, bool forOpen) => snapshot.Stat(path, forOpen);
         public IReadOnlyList<VfsEntry>? List(string path) => snapshot.List(path);
         public Stream OpenRead(string path) => snapshot.OpenRead(path);
 
@@ -574,14 +574,14 @@ namespace libVFS.WebDAV.Stores
             return Task.FromResult<IStoreItem?>(null);
         }
 
-        //The SMB server's VFS contract: share-relative paths with '/' separators, "" for the root,
-        //which is how the mappings are keyed apart from the separator
+        //The SMB server's paths: share-relative with '/' separators, "" for the root, which is how
+        //the mappings are keyed apart from the separator
         static string ToStorePath(string vfsPath)
         {
             return vfsPath.Replace('/', Path.DirectorySeparatorChar);
         }
 
-        public VfsEntry? Stat(string vfsPath)
+        public VfsEntry? Stat(string vfsPath, bool forOpen)
         {
             var requestedPath = ToStorePath(vfsPath);
 
@@ -592,7 +592,7 @@ namespace libVFS.WebDAV.Stores
 
             if (PathToItemMapping.TryGetValue(requestedPath, out _3dxStoreItem? item) && item._3dxServer.IsServed(item._fileInfo))
             {
-                return ToEntry(item._fileInfo, item._3dxServer, forOpen: true);
+                return ToEntry(item._fileInfo, item._3dxServer, forOpen);
             }
 
             return null;
@@ -640,8 +640,9 @@ namespace libVFS.WebDAV.Stores
             };
         }
 
-        //A listing reports the metadata file's placeholder size (see _3dxDocMetadataFile); an open
-        //reports the real one, because the SMB client reads exactly as many bytes as it is told
+        //A listing or a lookup reports the metadata file's placeholder size (see _3dxDocMetadataFile);
+        //an open for its content reports the real one, because the SMB client reads exactly as many
+        //bytes as it is told
         static VfsEntry ToEntry(_3dxDownloadableFile file, _3dxServer _3dxServer, bool forOpen)
         {
             var size = forOpen && file is _3dxDocMetadataFile metadataFile
