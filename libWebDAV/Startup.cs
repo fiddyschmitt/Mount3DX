@@ -47,16 +47,19 @@ namespace libWebDAV
 
             app.Run(async context =>
             {
+                //Address port exhaustion of the ephemeral ports: one request per connection.
+                //Confirm by running:
+                //Get-NetTCPConnection | Group-Object -Property State, OwningProcess | Select -Property Count, Name, @{Name="ProcessName";Expression={(Get-Process -PID ($_.Name.Split(',')[-1].Trim(' '))).Name}}, Group | Sort Count -Descending | Select-Object -First 10
+                //Asked for before the answer starts, so Kestrel can put "Connection: close" in it.
+                //Asked for after, the connection was closed without the client being told, and a
+                //client that sent its next request on it had that request reset.
+                context.Connection.RequestClose();
+
                 // Create the proper HTTP context
                 var httpContext = new AspNetCoreContext(context);
 
                 // Dispatch request
                 await webDavDispatcher.DispatchRequestAsync(httpContext).ConfigureAwait(false);
-
-                //Address port exhaustion of the ephemeral ports.
-                //Confirm by running:
-                //Get-NetTCPConnection | Group-Object -Property State, OwningProcess | Select -Property Count, Name, @{Name="ProcessName";Expression={(Get-Process -PID ($_.Name.Split(',')[-1].Trim(' '))).Name}}, Group | Sort Count -Descending | Select-Object -First 10
-                context.Connection.RequestClose();
             });
         }
     }
