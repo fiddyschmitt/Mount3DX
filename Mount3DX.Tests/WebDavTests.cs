@@ -206,9 +206,10 @@ namespace Mount3DX.Tests
             }
 
             var root = started.Session.ComputedUNC;
-            var folders = Directory.GetDirectories(root).Select(Path.GetFileName).ToList();
+            var folders = TestSessions.NamesIn(root).ToList();
 
-            CollectionAssert.IsSubsetOf(new[] { FolderOf(Pump), FolderOf(HeatExchanger), FolderOf(Escapes) }, folders);
+            CollectionAssert.AreEquivalent(FolderNames.Values.ToList(), folders);
+            CollectionAssert.AreEquivalent(new[] { "drawing.pdf", "notes.txt", "data.bin", LinkFile, MetadataFile }, TestSessions.NamesIn(Path.Combine(root, FolderOf(Pump))).ToList());
             CollectionAssert.AreEqual(Notes.Content.ReadAll(), File.ReadAllBytes(Path.Combine(root, PathOf(Pump, Notes, '\\'))));
             CollectionAssert.AreEqual(Overview.Content.ReadAll(), File.ReadAllBytes(Path.Combine(root, PathOf(HeatExchanger, Overview, '\\'))));
             CollectionAssert.AreEqual(Offer.Content.ReadAll(), File.ReadAllBytes(Path.Combine(root, PathOf(Escapes, Offer, '\\'))));

@@ -151,7 +151,7 @@ namespace Mount3DX.Tests
                 return stream.Length;
             }))],
             enumerators: [.. Listings.Select(listing => (Action)(() =>
-                Check(Directory.GetFileSystemEntries(Path.Combine(root, listing.Folder)).Select(Path.GetFileName), listing.Names, listing.Folder)))],
+                Check(TestSessions.NamesIn(Path.Combine(root, listing.Folder)), listing.Names, listing.Folder)))],
             readsEach,
             listingPause,
             listingsEachAtMost,

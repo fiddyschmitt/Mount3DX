@@ -85,6 +85,15 @@ namespace Mount3DX.Tests
         //The Windows SMB client's connections
         public static string NetUse() => Run("net.exe", "use");
 
+        //The names in a folder, as programs see them. Through the Windows WebDAV client, .NET gets
+        //every name with a NUL at its end (the client counts the terminator in the name's length;
+        //Explorer and other Win32 programs read names as C strings and never notice), and so also
+        //"." and "..", which it would otherwise leave out.
+        public static IReadOnlyList<string> NamesIn(string folder) => [.. Directory
+                                                                        .GetFileSystemEntries(folder)
+                                                                        .Select(path => Path.GetFileName(path).TrimEnd('\0'))
+                                                                        .Where(name => name is not ("." or ".."))];
+
         static string Run(string program, string arguments)
         {
             using var process = Process.Start(new ProcessStartInfo(program, arguments)
