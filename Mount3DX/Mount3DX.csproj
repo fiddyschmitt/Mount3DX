@@ -20,13 +20,12 @@
   <ItemGroup>
     <ProjectReference Include="..\lib3dxVFS\lib3dxVFS.csproj" />
     <ProjectReference Include="..\libCommon\libCommon.csproj" />
-    <ProjectReference Include="..\libSMB\libSMB.csproj" />
     <ProjectReference Include="..\libWebDAV\libWebDAV.csproj" />
   </ItemGroup>
 
   <!-- The bundled SMB server (portable-smb-server): scripts/fetch-smb-server.ps1 puts the pinned
-       release under tools/, and every build that finds it there embeds it; libSMB extracts it on
-       first use. A build without it still works, serving WebDAV only. -->
+       release under tools/, and every build that finds it there embeds it; lib3dxVFS extracts it
+       on first use. A build without it still works, serving WebDAV only. -->
   <PropertyGroup>
     <SmbServerBinary>$(MSBuildThisFileDirectory)..\tools\portable-smb-server\portable-smb-server.exe</SmbServerBinary>
   </PropertyGroup>

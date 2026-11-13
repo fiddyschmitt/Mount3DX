@@ -2,7 +2,7 @@ using libCommon;
 using System.Reflection;
 using System.Security.Cryptography;
 
-namespace libSMB
+namespace lib3dxVFS.SMB
 {
     //Finds the portable-smb-server executable. Every build embeds one (scripts/fetch-smb-server.ps1
     //puts it where Mount3DX.csproj picks it up); it is extracted into the state folder on first use,

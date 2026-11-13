@@ -15,7 +15,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-namespace libSMB
+namespace lib3dxVFS.SMB
 {
     //The "bring your own VFS" HTTP service that portable-smb-server reads the share from: GET
     ///capabilities, /stat, /list and /read on a loopback port chosen by the OS. Writes are not

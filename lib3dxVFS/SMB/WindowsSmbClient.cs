@@ -1,13 +1,13 @@
 using libCommon;
 using System.Diagnostics;
 
-namespace libSMB
+namespace lib3dxVFS.SMB
 {
     //The Windows SMB client's side: Windows 11 24H2 (build 26100) added net use /TCPPORT, which
     //registers a port other than 445 for a server name. The connection is device-less (no drive
     //letter): once made, the UNC path works in Explorer and every program. The port sticks to the
     //server name for every later connection to it, which is why the share lives on its own name.
-    public static class SmbConnection
+    public static class WindowsSmbClient
     {
         public static bool IsSupported => OperatingSystem.IsWindowsVersionAtLeast(10, 0, 26100);
 

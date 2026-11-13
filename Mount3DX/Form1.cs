@@ -9,7 +9,7 @@ using System.Diagnostics;
 using libCommon.Utilities;
 using System.Collections.Concurrent;
 using Microsoft.Win32;
-using libSMB;
+using lib3dxVFS.SMB;
 
 namespace Mount3DX
 {
@@ -42,7 +42,7 @@ namespace Mount3DX
             LoadSettings();
 
             Log.WriteLine($"Program started ({PROGRAM_NAME} {PROGRAM_VERSION})");
-            Log.WriteLine($"Windows {Environment.OSVersion.Version}; SMB on a port other than 445 is {(SmbConnection.IsSupported ? "supported" : "not supported (Windows 11 24H2 or later is needed)")}");
+            Log.WriteLine($"Windows {Environment.OSVersion.Version}; SMB on a port other than 445 is {(WindowsSmbClient.IsSupported ? "supported" : "not supported (Windows 11 24H2 or later is needed)")}");
             LogWebClientSettings();
             LoadWebclientSettings();
 

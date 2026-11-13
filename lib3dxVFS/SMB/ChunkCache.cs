@@ -3,7 +3,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace libSMB
+namespace lib3dxVFS.SMB
 {
     //portable-smb-server asks for file content in stateless ranged reads (/read?offset&length), with
     //several in flight, while a 3DX download is a three-call affair that then streams from wherever

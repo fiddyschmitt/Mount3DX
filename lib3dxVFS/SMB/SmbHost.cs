@@ -2,7 +2,7 @@ using libCommon;
 using libCommon.Vfs;
 using System.Net;
 
-namespace libSMB
+namespace lib3dxVFS.SMB
 {
     //Serves a tree (reads only) as an SMB share on this machine: the VFS endpoint, the bundled
     //portable-smb-server reading from it, and the Windows client's connection to the share. Start
@@ -48,7 +48,7 @@ namespace libSMB
         //Everything that could go wrong is checked here and nothing is left running on failure
         public static SmbHost Start(IPAddress address, int port, string shareName, string? stateDirectory = null, long cacheSizeBytes = DefaultCacheSizeBytes)
         {
-            if (!SmbConnection.IsSupported)
+            if (!WindowsSmbClient.IsSupported)
             {
                 throw new InvalidOperationException("This Windows can't connect to an SMB server on a port other than 445 (Windows 11 24H2 or later is needed).");
             }
@@ -57,7 +57,7 @@ namespace libSMB
             var unc = $@"\\{address}\{shareName}";
 
             //a connection left by an earlier run (a crash) would keep its old port
-            SmbConnection.Disconnect(unc);
+            WindowsSmbClient.Disconnect(unc);
 
             var cache = new ChunkCache(Path.Combine(stateDirectory, "cache"), cacheSizeBytes);
             VfsEndpoint? endpoint = null;
@@ -70,7 +70,7 @@ namespace libSMB
                 var binary = SmbServerBinary.Locate(stateDirectory);
                 server = SmbServerProcess.Start(binary, address, port, UserName, Password, endpoint.BaseUrl, shareName, endpoint.Token);
 
-                SmbConnection.Connect(unc, port, UserName, Password);
+                WindowsSmbClient.Connect(unc, port, UserName, Password);
 
                 //the client, the server and the endpoint, end to end (the root is empty for now)
                 Directory.GetFileSystemEntries(unc);
@@ -80,7 +80,7 @@ namespace libSMB
             }
             catch
             {
-                SmbConnection.Disconnect(unc);
+                WindowsSmbClient.Disconnect(unc);
                 server?.Dispose();
                 endpoint?.Dispose();
                 cache.Dispose();
@@ -94,7 +94,7 @@ namespace libSMB
             disposed = true;
 
             //the client first, so it drops the connection cleanly rather than discovering a dead server
-            SmbConnection.Disconnect(UncPath);
+            WindowsSmbClient.Disconnect(UncPath);
             server.Dispose();
             endpoint.Dispose();
             cache.Dispose();

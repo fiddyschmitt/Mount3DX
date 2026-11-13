@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
-namespace libSMB
+namespace lib3dxVFS.SMB
 {
     //One portable-smb-server process serving one share from the VFS endpoint. It is tied
     //to this process twice over (a kill-on-close job object, and its own -exit-with-parent), so a

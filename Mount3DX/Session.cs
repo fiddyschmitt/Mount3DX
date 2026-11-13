@@ -1,8 +1,8 @@
 using lib3dx;
 using lib3dx.Files;
+using lib3dxVFS.SMB;
 using libCommon;
 using libCommon.Events;
-using libSMB;
 using libVFS.WebDAV.Stores;
 using libWebDAV;
 using NWebDav.Server.Stores;
@@ -232,7 +232,7 @@ namespace Mount3DX
             }
 
             string reason;
-            if (!SmbConnection.IsSupported)
+            if (!WindowsSmbClient.IsSupported)
             {
                 reason = $"Windows build {Environment.OSVersion.Version.Build} can't connect to an SMB server on a port other than 445 (Windows 11 24H2 or later is needed)";
             }
