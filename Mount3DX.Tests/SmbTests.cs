@@ -1,6 +1,7 @@
 using lib3dxVFS.SMB;
 using Mount3DX.Tests.Fake3dx;
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using static Mount3DX.Tests.TestTree;
 
@@ -136,7 +137,44 @@ namespace Mount3DX.Tests
             //read would show as dozens.
             var downloads = fake.DownloadsOf(Model);
             TestContext.WriteLine($"downloads of {FileNames[Model]}: {string.Join(", ", downloads.Select(d => d.RangeFrom?.ToString() ?? "start"))}");
-            Assert.IsLessThanOrEqualTo(2, downloads.Count, "downloads of a file read in order");
+            Assert.IsLessThanOrEqualTo(upperBound: 2, value: downloads.Count, "downloads of a file read in order");
+        }
+
+        //A machine's programs all share its one connection to the share, so a read waiting on 3DX (a
+        //fetch of something not cached) must hold up nothing else there. LibSmb 0.1.0 worked on a
+        //connection's requests one at a time, and a listing behind such a read waited for it.
+        [TestMethod]
+        public void A_read_waiting_on_3DX_holds_up_nothing_else_on_the_share()
+        {
+            fake.DownloadDelay = TimeSpan.FromSeconds(3);
+
+            try
+            {
+                var read = Task.Run(() => File.ReadAllBytes(PathTo(Late, Slow)));
+
+                var waiting = Stopwatch.StartNew();
+                while (fake.DownloadsOf(Slow).Count == 0 && !read.IsCompleted && waiting.Elapsed < TimeSpan.FromSeconds(10))
+                {
+                    Thread.Sleep(10);
+                }
+
+                Assert.IsNotEmpty(fake.DownloadsOf(Slow), "the read never asked 3DX for the file");
+
+                //a folder nothing else lists, so Windows' directory cache can't answer for the server
+                var listing = Stopwatch.StartNew();
+                var names = TestSessions.NamesIn(Path.Combine(Root, FolderOf(Fillers[99])));
+                listing.Stop();
+                TestContext.WriteLine($"a listing while a read waited on 3DX: {listing.Elapsed.TotalMilliseconds:N0} ms");
+
+                Assert.IsFalse(read.IsCompleted, "the read didn't wait on 3DX, so the listing proves nothing");
+                CollectionAssert.AreEquivalent(new[] { "filler.txt", LinkFile, MetadataFile }, names.ToList());
+                Assert.IsLessThan(upperBound: TimeSpan.FromSeconds(1), value: listing.Elapsed, $"the listing took {listing.Elapsed.TotalSeconds:N1} s while a read waited on 3DX");
+                CollectionAssert.AreEqual(Slow.Content.ReadAll(), read.Result);
+            }
+            finally
+            {
+                fake.DownloadDelay = TimeSpan.Zero;
+            }
         }
 
         [TestMethod]

@@ -46,6 +46,9 @@ namespace Mount3DX.Tests.Fake3dx
 
         public IReadOnlyList<FakeRequest> Requests => [.. requests];
 
+        //How long the file service takes to start answering, as a busy or distant 3DX does
+        public TimeSpan DownloadDelay { get; set; }
+
         Fake3dxServer(IReadOnlyList<FakeDocument> documents)
         {
             Documents = documents;
@@ -355,6 +358,11 @@ namespace Mount3DX.Tests.Fake3dx
             {
                 await TextAsync(context, StatusCodes.Status404NotFound, $"no file {fileId}");
                 return;
+            }
+
+            if (DownloadDelay > TimeSpan.Zero)
+            {
+                await Task.Delay(DownloadDelay, context.RequestAborted);
             }
 
             var content = owner.File.Content;

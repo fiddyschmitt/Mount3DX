@@ -52,7 +52,12 @@ namespace Mount3DX.Tests
                                                                                             $"Filler {i}",
                                                                                             [new FakeFile($"F00000000000000000000000000{i:X5}", "filler.txt", FakeContent.Of($"filler {i}"))]))];
 
-        public static readonly IReadOnlyList<FakeDocument> Documents = [Pump, HeatExchanger, Bare, Big, Odd, Escapes, .. Fillers];
+        //read by one test only, which slows 3DX down for it: nothing of it is in a cache before
+        public static readonly FakeFile Slow = new("F0000000000000000000000000000701", "slow.bin", FakeContent.Generated(16 * MiB, seed: 3));
+
+        public static readonly FakeDocument Late = new("4698020700001DA85B7CC007000CF407", "DOC-0007", "A", "Slow to download", [Slow]);
+
+        public static readonly IReadOnlyList<FakeDocument> Documents = [Pump, HeatExchanger, Bare, Big, Odd, Escapes, Late, .. Fillers];
 
         //The folder each document gets: "{name} Rev {revision}", then " ({title})" unless the title is
         //the name, with characters Windows doesn't allow replaced by _
@@ -64,6 +69,7 @@ namespace Mount3DX.Tests
             [Big] = "DOC-0004 Rev 1 (Big model)",
             [Odd] = "DOC-0005 Rev A (Specs_ v1_v2_)",
             [Escapes] = "DOC-0006 Rev A (Q&A #1 at 100%)",
+            [Late] = "DOC-0007 Rev A (Slow to download)",
         }
         .Concat(Fillers.Select(filler => KeyValuePair.Create(filler, $"{filler.Name} Rev A ({filler.Title})")))
         .ToDictionary();
@@ -85,6 +91,7 @@ namespace Mount3DX.Tests
             [Readme1] = "readme (1).txt",
             [Readme2] = "readme (2).txt",
             [Offer] = "50% off #2 & more.txt",
+            [Slow] = "slow.bin",
         };
 
         public static string FolderOf(FakeDocument document) => FolderNames[document];
