@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- the SMB server the drive is served by on Windows 11 24H2 and later -->
-    <PackageReference Include="LibSmb" Version="0.1.0" />
+    <PackageReference Include="LibSmb" Version="0.2.0" />
   </ItemGroup>
 
   <ItemGroup>

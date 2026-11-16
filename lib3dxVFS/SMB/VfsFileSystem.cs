@@ -6,7 +6,8 @@ namespace lib3dxVFS.SMB
     //The file system behind the share, for LibSmb: the document tree (an IVfsSource), read-only,
     //with file content read through the chunk cache. Every change is refused here as well, but the
     //share is declared read-only, so the server refuses a write, a delete or a rename before it gets
-    //this far.
+    //this far. LibSmb calls it from many requests at once (a read waiting on 3DX holds up no other),
+    //and a call that times out fails its own request (STATUS_IO_TIMEOUT), not the connection.
     public sealed class VfsFileSystem : ISmbFileSystem
     {
         readonly ChunkCache cache;
@@ -52,16 +53,7 @@ namespace lib3dxVFS.SMB
             }
 
             var tree = Tree;
-
-            VfsEntry? entry;
-            try
-            {
-                entry = tree.Stat(path, forOpen: true);
-            }
-            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                throw TimedOut(path, ex);
-            }
+            var entry = tree.Stat(path, forOpen: true);
 
             if (entry == null)
             {
@@ -76,7 +68,7 @@ namespace lib3dxVFS.SMB
             //the path alone would serve a stale cache file after a refresh changed the document
             var key = $"{path}|{entry.ContentKey ?? ""}";
 
-            return ValueTask.FromResult<ISmbFile>(new CachedFile(cache, path, key, (long)entry.Size, () => tree.OpenRead(path)));
+            return ValueTask.FromResult<ISmbFile>(new CachedFile(cache, key, (long)entry.Size, () => tree.OpenRead(path)));
         }
 
         public ValueTask CreateDirectoryAsync(string path, CancellationToken cancellationToken) => throw ReadOnly();
@@ -102,27 +94,14 @@ namespace lib3dxVFS.SMB
 
         static SmbFileSystemException ReadOnly() => new(SmbFileSystemError.ReadOnly, "The document tree is read-only.");
 
-        //LibSmb takes a cancellation as the end of the client's connection; a timeout inside (not the
-        //server giving up) has to fail just the one request
-        static IOException TimedOut(string path, OperationCanceledException ex) => new($"Reading {path} from 3DX timed out: {ex.Message}", ex);
-
-        //One open of a file. LibSmb makes one call at a time on it; other opens of the same file read
-        //the same cached chunks at the same time.
-        sealed class CachedFile(ChunkCache cache, string path, string key, long length, Func<Stream> openUpstream) : ISmbFile
+        //One open of a file. LibSmb makes one call at a time on it, in the order the client sent them;
+        //other opens of the same file read the same cached chunks at the same time.
+        sealed class CachedFile(ChunkCache cache, string key, long length, Func<Stream> openUpstream) : ISmbFile
         {
             public long Length => length;
 
-            public async ValueTask<int> ReadAsync(long offset, Memory<byte> buffer, CancellationToken cancellationToken)
-            {
-                try
-                {
-                    return await cache.ReadAsync(key, length, openUpstream, offset, buffer, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-                {
-                    throw TimedOut(path, ex);
-                }
-            }
+            public async ValueTask<int> ReadAsync(long offset, Memory<byte> buffer, CancellationToken cancellationToken) =>
+                await cache.ReadAsync(key, length, openUpstream, offset, buffer, cancellationToken).ConfigureAwait(false);
 
             public ValueTask WriteAsync(long offset, ReadOnlyMemory<byte> data, CancellationToken cancellationToken) => throw ReadOnly();
 
