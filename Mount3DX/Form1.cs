@@ -32,8 +32,9 @@ namespace Mount3DX
         private void Form1_Load(object sender, EventArgs e)
         {
             Text = $"{PROGRAM_NAME}";
+            //The version is right-aligned, so it grows leftward, and the label reaches 4px past the
+            //settings box: Windows leaves that much after text, so the text ends at the box's edge
             lblVersion.Text = $"v{PROGRAM_VERSION}";
-            lblVersion.Left = grp3dx.Right - lblVersion.Width;
             MinimumSize = Size;
 
             lblRunningStatus.Text = string.Empty;

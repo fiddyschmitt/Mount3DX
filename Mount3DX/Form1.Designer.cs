@@ -184,12 +184,12 @@
             // lblVersion
             // 
             lblVersion.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            lblVersion.AutoSize = true;
-            lblVersion.Location = new Point(630, 203);
+            lblVersion.Location = new Point(570, 199);
             lblVersion.Name = "lblVersion";
-            lblVersion.Size = new Size(30, 15);
+            lblVersion.Size = new Size(100, 23);
             lblVersion.TabIndex = 5;
             lblVersion.Text = "vX.X";
+            lblVersion.TextAlign = ContentAlignment.MiddleRight;
             // 
             // Form1
             // 
