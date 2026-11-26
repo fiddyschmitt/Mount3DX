@@ -147,7 +147,7 @@
             // 
             // btnStart
             // 
-            btnStart.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnStart.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             btnStart.Location = new Point(12, 199);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(75, 23);
@@ -158,10 +158,11 @@
             // 
             // lblRunningStatus
             // 
-            lblRunningStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            lblRunningStatus.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             lblRunningStatus.AutoSize = true;
             lblRunningStatus.BackColor = SystemColors.Control;
-            lblRunningStatus.Location = new Point(93, 200);
+            lblRunningStatus.Location = new Point(12, 228);
+            lblRunningStatus.MaximumSize = new Size(654, 0);
             lblRunningStatus.Name = "lblRunningStatus";
             lblRunningStatus.Padding = new Padding(3);
             lblRunningStatus.Size = new Size(103, 21);
@@ -170,8 +171,8 @@
             // 
             // btnOpenVirtualDrive
             // 
-            btnOpenVirtualDrive.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnOpenVirtualDrive.Location = new Point(246, 199);
+            btnOpenVirtualDrive.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            btnOpenVirtualDrive.Location = new Point(93, 199);
             btnOpenVirtualDrive.Name = "btnOpenVirtualDrive";
             btnOpenVirtualDrive.Size = new Size(205, 23);
             btnOpenVirtualDrive.TabIndex = 4;
@@ -182,7 +183,7 @@
             // 
             // lblVersion
             // 
-            lblVersion.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            lblVersion.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             lblVersion.AutoSize = true;
             lblVersion.Location = new Point(630, 203);
             lblVersion.Name = "lblVersion";
@@ -194,7 +195,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(678, 235);
+            ClientSize = new Size(678, 261);
             Controls.Add(lblVersion);
             Controls.Add(btnOpenVirtualDrive);
             Controls.Add(lblRunningStatus);
@@ -206,6 +207,7 @@
             FormClosing += Form1_FormClosing;
             FormClosed += Form1_FormClosed;
             Load += Form1_Load;
+            Resize += Form1_Resize;
             Shown += Form1_Shown;
             grp3dx.ResumeLayout(false);
             grp3dx.PerformLayout();

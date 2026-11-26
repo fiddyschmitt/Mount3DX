@@ -401,6 +401,37 @@ namespace Mount3DX
             };
 
             lblRunningStatus.Text = message;
+            FitToStatus();
+        }
+
+        //The status is under the buttons and wraps at the width of the settings box (an error can
+        //be long), and the window is as tall as the status needs. A minimised window (Run at
+        //startup starts it that way) can't be fitted, so it is fitted once it is restored.
+        bool fitToStatusWhenRestored;
+
+        void FitToStatus()
+        {
+            if (WindowState != FormWindowState.Normal)
+            {
+                fitToStatusWhenRestored = true;
+                return;
+            }
+
+            fitToStatusWhenRestored = false;
+
+            var height = lblRunningStatus.Bottom + grp3dx.Top;
+            if (ClientSize.Height != height)
+            {
+                ClientSize = new Size(ClientSize.Width, height);
+            }
+        }
+
+        private void Form1_Resize(object sender, EventArgs e)
+        {
+            if (fitToStatusWhenRestored && WindowState == FormWindowState.Normal)
+            {
+                FitToStatus();
+            }
         }
 
         private void ChkExtraFiles_CheckedChanged(object sender, EventArgs e)
