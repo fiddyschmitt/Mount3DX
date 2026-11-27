@@ -7,16 +7,16 @@ namespace Mount3DX
 {
     public partial class App : Application
     {
-        //Run with --start, as the startup shortcut does
-        readonly bool startOnLaunch;
+        //The main window, or the message that Mount 3DX is already running
+        readonly Func<Window> createMainWindow;
 
-        public App(bool startOnLaunch)
+        public App(Func<Window> createMainWindow)
         {
-            this.startOnLaunch = startOnLaunch;
+            this.createMainWindow = createMainWindow;
         }
 
         //For the XAML previewer
-        public App() : this(startOnLaunch: false)
+        public App() : this(() => new MainWindow(startOnLaunch: false))
         {
         }
 
@@ -32,7 +32,7 @@ namespace Mount3DX
                 //The link popup is a window of its own, hidden between links; it mustn't keep the
                 //program running once the main window has closed
                 desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
-                desktop.MainWindow = new MainWindow(startOnLaunch);
+                desktop.MainWindow = createMainWindow();
             }
 
             base.OnFrameworkInitializationCompleted();

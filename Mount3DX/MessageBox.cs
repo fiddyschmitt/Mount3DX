@@ -1,26 +1,33 @@
 using Avalonia.Controls;
-using System.Runtime.InteropServices;
 
 namespace Mount3DX
 {
+    //Windows' values, which also pick the sound (MessageBeep) that Windows' message box makes
     public enum MessageBoxIcon : uint
     {
         Warning = 0x30,     //MB_ICONWARNING
         Information = 0x40, //MB_ICONINFORMATION
     }
 
-    //Windows' own message box, with an OK button. The app manifest asks for the common controls that
-    //draw it in the current Windows style.
-    public static partial class MessageBox
+    //A message with an OK button, in the app's theme (MessageBoxWindow)
+    public static class MessageBox
     {
-        //Modal to the owner, if there is one. Any thread.
+        //Modal to the owner, if there is one; otherwise a window of its own, in the taskbar. On the UI
+        //thread. It returns straight away, while the message shows.
         public static void Show(string text, MessageBoxIcon icon, Window? owner = null)
         {
-            var ownerHandle = owner?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-            MessageBoxW(ownerHandle, text, MainWindow.PROGRAM_NAME, (uint)icon);
-        }
+            var window = new MessageBoxWindow(text, icon);
 
-        [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
-        private static partial int MessageBoxW(IntPtr owner, string text, string caption, uint type);
+            if (owner != null)
+            {
+                window.ShowInTaskbar = false;
+                window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                _ = window.ShowDialog(owner);
+            }
+            else
+            {
+                window.Show();
+            }
+        }
     }
 }

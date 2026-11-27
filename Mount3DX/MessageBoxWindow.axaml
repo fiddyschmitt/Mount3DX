@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mount3DX.MessageBoxWindow"
+        Title="Mount 3DX"
+        Icon="/Mount3DX.ico"
+        SizeToContent="WidthAndHeight"
+        CanResize="False" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterScreen">
+
+  <!-- Laid out like Windows' message box: Windows' icon and the message, over a band with the button -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Padding="12" Background="{DynamicResource MessageFooterBrush}">
+      <Button x:Name="btnOk" Content="OK" MinWidth="75" HorizontalAlignment="Right"
+              HorizontalContentAlignment="Center" IsDefault="True" IsCancel="True" Click="BtnOk_Click" />
+    </Border>
+
+    <StackPanel Orientation="Horizontal" Margin="24" Spacing="12">
+      <Image x:Name="imgIcon" Stretch="None" VerticalAlignment="Top" />
+      <TextBlock x:Name="lblMessage" MaxWidth="400" TextWrapping="Wrap" VerticalAlignment="Center" />
+    </StackPanel>
+  </DockPanel>
+</Window>

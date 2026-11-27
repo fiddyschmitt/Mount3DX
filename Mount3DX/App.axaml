@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Mount3DX.App"
              RequestedThemeVariant="Default">
-  <!-- Default follows Windows' light or dark mode -->
+  <!-- Default follows Windows' light or dark mode, and changes with it -->
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
   </Application.Styles>
@@ -13,9 +13,12 @@
         <ResourceDictionary x:Key="Light">
           <!-- the settings box's edge, and the link popup's -->
           <SolidColorBrush x:Key="FrameBrush" Color="#C8C8C8" />
+          <!-- the band with a message's OK button -->
+          <SolidColorBrush x:Key="MessageFooterBrush" Color="#F0F0F0" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="FrameBrush" Color="#505050" />
+          <SolidColorBrush x:Key="MessageFooterBrush" Color="#202020" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>

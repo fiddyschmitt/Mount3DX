@@ -675,7 +675,7 @@ namespace Mount3DX
                 catch (Exception ex)
                 {
                     Log.WriteLine($"Could not open the document of a copied 3DX link:{Environment.NewLine}{ex}");
-                    MessageBox.Show(ex.Message, MessageBoxIcon.Warning);
+                    SafeInvoke(() => MessageBox.Show(ex.Message, MessageBoxIcon.Warning));
                 }
             })
             {

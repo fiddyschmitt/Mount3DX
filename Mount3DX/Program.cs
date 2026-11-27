@@ -17,17 +17,19 @@ namespace Mount3DX
             using var singleInstanceMutex = CreateSingleInstanceMutex(out var isFirstInstance);
             if (!isFirstInstance)
             {
-                MessageBox.Show($"{MainWindow.PROGRAM_NAME} is already running.", MessageBoxIcon.Information);
+                //the message is the whole program, and closing it ends it
+                var message = $"{MainWindow.PROGRAM_NAME} is already running.";
+                BuildAvaloniaApp(() => new App(() => new MessageBoxWindow(message, MessageBoxIcon.Information))).StartWithClassicDesktopLifetime(args);
                 return;
             }
 
             //the startup shortcut passes --start
             var startOnLaunch = args.Contains(StartupShortcut.StartArgument, StringComparer.OrdinalIgnoreCase);
-            BuildAvaloniaApp(() => new App(startOnLaunch)).StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp(() => new App(() => new MainWindow(startOnLaunch))).StartWithClassicDesktopLifetime(args);
         }
 
         //What the XAML previewer starts
-        public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(() => new App(startOnLaunch: false));
+        public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(() => new App());
 
         static AppBuilder BuildAvaloniaApp(Func<App> app) => AppBuilder
             .Configure(app)
