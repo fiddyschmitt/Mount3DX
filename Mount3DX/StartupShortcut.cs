@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
 namespace Mount3DX
@@ -47,6 +46,23 @@ namespace Mount3DX
         [Guid("00021401-0000-0000-C000-000000000046")]
         class ShellLink
         {
+        }
+
+        //Declared here rather than taken from .NET (System.Runtime.InteropServices.ComTypes). The
+        //published exe is trimmed, and through .NET's copy the shortcut was never saved, without an
+        //error: trimming leaves out the methods that aren't called, and COM calls a method by its place
+        //in the interface. This assembly isn't trimmed, so every method here stays in its place.
+        [ComImport]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [Guid("0000010B-0000-0000-C000-000000000046")]
+        interface IPersistFile
+        {
+            void GetClassID(out Guid classId);
+            [PreserveSig] int IsDirty();
+            void Load([MarshalAs(UnmanagedType.LPWStr)] string fileName, int mode);
+            void Save([MarshalAs(UnmanagedType.LPWStr)] string? fileName, [MarshalAs(UnmanagedType.Bool)] bool remember);
+            void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string fileName);
+            void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string fileName);
         }
 
         //All of it, in vtable order, though only the setters are used
