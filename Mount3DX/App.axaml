@@ -1,0 +1,23 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Mount3DX.App"
+             RequestedThemeVariant="Default">
+  <!-- Default follows Windows' light or dark mode -->
+  <Application.Styles>
+    <FluentTheme DensityStyle="Compact" />
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <!-- the settings box's edge, and the link popup's -->
+          <SolidColorBrush x:Key="FrameBrush" Color="#C8C8C8" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="FrameBrush" Color="#505050" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

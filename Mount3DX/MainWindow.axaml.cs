@@ -1,43 +1,56 @@
-using libCommon;
-using lib3dxVFS.WebDAV.Stores;
-using System.Data;
-using System.Text;
-using libCommon.Events;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Threading;
 using lib3dx;
-using System.Net;
-using System.Diagnostics;
-using libCommon.Utilities;
-using System.Collections.Concurrent;
-using Microsoft.Win32;
 using lib3dxVFS.SMB;
+using libCommon;
+using libCommon.Events;
+using libCommon.Utilities;
+using Microsoft.Win32;
+using System.Diagnostics;
 
 namespace Mount3DX
 {
-    public partial class Form1 : Form
+    public partial class MainWindow : Window
     {
         _3dxServer? _3dxServer;
 
         //Run with --start, as the startup shortcut does: the session starts as soon as the window is up
         readonly bool startOnLaunch;
 
-        public Form1(bool startOnLaunch = false)
-        {
-            InitializeComponent();
-            this.startOnLaunch = startOnLaunch;
-        }
+        //Session events can arrive once the window has closed
+        bool closed;
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
         public static readonly string PROGRAM_VERSION = "1.8.1";
 
-        private void Form1_Load(object sender, EventArgs e)
+        //For the XAML previewer
+        public MainWindow() : this(startOnLaunch: false)
         {
-            Text = $"{PROGRAM_NAME}";
-            //The version is right-aligned, so it grows leftward, and the label reaches 4px past the
-            //settings box: Windows leaves that much after text, so the text ends at the box's edge
-            lblVersion.Text = $"v{PROGRAM_VERSION}";
-            MinimumSize = Size;
+        }
 
-            lblRunningStatus.Text = string.Empty;
+        public MainWindow(bool startOnLaunch)
+        {
+            InitializeComponent();
+            this.startOnLaunch = startOnLaunch;
+
+            Title = PROGRAM_NAME;
+            lblVersion.Text = $"v{PROGRAM_VERSION}";
+
+            //the previewer shows the window, and nothing else happens
+            if (Design.IsDesignMode) return;
+
+            //as the shortcut that started it asks: the startup shortcut starts it minimised
+            (WindowState, ShowActivated) = StartupShowCommand.Get();
+
+            //Attached once the window has its defaults, as the designer did. Loading the settings
+            //below changes a box only where the settings differ from them.
+            chkExtraFiles.IsCheckedChanged += ChkExtraFiles_CheckedChanged;
+            chkMonitorClipboard.IsCheckedChanged += ChkMonitorClipboard_CheckedChanged;
+            chkRunAtStartup.IsCheckedChanged += ChkRunAtStartup_CheckedChanged;
 
             InitLogging();
             LoadSettings();
@@ -50,12 +63,17 @@ namespace Mount3DX
             ApplyClipboardMonitoring();
 
             //ticked when the shortcut is there, which this leaves as it is
-            chkRunAtStartup.Checked = StartupShortcut.Exists;
+            chkRunAtStartup.IsChecked = StartupShortcut.Exists;
         }
 
-        private void Form1_Shown(object sender, EventArgs e)
+        protected override void OnOpened(EventArgs e)
         {
-            if (!startOnLaunch) return;
+            base.OnOpened(e);
+
+            //as it was first in the tab order: Enter or Space starts the drive straight away
+            btnStart.Focus();
+
+            if (!startOnLaunch || Design.IsDesignMode) return;
 
             //The startup shortcut runs it this way at sign-in, when nobody has asked to see the drive,
             //so it isn't opened in Explorer (Open virtual drive is there for that)
@@ -139,7 +157,7 @@ namespace Mount3DX
             catch (Exception ex)
             {
                 //a log that can't be cleared (read-only folder, file in use) mustn't stop the app
-                System.Diagnostics.Debug.WriteLine($"Could not delete log file {Log.Filename}: {ex.Message}");
+                Debug.WriteLine($"Could not delete log file {Log.Filename}: {ex.Message}");
             }
         }
 
@@ -169,22 +187,26 @@ namespace Mount3DX
 
             txtRefreshIntervalMinutes.Value = settings._3dx.RefreshIntervalMinutes;
 
-            chkExtraFiles.Checked = settings._3dx.IncludeMetadataFiles;
+            chkExtraFiles.IsChecked = settings._3dx.IncludeMetadataFiles;
 
-            chkMonitorClipboard.Checked = settings._3dx.MonitorClipboard;
+            chkMonitorClipboard.IsChecked = settings._3dx.MonitorClipboard;
         }
 
         private void SaveSettings()
         {
             try
             {
-                settings._3dx.ServerUrl = txt3dxServerUrl.Text;
+                settings._3dx.ServerUrl = txt3dxServerUrl.Text ?? "";
 
-                settings._3dx.RefreshIntervalMinutes = (int)txtRefreshIntervalMinutes.Value;
+                //an emptied box keeps the interval it had
+                if (txtRefreshIntervalMinutes.Value is decimal minutes)
+                {
+                    settings._3dx.RefreshIntervalMinutes = (int)minutes;
+                }
 
-                settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
+                settings._3dx.IncludeMetadataFiles = chkExtraFiles.IsChecked == true;
 
-                settings._3dx.MonitorClipboard = chkMonitorClipboard.Checked;
+                settings._3dx.MonitorClipboard = chkMonitorClipboard.IsChecked == true;
 
                 var settingsJson = settings.SerializeToJson();
 
@@ -205,34 +227,41 @@ namespace Mount3DX
             }
         }
 
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        protected override void OnClosing(WindowClosingEventArgs e)
         {
+            base.OnClosing(e);
+
             //Nothing to stop, or Windows is shutting down (don't hold it up; process exit releases
             //the port anyway)
-            if (session == null || e.CloseReason == CloseReason.WindowsShutDown) return;
+            if (session == null || e.CloseReason == WindowCloseReason.OSShutdown) return;
 
             //Stopping waits for the WebDAV host and the background loops. Doing that here on the
-            //UI thread locked the form up, so cancel this close, stop in the background with the
-            //status showing "Stopping...", and close again once the session is gone.
+            //UI thread would lock the window up, so cancel this close, stop in the background with
+            //the status showing "Stopping...", and close again once the session is gone.
             e.Cancel = true;
             StopSession(session, ProgressEventArgs.EnumNature.Neutral, "Stopped", whenStopped: Close);
         }
 
-        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        protected override void OnClosed(EventArgs e)
         {
+            base.OnClosed(e);
+            closed = true;
+
+            if (Design.IsDesignMode) return;
+
             SaveSettings();
 
             clipboardMonitor?.Dispose();
             clipboardMonitor = null;
-            linkPopup?.Dispose();
+            linkPopup?.Close();
             linkPopup = null;
         }
 
         Session? session = null;
 
-        private void BtnStart_Click(object sender, EventArgs e)
+        private void BtnStart_Click(object? sender, RoutedEventArgs e)
         {
-            if (btnStart.Text.Equals("Start"))
+            if (btnStart.Content is "Start")
             {
                 Log.WriteLine($"Start button clicked");
                 StartSession(openInExplorer: true);
@@ -256,8 +285,8 @@ namespace Mount3DX
 
             var startTime = DateTime.Now;
 
-            btnStart.Enabled = false;
-            Cursor = Cursors.WaitCursor;
+            btnStart.IsEnabled = false;
+            Cursor = new Cursor(StandardCursorType.Wait);
 
             SaveSettings();
             LoadSettings();
@@ -293,21 +322,21 @@ namespace Mount3DX
                 {
                     Log.WriteLine("Session started successfully.");
 
-                    btnStart.Text = "Stop";
+                    btnStart.Content = "Stop";
                     ShowStatus(ProgressEventArgs.EnumNature.Good, "Running");
-                    btnOpenVirtualDrive.Visible = true;
+                    btnOpenVirtualDrive.IsVisible = true;
                 }
                 else
                 {
                     Log.WriteLine($"Session failed to start: {args.Message}");
 
                     ShowStatus(ProgressEventArgs.EnumNature.Bad, args.Message);
-                    btnOpenVirtualDrive.Visible = false;
+                    btnOpenVirtualDrive.IsVisible = false;
                     SetSettingsEditable(true);
                 }
 
-                btnStart.Enabled = true;
-                Cursor = Cursors.Default;
+                btnStart.IsEnabled = true;
+                Cursor = Cursor.Default;
             });
 
             newSession.SessionStatus += (sender, args) => SafeInvoke(() =>
@@ -339,25 +368,23 @@ namespace Mount3DX
             Task.Factory.StartNew(newSession.Start);
         }
 
-        //Session events arrive on background threads, possibly after the form has closed
+        //Session events arrive on background threads, possibly after the window has closed
         void SafeInvoke(Action action)
         {
-            if (IsDisposed || !IsHandleCreated) return;
-
-            try
+            Dispatcher.UIThread.Post(() =>
             {
-                Invoke(action);
-            }
-            catch (ObjectDisposedException) { }
-            catch (InvalidOperationException) { }   //handle destroyed between the check and the call
+                if (closed) return;
+
+                action();
+            });
         }
 
         //Stopping waits for the WebDAV host and the background loops (several seconds in the worst
         //case), so do it off the UI thread and keep the button disabled meanwhile
         void StopSession(Session stoppingSession, ProgressEventArgs.EnumNature finalNature, string finalMessage, Action? whenStopped = null)
         {
-            btnStart.Enabled = false;
-            btnOpenVirtualDrive.Visible = false;
+            btnStart.IsEnabled = false;
+            btnOpenVirtualDrive.IsVisible = false;
             linkPopup?.Dismiss();
             ShowStatus(ProgressEventArgs.EnumNature.Neutral, "Stopping...");
 
@@ -373,8 +400,8 @@ namespace Mount3DX
                         session = null;
                     }
 
-                    btnStart.Text = "Start";
-                    btnStart.Enabled = true;
+                    btnStart.Content = "Start";
+                    btnStart.IsEnabled = true;
                     SetSettingsEditable(true);
                     ShowStatus(finalNature, finalMessage);
 
@@ -383,36 +410,53 @@ namespace Mount3DX
             });
         }
 
-        //The server URL, refresh interval and transport only apply at Start, so they are locked
-        //while a session runs. The checkboxes stay enabled: they take effect immediately.
+        //The server URL and refresh interval only apply at Start, so they are locked while a
+        //session runs. The checkboxes stay enabled: they take effect immediately.
         void SetSettingsEditable(bool editable)
         {
-            txt3dxServerUrl.Enabled = editable;
-            txtRefreshIntervalMinutes.Enabled = editable;
+            txt3dxServerUrl.IsEnabled = editable;
+            txtRefreshIntervalMinutes.IsEnabled = editable;
         }
 
         void ShowStatus(ProgressEventArgs.EnumNature nature, string? message)
         {
-            (lblRunningStatus.BackColor, lblRunningStatus.ForeColor) = nature switch
+            switch (nature)
             {
-                ProgressEventArgs.EnumNature.Good => (Color.LimeGreen, Color.Black),
-                ProgressEventArgs.EnumNature.Warning => (Color.Orange, Color.Black),
-                ProgressEventArgs.EnumNature.Bad => (Color.Red, Color.White),
-                _ => (DefaultBackColor, Color.Black),
-            };
+                case ProgressEventArgs.EnumNature.Good:
+                    statusBadge.Background = Brushes.LimeGreen;
+                    lblRunningStatus.Foreground = Brushes.Black;
+                    break;
+
+                case ProgressEventArgs.EnumNature.Warning:
+                    statusBadge.Background = Brushes.Orange;
+                    lblRunningStatus.Foreground = Brushes.Black;
+                    break;
+
+                case ProgressEventArgs.EnumNature.Bad:
+                    statusBadge.Background = Brushes.Red;
+                    lblRunningStatus.Foreground = Brushes.White;
+                    break;
+
+                default:
+                    //plain text, in the theme's colours
+                    statusBadge.Background = null;
+                    lblRunningStatus.ClearValue(TextBlock.ForegroundProperty);
+                    break;
+            }
 
             lblRunningStatus.Text = message;
             FitToStatus();
         }
 
-        //The status is under the buttons and wraps at the width of the settings box (an error can
-        //be long), and the window is as tall as the status needs. A minimised window (Run at
-        //startup starts it that way) can't be fitted, so it is fitted once it is restored.
+        //The window is as tall as its content (SizeToContent), so it grows for a long status and
+        //shrinks back for a short one. Dragging the window's edge stops that until the next status,
+        //which asks for it again. A minimised window (Run at startup starts it that way) is fitted
+        //once it is restored.
         bool fitToStatusWhenRestored;
 
         void FitToStatus()
         {
-            if (WindowState != FormWindowState.Normal)
+            if (WindowState != WindowState.Normal)
             {
                 fitToStatusWhenRestored = true;
                 return;
@@ -420,39 +464,39 @@ namespace Mount3DX
 
             fitToStatusWhenRestored = false;
 
-            var height = lblRunningStatus.Bottom + grp3dx.Top;
-            if (ClientSize.Height != height)
-            {
-                ClientSize = new Size(ClientSize.Width, height);
-            }
+            //via Manual, so that the window is measured again even when it was fitting already
+            SizeToContent = SizeToContent.Manual;
+            SizeToContent = SizeToContent.Height;
         }
 
-        private void Form1_Resize(object sender, EventArgs e)
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
-            if (fitToStatusWhenRestored && WindowState == FormWindowState.Normal)
+            base.OnPropertyChanged(change);
+
+            if (change.Property == WindowStateProperty && fitToStatusWhenRestored && WindowState == WindowState.Normal)
             {
                 FitToStatus();
             }
         }
 
-        private void ChkExtraFiles_CheckedChanged(object sender, EventArgs e)
+        private void ChkExtraFiles_CheckedChanged(object? sender, RoutedEventArgs e)
         {
             //The generated files are always in the tree; the WebDAV layer checks these flags on
             //every listing, so this applies to the running session without a rebuild. (Explorer
             //may show its cached listing for up to a minute; F5 refreshes it.)
-            settings._3dx.IncludeMetadataFiles = chkExtraFiles.Checked;
+            settings._3dx.IncludeMetadataFiles = chkExtraFiles.IsChecked == true;
 
             if (_3dxServer != null)
             {
-                _3dxServer.ServeMetadataFiles = chkExtraFiles.Checked;
+                _3dxServer.ServeMetadataFiles = chkExtraFiles.IsChecked == true;
             }
         }
 
-        //Ticking makes the startup shortcut and unticking deletes it, there and then. Loading the form
-        //ticks the box when the shortcut is already there, which leaves the shortcut as it is.
-        private void ChkRunAtStartup_CheckedChanged(object sender, EventArgs e)
+        //Ticking makes the startup shortcut and unticking deletes it, there and then. Opening the
+        //window ticks the box when the shortcut is already there, which leaves the shortcut as it is.
+        private void ChkRunAtStartup_CheckedChanged(object? sender, RoutedEventArgs e)
         {
-            var runAtStartup = chkRunAtStartup.Checked;
+            var runAtStartup = chkRunAtStartup.IsChecked == true;
             if (runAtStartup == StartupShortcut.Exists) return;
 
             try
@@ -472,14 +516,14 @@ namespace Mount3DX
             {
                 var action = runAtStartup ? "create" : "delete";
                 Log.WriteLine($"Could not {action} {StartupShortcut.FilePath}:{Environment.NewLine}{ex}");
-                MessageBox.Show($"Could not {action} the startup shortcut. {ex.Message}", PROGRAM_NAME, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"Could not {action} the startup shortcut. {ex.Message}", MessageBoxIcon.Warning, owner: this);
 
                 //back to what is there, which comes back here and stops at the check above
-                chkRunAtStartup.Checked = StartupShortcut.Exists;
+                chkRunAtStartup.IsChecked = StartupShortcut.Exists;
             }
         }
 
-        private void BtnOpenVirtualDrive_Click(object sender, EventArgs e)
+        private void BtnOpenVirtualDrive_Click(object? sender, RoutedEventArgs e)
         {
             if (session != null)
             {
@@ -498,16 +542,16 @@ namespace Mount3DX
         //Counts the copies looked at, so that a slow lookup is dropped once a later copy has overtaken it
         int clipboardCopies;
 
-        private void ChkMonitorClipboard_CheckedChanged(object sender, EventArgs e)
+        private void ChkMonitorClipboard_CheckedChanged(object? sender, RoutedEventArgs e)
         {
-            settings._3dx.MonitorClipboard = chkMonitorClipboard.Checked;
+            settings._3dx.MonitorClipboard = chkMonitorClipboard.IsChecked == true;
             ApplyClipboardMonitoring();
         }
 
         //Listens to the clipboard while the checkbox is ticked
         void ApplyClipboardMonitoring()
         {
-            if (chkMonitorClipboard.Checked)
+            if (chkMonitorClipboard.IsChecked == true)
             {
                 if (clipboardMonitor != null) return;
 
@@ -582,7 +626,7 @@ namespace Mount3DX
 
         void ShowLinkPopup(LinkedDocument document)
         {
-            if (linkPopup == null || linkPopup.IsDisposed)
+            if (linkPopup == null)
             {
                 linkPopup = new LinkPopup();
                 linkPopup.OpenRequested += objectId => OpenLinkedDocument(objectId, inFolder: false);
@@ -631,7 +675,7 @@ namespace Mount3DX
                 catch (Exception ex)
                 {
                     Log.WriteLine($"Could not open the document of a copied 3DX link:{Environment.NewLine}{ex}");
-                    MessageBox.Show(ex.Message, PROGRAM_NAME, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(ex.Message, MessageBoxIcon.Warning);
                 }
             })
             {

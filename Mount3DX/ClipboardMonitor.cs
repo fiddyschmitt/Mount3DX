@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
@@ -23,7 +24,7 @@ namespace Mount3DX
         public const int MaxTextLength = 16 * 1024;
 
         readonly ListenerWindow window;
-        readonly System.Windows.Forms.Timer settle = new() { Interval = 150 };
+        readonly DispatcherTimer settle = new() { Interval = TimeSpan.FromMilliseconds(150) };
         bool disposed;
 
         public event EventHandler? Changed;
@@ -104,39 +105,45 @@ namespace Mount3DX
             if (disposed) return;
             disposed = true;
 
-            settle.Dispose();
+            settle.Stop();
             window.Dispose();
         }
 
-        //A message-only window: never shown, it only receives the notifications
-        sealed class ListenerWindow : NativeWindow, IDisposable
+        //A message-only window: never shown, it only receives the notifications. Its messages come
+        //through the message loop of the thread that made it, the UI thread.
+        sealed unsafe partial class ListenerWindow : IDisposable
         {
+            const string ClassName = "Mount3DX.ClipboardListener";
+
+            //The class is registered once, for every listener there will be
+            static readonly Lazy<bool> Registered = new(Register);
+
+            //Which listener a handle is, for the window procedure; only the UI thread uses it
+            static readonly Dictionary<IntPtr, ListenerWindow> Listeners = [];
+
             readonly Action onUpdate;
+
+            public IntPtr Handle { get; private set; }
 
             public ListenerWindow(Action onUpdate)
             {
                 this.onUpdate = onUpdate;
 
-                CreateHandle(new CreateParams { Parent = HWND_MESSAGE });
+                _ = Registered.Value;
+                Handle = CreateWindowEx(0, ClassName, null, 0, 0, 0, 0, 0, HWND_MESSAGE, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
+                if (Handle == IntPtr.Zero)
+                {
+                    throw new Win32Exception(Marshal.GetLastPInvokeError());
+                }
+
+                Listeners[Handle] = this;
 
                 if (!AddClipboardFormatListener(Handle))
                 {
                     var error = new Win32Exception(Marshal.GetLastPInvokeError());
-                    DestroyHandle();
+                    Dispose();
                     throw error;
                 }
-            }
-
-            protected override void WndProc(ref Message m)
-            {
-                if (m.Msg == WM_CLIPBOARDUPDATE)
-                {
-                    onUpdate();
-                    m.Result = IntPtr.Zero;
-                    return;
-                }
-
-                base.WndProc(ref m);
             }
 
             public void Dispose()
@@ -144,8 +151,85 @@ namespace Mount3DX
                 if (Handle == IntPtr.Zero) return;
 
                 RemoveClipboardFormatListener(Handle);
-                DestroyHandle();
+                Listeners.Remove(Handle);
+                DestroyWindow(Handle);
+                Handle = IntPtr.Zero;
             }
+
+            static bool Register()
+            {
+                fixed (char* className = ClassName)
+                {
+                    var windowClass = new WNDCLASSEXW
+                    {
+                        cbSize = (uint)sizeof(WNDCLASSEXW),
+                        lpfnWndProc = &WindowProcedure,
+                        hInstance = GetModuleHandle(null),
+                        lpszClassName = className,
+                    };
+
+                    if (RegisterClassExW(&windowClass) == 0)
+                    {
+                        throw new Win32Exception(Marshal.GetLastPInvokeError());
+                    }
+                }
+
+                return true;
+            }
+
+            [UnmanagedCallersOnly]
+            static IntPtr WindowProcedure(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
+            {
+                if (message == WM_CLIPBOARDUPDATE && Listeners.TryGetValue(hwnd, out var listener))
+                {
+                    //nothing may escape into the message loop
+                    try
+                    {
+                        listener.onUpdate();
+                    }
+                    catch (Exception ex)
+                    {
+                        libCommon.Log.WriteLine($"Error while handling a clipboard change: {ex}");
+                    }
+
+                    return IntPtr.Zero;
+                }
+
+                return DefWindowProcW(hwnd, message, wParam, lParam);
+            }
+
+            [StructLayout(LayoutKind.Sequential)]
+            struct WNDCLASSEXW
+            {
+                public uint cbSize;
+                public uint style;
+                public delegate* unmanaged<IntPtr, uint, IntPtr, IntPtr, IntPtr> lpfnWndProc;
+                public int cbClsExtra;
+                public int cbWndExtra;
+                public IntPtr hInstance;
+                public IntPtr hIcon;
+                public IntPtr hCursor;
+                public IntPtr hbrBackground;
+                public char* lpszMenuName;
+                public char* lpszClassName;
+                public IntPtr hIconSm;
+            }
+
+            [LibraryImport("user32.dll", SetLastError = true)]
+            private static partial ushort RegisterClassExW(WNDCLASSEXW* windowClass);
+
+            [LibraryImport("user32.dll", EntryPoint = "CreateWindowExW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+            private static partial IntPtr CreateWindowEx(uint exStyle, string className, string? windowName, uint style, int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr parameter);
+
+            [LibraryImport("user32.dll")]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            private static partial bool DestroyWindow(IntPtr hwnd);
+
+            [LibraryImport("user32.dll")]
+            private static partial IntPtr DefWindowProcW(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+            [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW", StringMarshalling = StringMarshalling.Utf16)]
+            private static partial IntPtr GetModuleHandle(string? moduleName);
         }
 
         [LibraryImport("user32.dll", SetLastError = true)]

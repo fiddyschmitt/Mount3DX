@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mount3DX.LinkPopup"
+        Title="Mount 3DX"
+        WindowDecorations="None"
+        CanResize="False"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual">
+
+  <!-- The document's whole name, with the buttons side by side under it -->
+  <Border BorderThickness="1" BorderBrush="{DynamicResource FrameBrush}" Padding="9">
+    <StackPanel Spacing="8">
+      <TextBlock x:Name="lblName" FontWeight="Bold" TextWrapping="Wrap" />
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
+        <!-- they can't take the focus, which would activate the popup -->
+        <Button Content="Open" Width="136" HorizontalContentAlignment="Center"
+                Focusable="False" Click="BtnOpen_Click" />
+        <Button Content="Open folder" Width="136" HorizontalContentAlignment="Center"
+                Focusable="False" Click="BtnOpenFolder_Click" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>

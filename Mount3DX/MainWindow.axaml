@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Mount3DX.MainWindow"
+        Title="Mount 3DX"
+        Icon="/Mount3DX.ico"
+        Width="678" MinWidth="678"
+        SizeToContent="Height">
+
+  <!-- The settings, then the buttons with the version at the right, then the status, which wraps at
+       the width of the settings box. The window is as tall as they are. -->
+  <StackPanel Margin="12">
+
+    <!-- A group box: the title sits on the box's top edge -->
+    <Panel>
+      <Border x:Name="grp3dx" Margin="0,9,0,0" Padding="12,16,12,12"
+              BorderThickness="1" CornerRadius="4" BorderBrush="{DynamicResource FrameBrush}">
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="8" RowSpacing="6">
+          <TextBlock Text="Server URL:" HorizontalAlignment="Right" VerticalAlignment="Center" />
+          <TextBox x:Name="txt3dxServerUrl" Grid.Column="1" />
+
+          <TextBlock Grid.Row="1" Text="Refresh document list every:" HorizontalAlignment="Right" VerticalAlignment="Center" />
+          <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <NumericUpDown x:Name="txtRefreshIntervalMinutes" Width="120"
+                           Minimum="0" Maximum="1000" Increment="1" Value="30"
+                           FormatString="0" ParsingNumberStyle="Integer" />
+            <TextBlock Text="minutes" VerticalAlignment="Center" />
+          </StackPanel>
+
+          <CheckBox x:Name="chkExtraFiles" Grid.Row="2" Grid.Column="1" IsChecked="True"
+                    Content="Include metadata files in each document folder" />
+          <CheckBox x:Name="chkMonitorClipboard" Grid.Row="3" Grid.Column="1" IsChecked="True"
+                    Content="Offer to open 3DX links copied to the clipboard" />
+          <CheckBox x:Name="chkRunAtStartup" Grid.Row="4" Grid.Column="1"
+                    Content="Run at startup" />
+        </Grid>
+      </Border>
+
+      <TextBlock Text="3DX settings" Margin="8,0,0,0" Padding="4,0"
+                 HorizontalAlignment="Left" VerticalAlignment="Top"
+                 Background="{Binding $parent[Window].Background}" />
+    </Panel>
+
+    <!-- The version's right edge is the settings box's -->
+    <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,12,0,0">
+      <Button x:Name="btnStart" Content="Start" MinWidth="75"
+              HorizontalContentAlignment="Center" Click="BtnStart_Click" />
+      <Button x:Name="btnOpenVirtualDrive" Grid.Column="1" Margin="8,0,0,0" IsVisible="False"
+              Content="Open virtual drive" Click="BtnOpenVirtualDrive_Click" />
+      <TextBlock x:Name="lblVersion" Grid.Column="3" Text="vX.X" VerticalAlignment="Center" />
+    </Grid>
+
+    <!-- A coloured badge, sized to the message -->
+    <Border x:Name="statusBadge" Margin="0,8,0,0" Padding="3" HorizontalAlignment="Left">
+      <TextBlock x:Name="lblRunningStatus" TextWrapping="Wrap" />
+    </Border>
+  </StackPanel>
+</Window>

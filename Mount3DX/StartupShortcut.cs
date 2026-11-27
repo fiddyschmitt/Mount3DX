@@ -15,7 +15,7 @@ namespace Mount3DX
         //What a shortcut's Run box calls "Minimized": minimised, without taking the focus
         const int SW_SHOWMINNOACTIVE = 7;
 
-        public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{Form1.PROGRAM_NAME}.lnk");
+        public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), $"{MainWindow.PROGRAM_NAME}.lnk");
 
         public static bool Exists => File.Exists(FilePath);
 
@@ -31,7 +31,7 @@ namespace Mount3DX
                 link.SetArguments(StartArgument);
                 link.SetWorkingDirectory(Path.GetDirectoryName(executable) ?? "");
                 link.SetShowCmd(SW_SHOWMINNOACTIVE);
-                link.SetDescription($"Starts {Form1.PROGRAM_NAME} when you sign in to Windows");
+                link.SetDescription($"Starts {MainWindow.PROGRAM_NAME} when you sign in to Windows");
 
                 ((IPersistFile)link).Save(FilePath, true);
             }

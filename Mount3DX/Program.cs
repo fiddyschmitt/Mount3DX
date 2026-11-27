@@ -1,3 +1,4 @@
+using Avalonia;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
@@ -16,18 +17,26 @@ namespace Mount3DX
             using var singleInstanceMutex = CreateSingleInstanceMutex(out var isFirstInstance);
             if (!isFirstInstance)
             {
-                MessageBox.Show($"{Form1.PROGRAM_NAME} is already running.", Form1.PROGRAM_NAME, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"{MainWindow.PROGRAM_NAME} is already running.", MessageBoxIcon.Information);
                 return;
             }
 
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
-
             //the startup shortcut passes --start
             var startOnLaunch = args.Contains(StartupShortcut.StartArgument, StringComparer.OrdinalIgnoreCase);
-            Application.Run(new Form1(startOnLaunch));
+            BuildAvaloniaApp(() => new App(startOnLaunch)).StartWithClassicDesktopLifetime(args);
         }
+
+        //What the XAML previewer starts
+        public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(() => new App(startOnLaunch: false));
+
+        static AppBuilder BuildAvaloniaApp(Func<App> app) => AppBuilder
+            .Configure(app)
+            .UseWin32()
+            .UseSkia()
+            .UseHarfBuzz()
+            //A window of settings has no need of the GPU. Drawn in software, it works the same on any
+            //machine, over Remote Desktop too, and ANGLE (the GPU renderer's library) isn't shipped.
+            .With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
 
         static Mutex? CreateSingleInstanceMutex(out bool isFirstInstance)
         {

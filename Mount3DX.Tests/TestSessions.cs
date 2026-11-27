@@ -9,7 +9,7 @@ namespace Mount3DX.Tests
 {
     public static class TestSessions
     {
-        //Windows' default for the WebDAV client's FileAttributesLimitInBytes, which Form1 passes on
+        //Windows' default for the WebDAV client's FileAttributesLimitInBytes, which MainWindow passes on
         public const uint WebClientListingLimit = 1_000_000;
 
         //The SMB share of the tests. Not 127.0.0.1, which a running Mount3DX uses: Windows ties a
@@ -28,7 +28,7 @@ namespace Mount3DX.Tests
             return server;
         }
 
-        //Starts a session against the fake 3DX as Form1 does once signed in. It never opens Explorer,
+        //Starts a session against the fake 3DX as MainWindow does once signed in. It never opens Explorer,
         //and its SMB cache is in a folder of its own.
         public static StartedSession Start(Fake3dxServer fake, Action<Settings> configure)
         {
