@@ -17,15 +17,22 @@ namespace Mount3DX
             using var singleInstanceMutex = CreateSingleInstanceMutex(out var isFirstInstance);
             if (!isFirstInstance)
             {
-                //the message is the whole program, and closing it ends it
+                //Launched again: the running one brings up its window, from the tray too, and this one goes
+                if (ShowWindowRequest.Send()) return;
+
+                //It couldn't be asked, so this one says that it's running. The message is the whole
+                //program, and closing it ends it.
                 var message = $"{MainWindow.PROGRAM_NAME} is already running.";
                 BuildAvaloniaApp(() => new App(() => new MessageBoxWindow(message, MessageBoxIcon.Information))).StartWithClassicDesktopLifetime(args);
                 return;
             }
 
+            //Before the window, so that a launch straight after this one isn't missed
+            using var showWindowRequests = ShowWindowRequest.Create();
+
             //the startup shortcut passes --start
             var startOnLaunch = args.Contains(StartupShortcut.StartArgument, StringComparer.OrdinalIgnoreCase);
-            BuildAvaloniaApp(() => new App(() => new MainWindow(startOnLaunch))).StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp(() => new App(() => new MainWindow(startOnLaunch, showWindowRequests))).StartWithClassicDesktopLifetime(args);
         }
 
         //What the XAML previewer starts

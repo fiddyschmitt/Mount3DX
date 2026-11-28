@@ -35,6 +35,9 @@ namespace Mount3DX
         //isn't shown until the icon there is clicked
         public bool StartsInTray { get; }
 
+        //Launching Mount 3DX again brings up this window
+        readonly RegisteredWaitHandle? showWindowListener;
+
         public static readonly string PROGRAM_NAME = "Mount 3DX";
         public static readonly string PROGRAM_VERSION = "1.8.1";
 
@@ -43,7 +46,8 @@ namespace Mount3DX
         {
         }
 
-        public MainWindow(bool startOnLaunch)
+        //showWindowRequests: set by a second launch, which asks for this window
+        public MainWindow(bool startOnLaunch, EventWaitHandle? showWindowRequests = null)
         {
             InitializeComponent();
             this.startOnLaunch = startOnLaunch;
@@ -71,6 +75,11 @@ namespace Mount3DX
             };
             trayIcon.Clicked += (sender, e) => ShowFromTray();
             TrayIcon.SetIcons(Application.Current!, new TrayIcons { trayIcon });
+
+            if (showWindowRequests != null)
+            {
+                showWindowListener = ShowWindowRequest.Listen(showWindowRequests, () => Dispatcher.UIThread.Post(BringToFront));
+            }
 
             //Attached once the window has its defaults, as the designer did. Loading the settings
             //below changes a box only where the settings differ from them.
@@ -299,6 +308,7 @@ namespace Mount3DX
             linkPopup?.Close();
             linkPopup = null;
             trayIcon?.Dispose();
+            showWindowListener?.Unregister(null);
         }
 
         Session? session = null;
@@ -560,6 +570,27 @@ namespace Mount3DX
             WindowState = shownState;
             ShowActivated = true;
             Show();
+            Activate();
+        }
+
+        //Mount 3DX was launched again: the window comes up at the front, wherever it was
+        void BringToFront()
+        {
+            if (closed) return;
+
+            //in the tray, or started there and not shown yet
+            if (!IsVisible)
+            {
+                ShowFromTray();
+                return;
+            }
+
+            //minimised on the taskbar, as it stays while a message is open over it
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = shownState;
+            }
+
             Activate();
         }
 
