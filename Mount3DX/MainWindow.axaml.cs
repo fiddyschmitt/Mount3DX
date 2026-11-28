@@ -18,11 +18,22 @@ namespace Mount3DX
     {
         _3dxServer? _3dxServer;
 
-        //Run with --start, as the startup shortcut does: the session starts as soon as the window is up
+        //Run with --start, as the startup shortcut does: the session starts as soon as the program is up
         readonly bool startOnLaunch;
 
         //Session events can arrive once the window has closed
         bool closed;
+
+        //In the tray while the window is minimised, in place of the window's button on the taskbar.
+        //Clicking it shows the window again.
+        readonly TrayIcon? trayIcon;
+
+        //Normal or maximised: how the window was before it was minimised, and how it comes back
+        WindowState shownState = WindowState.Normal;
+
+        //Started minimised, as the startup shortcut starts it: it is only in the tray, and the window
+        //isn't shown until the icon there is clicked
+        public bool StartsInTray { get; }
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
         public static readonly string PROGRAM_VERSION = "1.8.1";
@@ -43,8 +54,23 @@ namespace Mount3DX
             //the previewer shows the window, and nothing else happens
             if (Design.IsDesignMode) return;
 
-            //as the shortcut that started it asks: the startup shortcut starts it minimised
-            (WindowState, ShowActivated) = StartupShowCommand.Get();
+            //As the shortcut that started it asks. Minimised, as the startup shortcut asks, means in the
+            //tray only.
+            var (state, activate) = StartupShowCommand.Get();
+            StartsInTray = state == WindowState.Minimized;
+            if (!StartsInTray)
+            {
+                (WindowState, ShowActivated) = (state, activate);
+            }
+
+            trayIcon = new TrayIcon
+            {
+                Icon = Icon,
+                ToolTipText = PROGRAM_NAME,
+                IsVisible = StartsInTray,
+            };
+            trayIcon.Clicked += (sender, e) => ShowFromTray();
+            TrayIcon.SetIcons(Application.Current!, new TrayIcons { trayIcon });
 
             //Attached once the window has its defaults, as the designer did. Loading the settings
             //below changes a box only where the settings differ from them.
@@ -64,21 +90,38 @@ namespace Mount3DX
 
             //ticked when the shortcut is there, which this leaves as it is
             chkRunAtStartup.IsChecked = StartupShortcut.Exists;
+
+            if (startOnLaunch)
+            {
+                //Once the program is running, with the window up or only in the tray. The startup
+                //shortcut runs it this way at sign-in, when nobody has asked to see the drive, so it
+                //isn't opened in Explorer (Open virtual drive is there for that).
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Log.WriteLine($"Run with {StartupShortcut.StartArgument}, so starting straight away, without opening Explorer");
+                    StartSession(openInExplorer: false);
+                });
+            }
         }
+
+        //Shown again from the tray, the window keeps its focus where it was
+        bool openedBefore;
 
         protected override void OnOpened(EventArgs e)
         {
             base.OnOpened(e);
 
+            //back from the tray, with a status that came meanwhile
+            if (fitToStatusWhenRestored)
+            {
+                FitToStatus();
+            }
+
+            if (openedBefore) return;
+            openedBefore = true;
+
             //as it was first in the tab order: Enter or Space starts the drive straight away
             btnStart.Focus();
-
-            if (!startOnLaunch || Design.IsDesignMode) return;
-
-            //The startup shortcut runs it this way at sign-in, when nobody has asked to see the drive,
-            //so it isn't opened in Explorer (Open virtual drive is there for that)
-            Log.WriteLine($"Run with {StartupShortcut.StartArgument}, so starting straight away, without opening Explorer");
-            StartSession(openInExplorer: false);
         }
 
         public static uint FileAttributesLimitInBytes = 1_000_000;
@@ -255,6 +298,7 @@ namespace Mount3DX
             clipboardMonitor = null;
             linkPopup?.Close();
             linkPopup = null;
+            trayIcon?.Dispose();
         }
 
         Session? session = null;
@@ -450,13 +494,13 @@ namespace Mount3DX
 
         //The window is as tall as its content (SizeToContent), so it grows for a long status and
         //shrinks back for a short one. Dragging the window's edge stops that until the next status,
-        //which asks for it again. A minimised window (Run at startup starts it that way) is fitted
-        //once it is restored.
+        //which asks for it again. A window that is minimised or in the tray is fitted once it is back
+        //on screen: fitted while hidden, it would come back at its old height.
         bool fitToStatusWhenRestored;
 
         void FitToStatus()
         {
-            if (WindowState != WindowState.Normal)
+            if (WindowState != WindowState.Normal || !IsVisible)
             {
                 fitToStatusWhenRestored = true;
                 return;
@@ -467,16 +511,56 @@ namespace Mount3DX
             //via Manual, so that the window is measured again even when it was fitting already
             SizeToContent = SizeToContent.Manual;
             SizeToContent = SizeToContent.Height;
+
+            //and measured again even when nothing in it has changed since its last layout, as when it
+            //comes back from the tray (hidden, it was measured as nothing)
+            InvalidateMeasure();
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
 
-            if (change.Property == WindowStateProperty && fitToStatusWhenRestored && WindowState == WindowState.Normal)
+            if (change.Property != WindowStateProperty) return;
+
+            var state = change.GetNewValue<WindowState>();
+            if (state == WindowState.Minimized)
+            {
+                //once the minimising is done
+                Dispatcher.UIThread.Post(MinimiseToTray);
+                return;
+            }
+
+            shownState = state;
+
+            if (fitToStatusWhenRestored && state == WindowState.Normal)
             {
                 FitToStatus();
             }
+        }
+
+        //The window leaves the taskbar, and its icon waits in the tray
+        void MinimiseToTray()
+        {
+            //Not once it is back or closed, nor while a message is open over it: hiding the window would
+            //hide the message too, and the window would come back still waiting on it
+            if (trayIcon == null || closed || WindowState != WindowState.Minimized || OwnedWindows.Count > 0) return;
+
+            Hide();
+            trayIcon.IsVisible = true;
+        }
+
+        //The tray icon was clicked: the window comes back as it was, or is shown for the first time if it
+        //started in the tray, and comes to the front
+        void ShowFromTray()
+        {
+            if (trayIcon == null || closed) return;
+
+            trayIcon.IsVisible = false;
+            WindowState = shownState;
+            ShowActivated = true;
+            Show();
+            Activate();
         }
 
         private void ChkExtraFiles_CheckedChanged(object? sender, RoutedEventArgs e)

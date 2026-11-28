@@ -5,7 +5,8 @@ namespace Mount3DX
 {
     //How whatever started the program asked for its window to be shown: a shortcut's Run box asks for
     //Normal, Minimized or Maximized (the startup shortcut asks for Minimized, without taking the
-    //focus). Windows Forms applied this to the first window by itself; Avalonia doesn't.
+    //focus, which MainWindow takes to mean the tray). Windows Forms applied this to the first window
+    //by itself; Avalonia doesn't.
     public static partial class StartupShowCommand
     {
         const int STARTF_USESHOWWINDOW = 0x1;

@@ -4,11 +4,12 @@ using System.Text;
 namespace Mount3DX
 {
     //The shortcut in the user's Startup folder (shell:startup), which Windows runs when they sign in.
-    //It runs this executable minimised, with the argument that starts the session straight away.
+    //It runs this executable minimised, which puts it in the tray only, with the argument that starts
+    //the session straight away.
     //Whether it is there is the setting: nothing about it is kept in settings.json.
     public static class StartupShortcut
     {
-        //Starts the session as soon as the window is up, as if Start had been clicked
+        //Starts the session as soon as the program is up, as if Start had been clicked
         public const string StartArgument = "--start";
 
         //What a shortcut's Run box calls "Minimized": minimised, without taking the focus
