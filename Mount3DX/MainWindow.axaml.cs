@@ -39,7 +39,7 @@ namespace Mount3DX
         readonly RegisteredWaitHandle? showWindowListener;
 
         public static readonly string PROGRAM_NAME = "Mount 3DX";
-        public static readonly string PROGRAM_VERSION = "1.8.1";
+        public static readonly string PROGRAM_VERSION = "1.8.2";
 
         //For the XAML previewer
         public MainWindow() : this(startOnLaunch: false)
